@@ -10,14 +10,14 @@ from tkinter import filedialog, messagebox, ttk, simpledialog, Toplevel
 from tkinter.ttk import Progressbar
 import os
 import tempfile
-import webbrowser  # Para abrir PDFs
+import webbrowser  # 
 from datetime import datetime
 import hashlib  # Para hashing de contraseñas
-from PIL import ImageTk, Image  # Añadido para manejar imágenes
-import random  # Para colores aleatorios
+from PIL import ImageTk, Image  # imagenes
+import random  # colores aleatorios
 import sys  # Para detección de plataforma
 
-# Función de conexión a BD con corrección para agregar columna contrasena y nueva tabla Personas
+# Función de conexión a BD| agrega columna contraseña y nueva tabla Personas
 def conectar_db():
     conn = sqlite3.connect('base_datos_pdfs.db')
     cursor = conn.cursor()
@@ -30,7 +30,7 @@ def conectar_db():
             contrasena TEXT NOT NULL  -- Hash de la contraseña
         )
     ''')
-    # Verificar y agregar columna contrasena si no existe
+    # Verifica y agrega columna contrasena si no existe
     cursor.execute("PRAGMA table_info(Usuarios)")
     columns = [col[1] for col in cursor.fetchall()]
     if 'contrasena' not in columns:
@@ -60,7 +60,7 @@ def conectar_db():
             FOREIGN KEY (persona_id) REFERENCES Personas(id) ON DELETE SET NULL
         )
     ''')
-    # Verificar y agregar columna persona_id si no existe
+    # Verifica y agrega columna persona_id si no existe
     cursor.execute("PRAGMA table_info(PDFs)")
     columns_pdf = [col[1] for col in cursor.fetchall()]
     if 'persona_id' not in columns_pdf:
@@ -119,7 +119,7 @@ def random_gray_blue():
 def ease_out(t):
     return 1 - (1 - t) ** 2
 
-# Clase principal con diseño mejorado y credenciales
+# Clase principal para credenciales
 class AppDBPDF:
     def __init__(self, root):
         self.root = root
@@ -132,7 +132,7 @@ class AppDBPDF:
                 base_path = os.path.dirname(os.path.abspath(__file__))
             
         
-        # Estilo ttk para tema moderno
+        # ttk tema moderno
         style = ttk.Style()
         style.theme_use('clam')  # Tema atractivo
         style.configure('TButton', font=('Arial', 12, 'bold'), padding=15)  # Botones más grandes
@@ -144,11 +144,11 @@ class AppDBPDF:
         self.usuario_actual = None
         self.animating = False  # Control de animaciones
         
-        # Interfaz previa (intro screen) con animaciones
+        # Interfaz previa (intro screen) animada
         self.frame_intro = tk.Frame(root, bg='#2c2434')  # Fondo #2c2434
         self.frame_intro.pack(expand=True, fill='both')
         
-        # Texto animado con estilo gótico (usa una fuente serif bold para simular gótico)
+        # Texto animado
         try:
             self.intro_text = tk.Label(self.frame_intro, text="DatenJäger | Gestor de PDFs |", font=('Old English Text MT', 36, 'bold'), fg='white', bg='#2c2434')
         except:
@@ -156,7 +156,7 @@ class AppDBPDF:
         self.intro_text.pack(expand=True)
         self.intro_text.bind("<Button-1>", self.on_intro_click)  # Clic en texto para acceder
         
-        # Texto para acceder (con animación fluida)
+        # Texto para acceder 
         self.access_text = tk.Label(self.frame_intro, text="Alpha V1.0 |Lauch Test|", bg='#2c2434', cursor="hand2")
         try:
             self.access_text.config(font=('Old English Text MT', 20, 'bold'), fg='white')
@@ -167,16 +167,16 @@ class AppDBPDF:
         self.access_scale = 1.0
         self.animate_access_text()
         
-        # Animación suave para el texto de intro (fade in)
+        # Animación suave  (fade in)
         self.intro_alpha = 0.0
         self.fade_in_text(self.intro_text)
         
-        # Ciclo de colores lento para el fondo con fade out
+        # Ciclo de colores para el fondo con fade out
         self.colors = ['#2c2434', '#3a3145', '#483e56', '#564b67', '#645878', '#726589', '#80729a', '#8e7fab', '#9c8cbc', '#aa99cd']
         self.current_color_index = 0
         self.fade_background()
         
-        # Frame inicial con opciones (oculto inicialmente)
+        # Frame inicial con opciones
         self.frame_inicial = tk.Frame(root, bg='#F5F5F5', padx=20, pady=20)
         
         tk.Label(self.frame_inicial, text="DatenJäger <Gestor de PDF>", font=('Arial', 16, 'bold'), bg='#F5F5F5', fg='#00695C').pack(pady=10)
@@ -198,8 +198,8 @@ class AppDBPDF:
         
         # Frame dedicado para iniciar sesión
         self.frame_login = tk.Frame(root, bg='#F5F5F5', padx=20, pady=20)
-        # Añadir logo centrado
-        # Añadir logo centrado
+        
+        # logo centrado
         try:
             img_path = os.path.join(base_path, "logo.png")  # CAMBIA ESTA RUTA A TU IMAGEN
             img = Image.open(img_path)
@@ -261,7 +261,7 @@ class AppDBPDF:
         volver_btn.bind("<Enter>", lambda e: self.animate_button(volver_btn, 'enter'))
         volver_btn.bind("<Leave>", lambda e: self.animate_button(volver_btn, 'leave'))
         
-        # Frame principal (oculto hasta login) - Colorido e interactivo
+        # Frame principal 
         self.frame_principal = tk.Frame(root, bg='#F5F5F5')  # Fondo fijo
         
         # Menú superior interactivo
@@ -275,7 +275,7 @@ class AppDBPDF:
         file_menu.add_command(label="Salir", command=root.quit)
         
         
-       # Añadir logo en la parte superior derecha
+       #  logo en la parte superior derecha
         try:
             img_path = os.path.join(base_path, "logo.png")
             img = Image.open(img_path)
@@ -317,7 +317,7 @@ class AppDBPDF:
         detalles_btn.bind("<Enter>", lambda e: self.animate_button(detalles_btn, 'enter'))
         detalles_btn.bind("<Leave>", lambda e: self.animate_button(detalles_btn, 'leave'))
         
-        # Treeview para lista (actualizado con columnas para cédula y nombres)
+        # Treeview para lista (con columnas para cédula y nombres)
         tree_frame = tk.Frame(self.frame_principal, bg='#F5F5F5')
         tree_frame.pack(pady=10, fill='both', expand=True)
         self.tree = ttk.Treeview(tree_frame, columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"), show="headings", height=15)
@@ -634,7 +634,7 @@ class AppDBPDF:
             self.progress.pack_forget()
     
     def animate_treeview_insert(self, pdf_id):
-        # Animación al insertar en Treeview (parpadeo o cambio de color)
+        # Animación (parpadeo o cambio de color)
         self.root.after(100, lambda: self.tree.config(background=random_gray_blue()))
         self.root.after(500, lambda: self.tree.config(background='#F5F5F5'))
     
