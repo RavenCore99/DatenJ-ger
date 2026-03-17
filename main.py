@@ -16,6 +16,7 @@ import webbrowser
 from datetime import datetime
 import hashlib
 import random
+import threading
 import pyotp
 import qrcode
 from PIL import ImageTk, Image
@@ -31,7 +32,6 @@ from ui_components import Notification, ProgressBarModerno, DashboardWidget, get
 # CONFIGURACIÓN DE CUSTOMTKINTER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-ctk.set_appearance_mode("Light")
 ctk.set_default_color_theme("blue")
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -65,13 +65,22 @@ class AppDBPDF:
         window_size = self.config.get("window_size", "1000x700")
         self.root.geometry(window_size)
 
+        # Apply saved theme BEFORE building frames so colors are correct
+        theme = self.config.get("theme", "System")
+        ctk.set_appearance_mode(theme)
+
         self.conn, self.cursor = conectar_db()
+        self._db_lock = threading.Lock()  # Serialises any concurrent DB access
         self.usuario_actual = None
         self.usuario_nombre = None
         self.animating = False
+        self._search_timer = None  # For debounced live search
 
         self._setup_atajos()
         self._crear_frames()
+        self._apply_treeview_style()
+        self._setup_treeview_sorting()
+        self.root.minsize(800, 600)
         self.mostrar_inicial()
 
         self.root.bind("<F11>", self.toggle_fullscreen)
@@ -565,6 +574,7 @@ class AppDBPDF:
         )
         self.entry_busqueda.pack(side="left", padx=5)
         self.entry_busqueda.bind("<Return>", lambda e: self.buscar_pdfs())
+        self.entry_busqueda.bind("<KeyRelease>", self._debounced_search)
 
         btn_buscar = ctk.CTkButton(
             search_frame,
@@ -700,44 +710,257 @@ class AppDBPDF:
 
     def actualizar_colores_dinamicos(self):
         """Actualiza los colores dinámicos cuando cambia el tema"""
+        mode = ctk.get_appearance_mode()
+        bg = COLOR_BG_DARK if mode == "Dark" else COLOR_BG_LIGHT
         colors = self.get_colors()
-        # Esta función se puede expandir para actualizar más elementos si es necesario
-        # Por ahora, los colores dinámicos se aplican en las funciones que lo necesitan
+
+        # Update all frame backgrounds
+        for frame in [self.frame_principal, self.frame_inicial, self.frame_login,
+                      self.frame_2fa, self.frame_setup_2fa, self.frame_registro]:
+            frame.configure(fg_color=bg)
+
+        # Update status bar text color
+        self.status.configure(text_color=colors["text_primary"])
+
+        # Re-apply TreeView styling and refresh alternating row colors
+        self._apply_treeview_style()
+        if self.usuario_actual:
+            self.ver_pdfs()
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: NAVIGATION
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _hide_all_frames(self):
+        """Hides every top-level frame and resets the layout"""
+        for f in [self.frame_intro, self.frame_inicial, self.frame_login,
+                  self.frame_2fa, self.frame_setup_2fa, self.frame_principal,
+                  self.frame_registro]:
+            f.pack_forget()
+        self.root.update()
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: TREEVIEW STYLING & SORTING
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _apply_treeview_style(self):
+        """Applies a dynamic ttk style to the TreeView to match the active theme"""
+        style = ttk.Style()
+        mode = ctk.get_appearance_mode()
+
+        if mode == "Dark":
+            bg        = "#2b2b2b"
+            fg        = "#FFFFFF"
+            even_bg   = "#2b2b2b"
+            odd_bg    = "#333333"
+            heading_bg = "#1a6b20"
+            sel_bg    = "#2196F3"
+            sel_fg    = "#FFFFFF"
+        else:
+            bg        = "#FFFFFF"
+            fg        = "#004D40"
+            even_bg   = "#FFFFFF"
+            odd_bg    = "#F0F4F0"
+            heading_bg = "#4CAF50"
+            sel_bg    = "#BBDEFB"
+            sel_fg    = "#004D40"
+
+        style.theme_use("default")
+        style.configure("Treeview",
+            background=bg,
+            foreground=fg,
+            fieldbackground=bg,
+            rowheight=28,
+            font=("Arial", 10)
+        )
+        style.configure("Treeview.Heading",
+            background=heading_bg,
+            foreground="white",
+            font=("Arial", 10, "bold"),
+            relief="flat"
+        )
+        style.map("Treeview",
+            background=[('selected', sel_bg)],
+            foreground=[('selected', sel_fg)]
+        )
+
+        if hasattr(self, 'tree'):
+            self.tree.tag_configure('evenrow', background=even_bg)
+            self.tree.tag_configure('oddrow',  background=odd_bg)
+
+    def _setup_treeview_sorting(self):
+        """Enables click-to-sort on every TreeView column header"""
+        for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"):
+            self.tree.heading(col, text=col,
+                              command=lambda c=col: self._sort_column(c, False))
+
+    def _sort_column(self, col, reverse):
+        """Sorts the TreeView rows by the given column"""
+        data = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
+        try:
+            # Try numeric sort for ID column; fall back to string for everything else
+            if col == "ID":
+                data.sort(key=lambda x: int(x[0]), reverse=reverse)
+            else:
+                data.sort(key=lambda x: x[0].lower(), reverse=reverse)
+        except (ValueError, AttributeError):
+            data.sort(key=lambda x: x[0], reverse=reverse)
+
+        for index, (_, k) in enumerate(data):
+            self.tree.move(k, '', index)
+            self.tree.item(k, tags=('evenrow' if index % 2 == 0 else 'oddrow',))
+
+        # Toggle sort direction on next click
+        self.tree.heading(col, command=lambda: self._sort_column(col, not reverse))
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: TREEVIEW DATA
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _format_pdf_row(self, row):
+        """Formats a DB row tuple for display in the TreeView"""
+        return (
+            row[0],
+            row[1],
+            row[2][:50] + "..." if row[2] and len(row[2]) > 50 else (row[2] or ""),
+            format_size(row[3]),
+            format_date_friendly(row[4]),
+            row[5] or "",
+            row[6] or ""
+        )
+
+    def _populate_treeview(self, rows):
+        """Clears the TreeView and inserts formatted rows with alternating colors"""
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        for i, row in enumerate(rows):
+            tag = 'evenrow' if i % 2 == 0 else 'oddrow'
+            self.tree.insert('', 'end', values=self._format_pdf_row(row), tags=(tag,))
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: SEARCH DEBOUNCE
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _debounced_search(self, event=None):
+        """Triggers a search 400 ms after the user stops typing"""
+        if self._search_timer:
+            self.root.after_cancel(self._search_timer)
+        self._search_timer = self.root.after(400, self.buscar_pdfs)
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: PDF OPERATIONS (thread callbacks + temp-file cleanup)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
+                        cedula, nombres, usuario_actual, window):
+        """Saves the already-encrypted PDF blob to the DB (runs on main thread)"""
+        try:
+            self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
+            result = self.cursor.fetchone()
+            if result:
+                persona_id = result[0]
+                self.cursor.execute(
+                    "UPDATE Personas SET nombres = ? WHERE id = ?",
+                    (nombres, persona_id)
+                )
+            else:
+                self.cursor.execute(
+                    "INSERT INTO Personas (cedula, nombres) VALUES (?, ?)",
+                    (cedula, nombres)
+                )
+                persona_id = self.cursor.lastrowid
+
+            self.cursor.execute(
+                "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, "
+                "tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (nombre, descripcion, datos_enc, 1, tamano,
+                 datetime.now().isoformat(), usuario_actual, persona_id)
+            )
+            pdf_id = self.cursor.lastrowid
+
+            self.cursor.execute(
+                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
+                ("Agregar PDF (Encriptado AES-256)", pdf_id, usuario_actual,
+                 datetime.now().isoformat())
+            )
+            self.conn.commit()
+            self._on_pdf_added(nombre, window)
+        except Exception as e:
+            self.conn.rollback()
+            self._on_pdf_add_error(e)
+        finally:
+            self.progress_bar.stop()
+
+    def _on_pdf_added(self, nombre, window):
+        """Called on main thread after a PDF is saved successfully"""
+        colors = self.get_colors()
+        self.status.configure(
+            text=f"✅ PDF {nombre} agregado y encriptado",
+            text_color=colors["text_primary"]
+        )
+        Notification(self.root, "✅ Éxito",
+                     f"PDF {nombre} agregado\nEncriptado con AES-256",
+                     notification_type="success")
+        window.destroy()
+        self.cargar_dashboard()
+        self.ver_pdfs()
+
+    def _on_pdf_add_error(self, error):
+        """Called on main thread when adding a PDF fails"""
+        Notification(self.root, "❌ Error", str(error), notification_type="error")
+        colors = self.get_colors()
+        self.status.configure(text="❌ Error al agregar PDF",
+                              text_color=colors["text_primary"])
+
+    def _on_pdf_opened(self, nombre, temp_file, window):
+        """Called on main thread after a PDF is decrypted and written to temp dir"""
+        if os.name == 'nt':
+            os.startfile(temp_file)
+        else:
+            webbrowser.open(temp_file)
+
+        colors = self.get_colors()
+        self.status.configure(
+            text=f"✅ Abriendo PDF {nombre} (Desencriptado)",
+            text_color=colors["text_primary"]
+        )
+        Notification(self.root, "✅ PDF abierto",
+                     f"Abriendo {nombre}...\n(Desencriptado con AES-256)",
+                     notification_type="success", duration=2000)
+        if window:
+            window.destroy()
+        # Schedule temp file cleanup (give the PDF reader time to open the file)
+        self.root.after(30000, lambda: self._cleanup_temp_file(temp_file))
+
+    def _cleanup_temp_file(self, filepath):
+        """Silently removes a temporary file if it still exists"""
+        try:
+            if os.path.exists(filepath):
+                os.unlink(filepath)
+        except Exception:
+            pass  # File may still be open in the PDF reader
 
     def mostrar_inicial(self):
         """Muestra la pantalla inicial"""
-        self.frame_login.pack_forget()
-        self.frame_registro.pack_forget()
-        self.frame_2fa.pack_forget()
-        self.frame_setup_2fa.pack_forget()
-        self.frame_principal.pack_forget()
-        self.frame_intro.pack_forget()
-        self.root.update()
-        self.slide_in_frame(self.frame_inicial, callback=lambda: self.frame_inicial.pack(expand=True, fill="both"))
+        self._hide_all_frames()
+        self.slide_in_frame(self.frame_inicial,
+                            callback=lambda: self.frame_inicial.pack(expand=True, fill="both"))
 
     def mostrar_login(self):
         """Muestra la pantalla de login"""
-        self.frame_inicial.pack_forget()
-        self.frame_registro.pack_forget()
-        self.frame_2fa.pack_forget()
-        self.frame_setup_2fa.pack_forget()
-        self.frame_principal.pack_forget()
+        self._hide_all_frames()
         self.entry_usuario_login.delete(0, tk.END)
         self.entry_contrasena_login.delete(0, tk.END)
-        self.root.update()
-        self.slide_in_frame(self.frame_login, callback=lambda: self.frame_login.pack(expand=True, fill="both"))
+        self.slide_in_frame(self.frame_login,
+                            callback=lambda: self.frame_login.pack(expand=True, fill="both"))
 
     def mostrar_registro(self):
         """Muestra la pantalla de registro"""
-        self.frame_inicial.pack_forget()
-        self.frame_login.pack_forget()
-        self.frame_2fa.pack_forget()
-        self.frame_setup_2fa.pack_forget()
-        self.frame_principal.pack_forget()
+        self._hide_all_frames()
         self.entry_usuario_registro.delete(0, tk.END)
         self.entry_contrasena_registro.delete(0, tk.END)
-        self.root.update()
-        self.slide_in_frame(self.frame_registro, callback=lambda: self.frame_registro.pack(expand=True, fill="both"))
+        self.slide_in_frame(self.frame_registro,
+                            callback=lambda: self.frame_registro.pack(expand=True, fill="both"))
 
     def registrarse(self):
         """Registra un nuevo usuario"""
@@ -1178,94 +1401,46 @@ class AppDBPDF:
             self.label_file.configure(text=f"📄 {os.path.basename(self.selected_file)}")
 
     def procesar_agregar_pdf(self, window):
-        """Procesa la adición de un PDF con encriptación"""
+        """Procesa la adición de un PDF: encripta en segundo plano, guarda en BD en hilo principal"""
         if not self.selected_file:
-            Notification(
-                self.root,
-                "❌ Error",
-                "Selecciona un archivo PDF",
-                notification_type="error"
-            )
+            Notification(self.root, "❌ Error", "Selecciona un archivo PDF",
+                         notification_type="error")
             return
 
         descripcion = self.entry_descripcion.get().strip()
-        cedula = self.entry_cedula.get().strip()
-        nombres = self.entry_nombres.get().strip()
+        cedula      = self.entry_cedula.get().strip()
+        nombres     = self.entry_nombres.get().strip()
 
         if not cedula or not nombres:
-            Notification(
-                self.root,
-                "❌ Error",
-                "Cédula y nombres son requeridos",
-                notification_type="error"
-            )
+            Notification(self.root, "❌ Error", "Cédula y nombres son requeridos",
+                         notification_type="error")
             return
 
         self.progress_bar.start("Encriptando y agregando PDF...")
 
-        try:
-            with open(self.selected_file, 'rb') as f:
-                datos_originales = f.read()
+        # Capture state for the background thread to avoid closure over attrs
+        # that might change while the thread runs.
+        selected_file  = self.selected_file
+        usuario_nombre = self.usuario_nombre
+        usuario_actual = self.usuario_actual
 
-            datos_encriptados = EncryptionManager.encrypt_data(
-                datos_originales,
-                self.usuario_nombre
-            )
+        def encrypt_task():
+            try:
+                with open(selected_file, 'rb') as f:
+                    datos_originales = f.read()
+                datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
+                tamano    = len(datos_originales)
+                nombre    = os.path.basename(selected_file)
+                # Hand off DB write to the main thread
+                self.root.after(0, lambda: self._save_pdf_to_db(
+                    datos_enc, tamano, nombre, descripcion,
+                    cedula, nombres, usuario_actual, window
+                ))
+            except Exception as e:
+                self.root.after(0, lambda err=e: self._on_pdf_add_error(err))
+                self.root.after(0, self.progress_bar.stop)
 
-            tamano = len(datos_originales)
-            nombre = os.path.basename(self.selected_file)
-
-            self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
-            result = self.cursor.fetchone()
-
-            if result:
-                persona_id = result[0]
-                self.cursor.execute(
-                    "UPDATE Personas SET nombres = ? WHERE id = ?",
-                    (nombres, persona_id)
-                )
-            else:
-                self.cursor.execute(
-                    "INSERT INTO Personas (cedula, nombres) VALUES (?, ?)",
-                    (cedula, nombres)
-                )
-                persona_id = self.cursor.lastrowid
-
-            self.cursor.execute(
-                "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (nombre, descripcion, datos_encriptados, 1, tamano, datetime.now().isoformat(), self.usuario_actual, persona_id)
-            )
-            pdf_id = self.cursor.lastrowid
-
-            self.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Agregar PDF (Encriptado AES-256)", pdf_id, self.usuario_actual, datetime.now().isoformat())
-            )
-
-            self.conn.commit()
-            colors = self.get_colors()
-            self.status.configure(text=f"✅ PDF {nombre} agregado y encriptado", text_color=colors["text_primary"])
-            Notification(
-                self.root,
-                "✅ Éxito",
-                f"PDF {nombre} agregado\nEncriptado con AES-256",
-                notification_type="success"
-            )
-            window.destroy()
-            self.cargar_dashboard()
-            self.ver_pdfs()
-        except Exception as e:
-            self.conn.rollback()
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
-            )
-            colors = self.get_colors()
-            self.status.configure(text="❌ Error al agregar PDF", text_color=colors["text_primary"])
-        finally:
-            self.progress_bar.stop()
+        threading.Thread(target=encrypt_task, daemon=True).start()
 
     def ver_pdfs(self):
         """Muestra todos los PDFs"""
@@ -1275,9 +1450,6 @@ class AppDBPDF:
         self.progress_bar.start("Cargando PDFs...")
 
         try:
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
                        p.fecha_subida, pe.cedula, pe.nombres
@@ -1288,27 +1460,15 @@ class AppDBPDF:
             """, (self.usuario_actual,))
 
             rows = self.cursor.fetchall()
-            for row in rows:
-                formatted_row = (
-                    row[0],
-                    row[1],
-                    row[2][:50] + "..." if row[2] and len(row[2]) > 50 else (row[2] or ""),
-                    format_size(row[3]),
-                    format_date_friendly(row[4]),
-                    row[5] or "",
-                    row[6] or ""
-                )
-                self.tree.insert('', 'end', values=formatted_row)
+            self._populate_treeview(rows)
 
             colors = self.get_colors()
-            self.status.configure(text=f"✅ Se muestran {len(rows)} PDFs (Encriptados)", text_color=colors["text_primary"])
-        except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
+            self.status.configure(
+                text=f"✅ Se muestran {len(rows)} PDFs (Encriptados)",
+                text_color=colors["text_primary"]
             )
+        except Exception as e:
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
         finally:
             self.progress_bar.stop()
 
@@ -1323,32 +1483,26 @@ class AppDBPDF:
         self.progress_bar.start(f"Buscando '{term}'...")
 
         try:
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
                        p.fecha_subida, pe.cedula, pe.nombres
                 FROM PDFs p
                 LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ? AND (p.nombre LIKE ? OR p.descripcion LIKE ? OR pe.cedula LIKE ? OR pe.nombres LIKE ?)
-            """, (self.usuario_actual, f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
+                WHERE p.usuario_id = ? AND (
+                    p.nombre LIKE ? OR p.descripcion LIKE ?
+                    OR pe.cedula LIKE ? OR pe.nombres LIKE ?
+                )
+            """, (self.usuario_actual,
+                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
 
             rows = self.cursor.fetchall()
-            for row in rows:
-                formatted_row = (
-                    row[0],
-                    row[1],
-                    row[2][:50] + "..." if row[2] and len(row[2]) > 50 else (row[2] or ""),
-                    format_size(row[3]),
-                    format_date_friendly(row[4]),
-                    row[5] or "",
-                    row[6] or ""
-                )
-                self.tree.insert('', 'end', values=formatted_row)
+            self._populate_treeview(rows)
 
             colors = self.get_colors()
-            self.status.configure(text=f"✅ Se muestran {len(rows)} resultados", text_color=colors["text_primary"])
+            self.status.configure(
+                text=f"✅ Se muestran {len(rows)} resultados",
+                text_color=colors["text_primary"]
+            )
             Notification(
                 self.root,
                 "✅ Búsqueda completada",
@@ -1357,12 +1511,7 @@ class AppDBPDF:
                 duration=2000
             )
         except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
-            )
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
         finally:
             self.progress_bar.stop()
 
@@ -1441,7 +1590,7 @@ Nombres: {nombres}
         self.abrir_pdf_id(pdf_id)
 
     def abrir_pdf_id(self, pdf_id, window=None):
-        """Abre un PDF desencriptándolo primero"""
+        """Abre un PDF: consulta BD en hilo principal, desencripta en segundo plano"""
         self.progress_bar.start("Desencriptando PDF...")
 
         try:
@@ -1450,51 +1599,42 @@ Nombres: {nombres}
                 (pdf_id, self.usuario_actual)
             )
             result = self.cursor.fetchone()
+        except Exception as e:
+            self.progress_bar.stop()
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            return
 
-            if result:
-                datos_encriptados, nombre, encriptado = result
+        if not result:
+            self.progress_bar.stop()
+            Notification(self.root, "❌ Error", "PDF no encontrado", notification_type="error")
+            return
 
-                if encriptado:
-                    datos = EncryptionManager.decrypt_data(datos_encriptados, self.usuario_nombre)
-                else:
-                    datos = datos_encriptados
+        datos_enc, nombre, encriptado = result
+        usuario_nombre = self.usuario_nombre
 
+        def decrypt_task():
+            try:
+                # bytes() ensures we have a real bytes object regardless of
+                # whether SQLite returned bytes or a memoryview buffer.
+                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
+                         if encriptado else bytes(datos_enc))
                 temp_file = os.path.join(tempfile.gettempdir(), nombre)
                 with open(temp_file, 'wb') as f:
                     f.write(datos)
-
-                if os.name == 'nt':
-                    os.startfile(temp_file)
-                else:
-                    webbrowser.open(temp_file)
-
-                colors = self.get_colors()
-                self.status.configure(text=f"✅ Abriendo PDF {nombre} (Desencriptado)", text_color=colors["text_primary"])
-                Notification(
-                    self.root,
-                    "✅ PDF abierto",
-                    f"Abriendo {nombre}...\n(Desencriptado con AES-256)",
-                    notification_type="success",
-                    duration=2000
+                self.root.after(0, lambda: self._on_pdf_opened(nombre, temp_file, window))
+            except Exception as e:
+                self.root.after(
+                    0,
+                    lambda err=e: Notification(
+                        self.root, "❌ Error",
+                        f"No se pudo abrir el PDF: {err}",
+                        notification_type="error"
+                    )
                 )
-                if window:
-                    window.destroy()
-            else:
-                Notification(
-                    self.root,
-                    "❌ Error",
-                    "PDF no encontrado",
-                    notification_type="error"
-                )
-        except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                f"No se pudo abrir el PDF: {e}",
-                notification_type="error"
-            )
-        finally:
-            self.progress_bar.stop()
+            finally:
+                self.root.after(0, self.progress_bar.stop)
+
+        threading.Thread(target=decrypt_task, daemon=True).start()
 
     def eliminar_pdf(self):
         """Elimina un PDF seleccionado"""

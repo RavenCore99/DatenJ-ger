@@ -18,8 +18,12 @@ def conectar_db():
         basepath = os.path.dirname(os.path.abspath(__file__))
 
     dbpath = os.path.join(basepath, 'base_datos_pdfs.db')
-    conn = sqlite3.connect(dbpath)
+    conn = sqlite3.connect(dbpath, check_same_thread=False)
     cursor = conn.cursor()
+
+    # Performance pragmas: WAL for better concurrency, NORMAL sync for speed
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
 
     # Crear tabla de usuarios con 2FA
     cursor.execute('''
