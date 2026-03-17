@@ -8,6 +8,8 @@ Gestiona toda la conexión y operaciones con SQLite
 import sqlite3
 import sys
 import os
+import hashlib
+import secrets
 from datetime import datetime
 
 def conectar_db():
@@ -25,7 +27,7 @@ def conectar_db():
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
 
-    # Crear tabla de usuarios con 2FA
+    # Crear tabla de usuarios con 2FA y seguimiento de intentos fallidos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +36,9 @@ def conectar_db():
             totp_secret TEXT,
             totp_enabled INTEGER DEFAULT 0,
             backup_codes TEXT,
-            fecha_creacion TEXT NOT NULL
+            fecha_creacion TEXT NOT NULL,
+            failed_attempts INTEGER DEFAULT 0,
+            locked_until TEXT
         )
     ''')
 
@@ -48,6 +52,10 @@ def conectar_db():
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN backup_codes TEXT")
     if 'fecha_creacion' not in columns:
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN fecha_creacion TEXT NOT NULL DEFAULT ''")
+    if 'failed_attempts' not in columns:
+        cursor.execute("ALTER TABLE Usuarios ADD COLUMN failed_attempts INTEGER DEFAULT 0")
+    if 'locked_until' not in columns:
+        cursor.execute("ALTER TABLE Usuarios ADD COLUMN locked_until TEXT")
 
     # Crear tabla de Personas
     cursor.execute('''
@@ -122,9 +130,33 @@ def conectar_db():
     return conn, cursor
 
 def hash_contrasena(contrasena):
-    """Hashea una contraseña usando SHA256"""
-    import hashlib
-    return hashlib.sha256(contrasena.encode()).hexdigest()
+    """Hashea una contraseña usando PBKDF2-HMAC-SHA256 con salt aleatorio.
+    Retorna una cadena 'pbkdf2:salt_hex:hash_hex' para almacenamiento seguro.
+    Mantiene compatibilidad retroactiva con hashes SHA256 legacy (sin prefijo).
+    """
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
+    return f"pbkdf2:{salt}:{dk.hex()}"
+
+
+def verify_contrasena(contrasena, stored_hash):
+    """Verifica una contraseña contra el hash almacenado.
+    Soporta tanto el formato moderno PBKDF2 como el legacy SHA256 sin salt.
+    Retorna (ok: bool, needs_rehash: bool).
+    """
+    if stored_hash.startswith("pbkdf2:"):
+        parts = stored_hash.split(":")
+        if len(parts) != 3:
+            return False, False
+        _, salt, expected = parts
+        dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
+        ok = dk.hex() == expected
+        return ok, False
+    else:
+        # Legacy SHA-256 – migrate on next successful login
+        legacy = hashlib.sha256(contrasena.encode()).hexdigest()
+        ok = legacy == stored_hash
+        return ok, ok  # needs_rehash=True when password matches
 
 def format_size(bytes_size):
     """Convierte bytes a formato legible"""
@@ -177,3 +209,87 @@ def format_date_friendly(iso_date):
 def ease_in_out(t):
     """Función de easing in-out"""
     return t ** 2 if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2
+
+
+# ─── Login rate-limiting helpers ─────────────────────────────────────────────
+
+MAX_FAILED_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
+
+def check_account_locked(cursor, nombre):
+    """Retorna (locked: bool, seconds_remaining: int).
+    Si la cuenta no existe devuelve (False, 0).
+    """
+    cursor.execute(
+        "SELECT failed_attempts, locked_until FROM Usuarios WHERE nombre = ?",
+        (nombre,)
+    )
+    row = cursor.fetchone()
+    if not row:
+        return False, 0
+    failed, locked_until = row
+    if locked_until:
+        try:
+            unlock_at = datetime.fromisoformat(locked_until)
+            delta = (unlock_at - datetime.now()).total_seconds()
+            if delta > 0:
+                return True, int(delta)
+            # Lock expired – reset
+            cursor.execute(
+                "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
+                (nombre,)
+            )
+        except Exception:
+            pass
+    return False, 0
+
+
+def record_failed_attempt(cursor, conn, nombre):
+    """Incrementa el contador de intentos fallidos; bloquea la cuenta si se supera el límite."""
+    cursor.execute(
+        "UPDATE Usuarios SET failed_attempts = failed_attempts + 1 WHERE nombre = ?",
+        (nombre,)
+    )
+    cursor.execute("SELECT failed_attempts FROM Usuarios WHERE nombre = ?", (nombre,))
+    row = cursor.fetchone()
+    if row and row[0] >= MAX_FAILED_ATTEMPTS:
+        from datetime import timedelta
+        lock_until = (datetime.now() + timedelta(minutes=LOCKOUT_MINUTES)).isoformat()
+        cursor.execute(
+            "UPDATE Usuarios SET locked_until = ? WHERE nombre = ?",
+            (lock_until, nombre)
+        )
+    conn.commit()
+
+
+def reset_failed_attempts(cursor, conn, nombre):
+    """Restablece el contador de intentos fallidos tras un login exitoso."""
+    cursor.execute(
+        "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
+        (nombre,)
+    )
+    conn.commit()
+
+
+# ─── Password strength validator ─────────────────────────────────────────────
+
+def password_strength(password: str) -> tuple:
+    """Evalúa la fortaleza de una contraseña.
+    Retorna (score: int 0-4, label: str, color: str).
+    Reglas: longitud ≥8, mayúsculas, minúsculas, dígitos, caracteres especiales.
+    """
+    import re
+    score = 0
+    if len(password) >= 8:
+        score += 1
+    if re.search(r'[A-Z]', password):
+        score += 1
+    if re.search(r'[0-9]', password):
+        score += 1
+    if re.search(r'[^A-Za-z0-9]', password):
+        score += 1
+
+    labels = {0: "Muy débil", 1: "Débil", 2: "Regular", 3: "Fuerte", 4: "Muy fuerte"}
+    colors = {0: "#F44336", 1: "#FF9800", 2: "#FFC107", 3: "#8BC34A", 4: "#4CAF50"}
+    return score, labels[score], colors[score]
