@@ -2,22 +2,35 @@
 # -*- coding: utf-8 -*-
 """
 encryption.py - Módulo de Encriptación
-Gestiona encriptación AES-256 (Fernet) de PDFs y datos sensibles
+Gestiona encriptación AES-256 (Fernet) de PDFs y datos sensibles.
+La clave se deriva usando PBKDF2-HMAC-SHA256 (600 000 iteraciones) para
+mayor resistencia a ataques de fuerza bruta.
 """
 
 import hashlib
 import base64
 from cryptography.fernet import Fernet
 
+# Número de iteraciones PBKDF2 para derivación de clave de archivo
+_PBKDF2_ITERATIONS = 600_000
+# Salt fijo por aplicación (la clave maestra es la contraseña del usuario)
+_APP_SALT = b"DatenJager_v3_AES256_salt_2024"
+
+
 class EncryptionManager:
     """Gestiona encriptación AES-256 de PDFs y datos sensibles"""
 
     @staticmethod
     def derive_key(password: str) -> bytes:
-        """Deriva una clave criptográfica de una contraseña"""
-        hash1 = hashlib.sha256(password.encode()).digest()
-        hash2 = hashlib.sha256(hash1).digest()
-        return base64.urlsafe_b64encode(hash2[:32].ljust(32, b'\0')[:32])
+        """Deriva una clave criptográfica de 32 bytes usando PBKDF2-HMAC-SHA256."""
+        dk = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode('utf-8'),
+            _APP_SALT,
+            _PBKDF2_ITERATIONS,
+            dklen=32
+        )
+        return base64.urlsafe_b64encode(dk)
 
     @staticmethod
     def encrypt_data(data: bytes, password: str) -> bytes:

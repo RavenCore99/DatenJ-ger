@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 main.py - Aplicación Principal
-DatenJäger v3.0 FASE 3 - Sistema de Gestión Documental Seguro
-Con 2FA (Google Authenticator) + Encriptación AES-256
-ACTUALIZADO: Colores dinámicos para modo oscuro/claro
+DatenJäger v4.0 - Sistema de Gestión Documental Seguro
+Con 2FA (Google Authenticator) + Encriptación AES-256 + UI Moderna
 """
 
 import customtkinter as ctk
@@ -25,8 +24,13 @@ from io import BytesIO
 # Importar módulos locales
 from config import Config
 from encryption import EncryptionManager
-from database import conectar_db, hash_contrasena, format_size, format_date_friendly, ease_in_out
-from ui_components import Notification, ProgressBarModerno, DashboardWidget, get_dynamic_colors
+from database import (conectar_db, hash_contrasena, verify_contrasena,
+                      format_size, format_date_friendly, ease_in_out,
+                      check_account_locked, record_failed_attempt,
+                      reset_failed_attempts, password_strength)
+from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
+                           GradientBackground, PasswordStrengthBar, ConfirmDialog,
+                           get_dynamic_colors)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE CUSTOMTKINTER
@@ -35,34 +39,34 @@ from ui_components import Notification, ProgressBarModerno, DashboardWidget, get
 ctk.set_default_color_theme("blue")
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DEFINICIÓN DE COLORES (estáticos para fondo, dinámicos para texto)
+# DEFINICIÓN DE COLORES
 # ═══════════════════════════════════════════════════════════════════════════════
 
-COLOR_BG_LIGHT = "#F5F5F5"
-COLOR_BG_DARK = "#2c2434"
-COLOR_PRIMARY = "#4CAF50"
-COLOR_SECONDARY = "#2196F3"
-COLOR_WARNING = "#FF9800"
-COLOR_ERROR = "#F44336"
-COLOR_SUCCESS = "#4CAF50"
-COLOR_TEXT_LIGHT = "#004D40"
-COLOR_TEXT_DARK = "#FFFFFF"
+COLOR_BG_LIGHT   = "#f0f4ff"
+COLOR_BG_DARK    = "#1a1a2e"
+COLOR_PRIMARY    = "#4CAF50"
+COLOR_SECONDARY  = "#2196F3"
+COLOR_WARNING    = "#FF9800"
+COLOR_ERROR      = "#F44336"
+COLOR_SUCCESS    = "#4CAF50"
+COLOR_TEXT_LIGHT = "#1a237e"
+COLOR_TEXT_DARK  = "#e0e0e0"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CLASE PRINCIPAL FASE 3
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class AppDBPDF:
-    """Aplicación principal FASE 3 con 2FA + Encriptación + Tema Dinámico"""
+    """Aplicación principal v4.0 con 2FA + Encriptación + UI Moderna"""
 
     def __init__(self, root):
         """Inicializa la aplicación"""
         self.root = root
-        self.root.title("DatenJäger - Sistema de Gestion Documental v3.0 FASE 3")
-        self.root.geometry("1000x700")
+        self.root.title("DatenJäger v4.0 – Gestión Documental Segura")
+        self.root.geometry("1100x760")
 
         self.config = Config()
-        window_size = self.config.get("window_size", "1000x700")
+        window_size = self.config.get("window_size", "1100x760")
         self.root.geometry(window_size)
 
         # Apply saved theme BEFORE building frames so colors are correct
@@ -73,6 +77,7 @@ class AppDBPDF:
         self._db_lock = threading.Lock()  # Serialises any concurrent DB access
         self.usuario_actual = None
         self.usuario_nombre = None
+        self.usuario_contrasena = None
         self.animating = False
         self._search_timer = None  # For debounced live search
 
@@ -80,7 +85,7 @@ class AppDBPDF:
         self._crear_frames()
         self._apply_treeview_style()
         self._setup_treeview_sorting()
-        self.root.minsize(800, 600)
+        self.root.minsize(900, 650)
         self.mostrar_inicial()
 
         self.root.bind("<F11>", self.toggle_fullscreen)
@@ -107,398 +112,490 @@ class AppDBPDF:
     def _crear_frames(self):
         """Crea todos los frames de la aplicación"""
         colors = self.get_colors()
-        
-        # Frame de intro
+
+        # ── INTRO ──────────────────────────────────────────────────────────────
         self.frame_intro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
         self.frame_intro.pack(expand=True, fill="both")
 
-        self.intro_text = ctk.CTkLabel(
-            self.frame_intro,
-            text="DatenJäger | Gestor Seguro de PDFs | 🔐",
-            font=("Arial", 48, "bold"),
-            text_color=COLOR_TEXT_DARK
+        # Gradient animated background
+        self._intro_bg = GradientBackground(self.frame_intro)
+        self._intro_bg.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        intro_card = ctk.CTkFrame(
+            self.frame_intro, fg_color=("#e8eeff", "#1a1a3e"),
+            corner_radius=20
         )
-        self.intro_text.pack(expand=True)
+        intro_card.place(relx=0.5, rely=0.5, anchor="center")
+
+        self.intro_text = ctk.CTkLabel(
+            intro_card,
+            text="🔐 DatenJäger",
+            font=("Arial", 52, "bold"),
+            text_color="white"
+        )
+        self.intro_text.pack(padx=60, pady=(40, 10))
         self.intro_text.bind("<Button-1>", self.on_intro_click)
 
         self.access_text = ctk.CTkLabel(
-            self.frame_intro,
-            text="v3.0 FASE 3: 2FA + Encriptación AES-256\nClick para acceder ✨",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 14, "bold")
+            intro_card,
+            text="Sistema de Gestión Documental Seguro\nAES-256 · 2FA · PBKDF2",
+            text_color="#c8d8ff",
+            font=("Arial", 14)
         )
-        self.access_text.pack(pady=20)
+        self.access_text.pack(pady=(0, 10))
         self.access_text.bind("<Button-1>", self.on_intro_click)
 
-        # Frame inicial
-        self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        ctk.CTkButton(
+            intro_card,
+            text="✨  Acceder al Sistema",
+            command=self.on_intro_click,
+            fg_color=COLOR_PRIMARY,
+            hover_color="#388E3C",
+            font=("Arial", 13, "bold"),
+            corner_radius=10,
+            width=260, height=46
+        ).pack(pady=(10, 40))
 
-        titulo = ctk.CTkLabel(
+        # ── INICIAL ────────────────────────────────────────────────────────────
+        self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
+
+        _bg_inicial = GradientBackground(
             self.frame_inicial,
-            text="🔐 DatenJäger FASE 3",
-            font=("Arial", 24, "bold"),
+            colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
+            colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
+        )
+        _bg_inicial.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        card_inicial = ctk.CTkFrame(
+            self.frame_inicial, fg_color=("#f5f7ff", "#1e2a4a"),
+            corner_radius=20, width=380
+        )
+        card_inicial.place(relx=0.5, rely=0.5, anchor="center")
+        card_inicial.pack_propagate(False)
+
+        ctk.CTkLabel(
+            card_inicial,
+            text="🔐 DatenJäger",
+            font=("Arial", 28, "bold"),
             text_color=colors["text_primary"]
-        )
-        titulo.pack(pady=20)
+        ).pack(pady=(30, 4))
 
-        subtitle = ctk.CTkLabel(
-            self.frame_inicial,
-            text="Seguridad Empresarial: 2FA + AES-256",
-            font=("Arial", 12),
+        ctk.CTkLabel(
+            card_inicial,
+            text="Seguridad · Privacidad · Control",
+            font=("Arial", 11),
             text_color=COLOR_SECONDARY
-        )
-        subtitle.pack(pady=5)
+        ).pack(pady=(0, 24))
 
-        btn_iniciar = ctk.CTkButton(
-            self.frame_inicial,
-            text="🔓 Iniciar Sesión",
+        ctk.CTkButton(
+            card_inicial,
+            text="🔓  Iniciar Sesión",
             command=self.mostrar_login,
             fg_color=COLOR_PRIMARY,
             hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 14, "bold"),
+            text_color="white",
+            font=("Arial", 13, "bold"),
             corner_radius=10,
-            width=300,
-            height=50
-        )
-        btn_iniciar.pack(pady=15)
+            width=280, height=48
+        ).pack(pady=8)
 
-        btn_registrar = ctk.CTkButton(
-            self.frame_inicial,
-            text="✍️  Crear Usuario",
+        ctk.CTkButton(
+            card_inicial,
+            text="✍️   Crear Usuario",
             command=self.mostrar_registro,
             fg_color=COLOR_SECONDARY,
             hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 14, "bold"),
+            text_color="white",
+            font=("Arial", 13, "bold"),
             corner_radius=10,
-            width=300,
-            height=50
-        )
-        btn_registrar.pack(pady=15)
+            width=280, height=48
+        ).pack(pady=8)
 
-        # Frame login
-        self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        ctk.CTkLabel(
+            card_inicial,
+            text="v4.0 – AES-256 + PBKDF2 + 2FA",
+            font=("Arial", 9),
+            text_color=("#9E9E9E", "#666666")
+        ).pack(pady=(16, 28))
 
-        titulo_login = ctk.CTkLabel(
+        # ── LOGIN ──────────────────────────────────────────────────────────────
+        self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
+
+        _bg_login = GradientBackground(
             self.frame_login,
+            colors_dark=[("#1a1a2e", "#0d47a1"), ("#0d47a1", "#1a1a2e")],
+            colors_light=[("#e8f5e9", "#c8e6c9"), ("#c8e6c9", "#e8f5e9")]
+        )
+        _bg_login.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        card_login = ctk.CTkFrame(
+            self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
+            corner_radius=20, width=400
+        )
+        card_login.place(relx=0.5, rely=0.5, anchor="center")
+        card_login.pack_propagate(False)
+
+        ctk.CTkLabel(
+            card_login,
             text="🔓 Iniciar Sesión",
             font=("Arial", 24, "bold"),
             text_color=colors["text_primary"]
-        )
-        titulo_login.pack(pady=20)
+        ).pack(pady=(28, 4))
 
         ctk.CTkLabel(
-            self.frame_login,
-            text="Usuario:",
-            text_color=colors["text_primary"],
-            font=("Arial", 12, "bold")
-        ).pack()
+            card_login,
+            text="Ingresa tus credenciales para continuar",
+            font=("Arial", 11),
+            text_color=colors["text_secondary"]
+        ).pack(pady=(0, 16))
 
+        ctk.CTkLabel(
+            card_login, text="Usuario",
+            text_color=colors["text_primary"], font=("Arial", 11, "bold")
+        ).pack(anchor="w", padx=40)
         self.entry_usuario_login = ctk.CTkEntry(
-            self.frame_login,
-            placeholder_text="Tu usuario",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
+            card_login, placeholder_text="Tu nombre de usuario",
+            width=320, height=42, corner_radius=8, border_width=2,
             font=("Arial", 12)
         )
-        self.entry_usuario_login.pack(pady=10)
+        self.entry_usuario_login.pack(pady=(4, 12))
+        self.entry_usuario_login.bind("<Return>", lambda e: self.entry_contrasena_login.focus())
 
         ctk.CTkLabel(
-            self.frame_login,
-            text="Contraseña:",
-            text_color=colors["text_primary"],
-            font=("Arial", 12, "bold")
-        ).pack()
-
+            card_login, text="Contraseña",
+            text_color=colors["text_primary"], font=("Arial", 11, "bold")
+        ).pack(anchor="w", padx=40)
+        pw_row_login = ctk.CTkFrame(card_login, fg_color="transparent")
+        pw_row_login.pack(pady=(4, 4))
         self.entry_contrasena_login = ctk.CTkEntry(
-            self.frame_login,
-            placeholder_text="Tu contraseña",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 12),
-            show="●"
+            pw_row_login, placeholder_text="Tu contraseña",
+            width=278, height=42, corner_radius=8, border_width=2,
+            font=("Arial", 12), show="●"
         )
-        self.entry_contrasena_login.pack(pady=10)
+        self.entry_contrasena_login.pack(side="left")
+        self._show_pw_login = False
+        ctk.CTkButton(
+            pw_row_login, text="👁", width=38, height=42,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            corner_radius=8, font=("Arial", 13),
+            command=lambda: self._toggle_pw(
+                self.entry_contrasena_login, "_show_pw_login")
+        ).pack(side="left", padx=(4, 0))
 
-        btn_login = ctk.CTkButton(
-            self.frame_login,
-            text="✅ Siguiente",
+        self.entry_contrasena_login.bind("<Return>", lambda e: self.login())
+
+        ctk.CTkButton(
+            card_login, text="✅  Siguiente",
             command=self.login,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_login.pack(pady=15)
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=320, height=44
+        ).pack(pady=(16, 8))
 
-        btn_volver = ctk.CTkButton(
-            self.frame_login,
-            text="⬅️  Volver",
+        ctk.CTkButton(
+            card_login, text="⬅️   Volver",
             command=self.mostrar_inicial,
-            fg_color="#9E9E9E",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_volver.pack(pady=10)
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=320, height=38
+        ).pack(pady=(0, 28))
 
-        # Frame 2FA
-        self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        # ── 2FA ───────────────────────────────────────────────────────────────
+        self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        titulo_2fa = ctk.CTkLabel(
+        _bg_2fa = GradientBackground(
             self.frame_2fa,
-            text="🔐 Verificación 2FA",
-            font=("Arial", 24, "bold"),
-            text_color=colors["text_primary"]
+            colors_dark=[("#1a1a2e", "#4a0072"), ("#4a0072", "#1a1a2e")],
+            colors_light=[("#f3e5f5", "#e1bee7"), ("#e1bee7", "#f3e5f5")]
         )
-        titulo_2fa.pack(pady=20)
+        _bg_2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        card_2fa = ctk.CTkFrame(
+            self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
+            corner_radius=20, width=420
+        )
+        card_2fa.place(relx=0.5, rely=0.5, anchor="center")
+        card_2fa.pack_propagate(False)
 
         ctk.CTkLabel(
-            self.frame_2fa,
-            text="Ingresa el código de 6 dígitos de tu aplicación autenticadora:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
-        ).pack(pady=10)
+            card_2fa, text="🔐 Verificación 2FA",
+            font=("Arial", 22, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(pady=(28, 6))
+
+        ctk.CTkLabel(
+            card_2fa,
+            text="Ingresa el código de 6 dígitos de tu\naplicación autenticadora:",
+            text_color=colors["text_secondary"],
+            font=("Arial", 11), justify="center"
+        ).pack(pady=(0, 14))
 
         self.entry_2fa_code = ctk.CTkEntry(
-            self.frame_2fa,
-            placeholder_text="000000",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 20),
-            justify="center"
+            card_2fa, placeholder_text="• • • • • •",
+            width=220, height=54, corner_radius=10, border_width=2,
+            font=("Arial", 26, "bold"), justify="center"
         )
-        self.entry_2fa_code.pack(pady=15)
+        self.entry_2fa_code.pack(pady=(0, 6))
+        self.entry_2fa_code.bind("<Return>", lambda e: self.verificar_2fa())
 
-        btn_verificar = ctk.CTkButton(
-            self.frame_2fa,
-            text="✅ Verificar",
-            command=self.verificar_2fa,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
+        # TOTP countdown ring (label showing seconds remaining)
+        self._totp_timer_label = ctk.CTkLabel(
+            card_2fa, text="⏳ 30s", font=("Arial", 10),
+            text_color=colors["text_secondary"]
         )
-        btn_verificar.pack(pady=10)
+        self._totp_timer_label.pack()
+        self._start_totp_timer()
+
+        ctk.CTkButton(
+            card_2fa, text="✅  Verificar",
+            command=self.verificar_2fa,
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=280, height=44
+        ).pack(pady=(12, 6))
 
         ctk.CTkLabel(
-            self.frame_2fa,
-            text="¿No tienes acceso a tu teléfono? Usa un código de respaldo",
-            text_color=COLOR_WARNING,
-            font=("Arial", 10)
-        ).pack(pady=5)
+            card_2fa,
+            text="¿Sin acceso al teléfono? Usa un código de respaldo",
+            text_color=COLOR_WARNING, font=("Arial", 10)
+        ).pack(pady=(4, 0))
 
-        btn_backup = ctk.CTkButton(
-            self.frame_2fa,
-            text="🔄 Código de Respaldo",
+        ctk.CTkButton(
+            card_2fa, text="🔄  Código de Respaldo",
             command=self.usar_codigo_respaldo,
-            fg_color=COLOR_WARNING,
-            hover_color="#F57C00",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=200,
-            height=35
-        )
-        btn_backup.pack(pady=5)
+            fg_color=COLOR_WARNING, hover_color="#F57C00",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=280, height=36
+        ).pack(pady=6)
 
-        btn_volver_2fa = ctk.CTkButton(
-            self.frame_2fa,
-            text="⬅️  Volver",
+        ctk.CTkButton(
+            card_2fa, text="⬅️   Volver",
             command=self.mostrar_login,
-            fg_color="#9E9E9E",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_volver_2fa.pack(pady=10)
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=280, height=36
+        ).pack(pady=(0, 28))
 
-        # Frame registro
-        self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        # ── REGISTRO ───────────────────────────────────────────────────────────
+        self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        titulo_registro = ctk.CTkLabel(
+        _bg_reg = GradientBackground(
             self.frame_registro,
-            text="✍️  Crear Usuario",
+            colors_dark=[("#1a2e1a", "#0d3b2e"), ("#0d3b2e", "#1a2e1a")],
+            colors_light=[("#e8f5e9", "#c8e6c9"), ("#c8e6c9", "#a5d6a7")]
+        )
+        _bg_reg.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        card_reg = ctk.CTkFrame(
+            self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
+            corner_radius=20, width=420
+        )
+        card_reg.place(relx=0.5, rely=0.5, anchor="center")
+        card_reg.pack_propagate(False)
+
+        ctk.CTkLabel(
+            card_reg, text="✍️  Crear Usuario",
             font=("Arial", 24, "bold"),
             text_color=colors["text_primary"]
-        )
-        titulo_registro.pack(pady=20)
+        ).pack(pady=(28, 4))
 
         ctk.CTkLabel(
-            self.frame_registro,
-            text="Usuario:",
-            text_color=colors["text_primary"],
-            font=("Arial", 12, "bold")
-        ).pack()
+            card_reg,
+            text="Crea tu cuenta segura con 2FA",
+            font=("Arial", 11),
+            text_color=colors["text_secondary"]
+        ).pack(pady=(0, 16))
 
+        ctk.CTkLabel(
+            card_reg, text="Nombre de usuario",
+            text_color=colors["text_primary"], font=("Arial", 11, "bold")
+        ).pack(anchor="w", padx=40)
         self.entry_usuario_registro = ctk.CTkEntry(
-            self.frame_registro,
-            placeholder_text="Tu usuario",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
+            card_reg, placeholder_text="Elige un nombre de usuario",
+            width=340, height=42, corner_radius=8, border_width=2,
             font=("Arial", 12)
         )
-        self.entry_usuario_registro.pack(pady=10)
+        self.entry_usuario_registro.pack(pady=(4, 10))
 
         ctk.CTkLabel(
-            self.frame_registro,
-            text="Contraseña:",
-            text_color=colors["text_primary"],
-            font=("Arial", 12, "bold")
-        ).pack()
+            card_reg, text="Contraseña",
+            text_color=colors["text_primary"], font=("Arial", 11, "bold")
+        ).pack(anchor="w", padx=40)
 
+        pw_row_reg = ctk.CTkFrame(card_reg, fg_color="transparent")
+        pw_row_reg.pack(pady=(4, 2))
         self.entry_contrasena_registro = ctk.CTkEntry(
-            self.frame_registro,
-            placeholder_text="Tu contraseña (mínimo 8 caracteres)",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 12),
-            show="●"
+            pw_row_reg, placeholder_text="Mínimo 8 caracteres",
+            width=298, height=42, corner_radius=8, border_width=2,
+            font=("Arial", 12), show="●"
         )
-        self.entry_contrasena_registro.pack(pady=10)
+        self.entry_contrasena_registro.pack(side="left")
+        self._show_pw_reg = False
+        ctk.CTkButton(
+            pw_row_reg, text="👁", width=38, height=42,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            corner_radius=8, font=("Arial", 13),
+            command=lambda: self._toggle_pw(
+                self.entry_contrasena_registro, "_show_pw_reg")
+        ).pack(side="left", padx=(4, 0))
 
-        btn_registrar_form = ctk.CTkButton(
-            self.frame_registro,
-            text="✅ Registrar",
+        # Password strength bar
+        self._pw_strength_bar = PasswordStrengthBar(card_reg)
+        self._pw_strength_bar.pack(fill="x", padx=40, pady=(4, 8))
+        self.entry_contrasena_registro.bind(
+            "<KeyRelease>",
+            lambda e: self._pw_strength_bar.update(
+                self.entry_contrasena_registro.get())
+        )
+
+        ctk.CTkButton(
+            card_reg, text="✅  Registrar",
             command=self.registrarse,
-            fg_color=COLOR_SECONDARY,
-            hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_registrar_form.pack(pady=15)
+            fg_color=COLOR_SECONDARY, hover_color="#1976D2",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=340, height=44
+        ).pack(pady=(8, 8))
 
-        btn_volver_reg = ctk.CTkButton(
-            self.frame_registro,
-            text="⬅️  Volver",
+        ctk.CTkButton(
+            card_reg, text="⬅️   Volver",
             command=self.mostrar_inicial,
-            fg_color="#9E9E9E",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_volver_reg.pack(pady=10)
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=340, height=36
+        ).pack(pady=(0, 28))
 
-        # Frame setup 2FA
-        self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        # ── SETUP 2FA ──────────────────────────────────────────────────────────
+        self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        titulo_setup = ctk.CTkLabel(
+        _bg_s2fa = GradientBackground(
             self.frame_setup_2fa,
+            colors_dark=[("#2e1a00", "#5d2d00"), ("#5d2d00", "#2e1a00")],
+            colors_light=[("#fff8e1", "#ffe082"), ("#ffe082", "#fff8e1")]
+        )
+        _bg_s2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+        # Scrollable to fit QR + instructions
+        self._setup2fa_scroll = ctk.CTkScrollableFrame(
+            self.frame_setup_2fa,
+            fg_color=("#fffde7", "#1e1600"),
+            corner_radius=20, width=460, height=520
+        )
+        self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
+
+        ctk.CTkLabel(
+            self._setup2fa_scroll,
             text="🔐 Configurar Autenticación 2FA",
-            font=("Arial", 24, "bold"),
+            font=("Arial", 20, "bold"),
             text_color=colors["text_primary"]
-        )
-        titulo_setup.pack(pady=20)
+        ).pack(pady=(20, 6))
 
         ctk.CTkLabel(
-            self.frame_setup_2fa,
+            self._setup2fa_scroll,
             text="1. Abre Google Authenticator o Microsoft Authenticator",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
-        ).pack(pady=5)
-
+            text_color=colors["text_primary"], font=("Arial", 11)
+        ).pack(pady=4, anchor="w", padx=20)
         ctk.CTkLabel(
-            self.frame_setup_2fa,
-            text="2. Escanea el código QR:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
-        ).pack(pady=5)
+            self._setup2fa_scroll,
+            text="2. Escanea el código QR de abajo:",
+            text_color=colors["text_primary"], font=("Arial", 11)
+        ).pack(pady=2, anchor="w", padx=20)
 
+        # QR display with white card background
+        qr_card = ctk.CTkFrame(
+            self._setup2fa_scroll, fg_color="white", corner_radius=12
+        )
+        qr_card.pack(pady=10)
         self.label_qr = ctk.CTkLabel(
-            self.frame_setup_2fa,
-            text="[QR Code]",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
+            qr_card, text="[QR Code]",
+            text_color=colors["text_primary"], font=("Arial", 11)
         )
-        self.label_qr.pack(pady=15)
+        self.label_qr.pack(padx=16, pady=16)
 
         ctk.CTkLabel(
-            self.frame_setup_2fa,
-            text="Clave secreta (cópiala si el QR no funciona):",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
-        ).pack(pady=5)
+            self._setup2fa_scroll,
+            text="Clave secreta (si el QR no funciona):",
+            text_color=colors["text_primary"], font=("Arial", 11)
+        ).pack(pady=(6, 2), anchor="w", padx=20)
 
+        secret_row = ctk.CTkFrame(self._setup2fa_scroll, fg_color="transparent")
+        secret_row.pack(pady=2)
         self.label_secret = ctk.CTkLabel(
-            self.frame_setup_2fa,
-            text="",
-            text_color=COLOR_PRIMARY,
-            font=("Arial", 12, "bold")
+            secret_row, text="",
+            text_color=COLOR_WARNING, font=("Arial", 13, "bold")
         )
-        self.label_secret.pack(pady=10)
+        self.label_secret.pack(side="left", padx=(0, 8))
+        ctk.CTkButton(
+            secret_row, text="📋 Copiar",
+            width=90, height=30,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            font=("Arial", 10, "bold"), corner_radius=6,
+            command=self._copy_totp_secret
+        ).pack(side="left")
 
         ctk.CTkLabel(
-            self.frame_setup_2fa,
+            self._setup2fa_scroll,
             text="3. Ingresa el código de 6 dígitos para confirmar:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11)
-        ).pack(pady=5)
+            text_color=colors["text_primary"], font=("Arial", 11)
+        ).pack(pady=(12, 4), anchor="w", padx=20)
 
         self.entry_confirm_2fa = ctk.CTkEntry(
-            self.frame_setup_2fa,
-            placeholder_text="000000",
-            width=300,
-            height=40,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 20),
-            justify="center"
+            self._setup2fa_scroll, placeholder_text="000000",
+            width=300, height=48, corner_radius=8, border_width=2,
+            font=("Arial", 22, "bold"), justify="center"
         )
-        self.entry_confirm_2fa.pack(pady=15)
+        self.entry_confirm_2fa.pack(pady=6)
 
-        btn_confirm_setup = ctk.CTkButton(
-            self.frame_setup_2fa,
-            text="✅ Confirmar",
+        ctk.CTkButton(
+            self._setup2fa_scroll, text="✅  Confirmar y Activar 2FA",
             command=self.confirmar_setup_2fa,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
-        )
-        btn_confirm_setup.pack(pady=15)
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=320, height=44
+        ).pack(pady=(10, 6))
 
         ctk.CTkLabel(
-            self.frame_setup_2fa,
-            text="⚠️ Guarda tus códigos de respaldo en lugar seguro",
-            text_color=COLOR_WARNING,
-            font=("Arial", 10, "bold")
-        ).pack(pady=10)
+            self._setup2fa_scroll,
+            text="⚠️ Guarda tus códigos de respaldo en un lugar seguro",
+            text_color=COLOR_WARNING, font=("Arial", 10, "bold")
+        ).pack(pady=(4, 16))
 
-        # Frame principal
+        # ── PANEL PRINCIPAL ────────────────────────────────────────────────────
         self.frame_principal = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
 
-        # Panel superior
-        top_panel = ctk.CTkFrame(self.frame_principal, fg_color=COLOR_BG_LIGHT)
-        top_panel.pack(fill="x", padx=20, pady=(10, 5))
+        # -- Top navbar --
+        navbar = ctk.CTkFrame(
+            self.frame_principal,
+            fg_color=("#1a237e", "#0d1b3e"),
+            height=56, corner_radius=0
+        )
+        navbar.pack(fill="x")
+        navbar.pack_propagate(False)
+
+        ctk.CTkLabel(
+            navbar, text="🔐 DatenJäger",
+            font=("Arial", 18, "bold"), text_color="white"
+        ).pack(side="left", padx=16, pady=10)
+
+        # User badge
+        self._user_badge = ctk.CTkLabel(
+            navbar, text="",
+            font=("Arial", 11), text_color="#90caf9",
+            fg_color=("#1e3a8a", "#0a1929"),
+            corner_radius=8
+        )
+        self._user_badge.pack(side="left", padx=8)
+
+        # Right-side navbar buttons
+        def _make_nav_btn(text, command, color="#2e3f8a", hover="#3a4faa"):
+            return ctk.CTkButton(
+                navbar, text=text, command=command,
+                width=110, height=34,
+                fg_color=color, hover_color=hover,
+                corner_radius=7, font=("Arial", 10, "bold")
+            )
+
+        _make_nav_btn("🚪 Cerrar Sesión", self._logout,
+                      "#C62828", "#B71C1C").pack(side="right", padx=6, pady=10)
 
         def toggle_theme():
             current_mode = ctk.get_appearance_mode()
@@ -508,205 +605,197 @@ class AppDBPDF:
             btn_theme.configure(
                 text="☀️  Claro" if new_mode == "Dark" else "🌙 Oscuro"
             )
-            # Actualizar colores en toda la interfaz
             self.actualizar_colores_dinamicos()
 
         current_theme = ctk.get_appearance_mode()
-        btn_theme = ctk.CTkButton(
-            top_panel,
-            text="☀️  Claro" if current_theme == "Dark" else "🌙 Oscuro",
-            command=toggle_theme,
-            width=150,
-            height=35,
-            fg_color="#404040",
-            hover_color="#505050",
-            corner_radius=8,
-            font=("Arial", 10, "bold")
+        btn_theme = _make_nav_btn(
+            "☀️  Claro" if current_theme == "Dark" else "🌙 Oscuro",
+            toggle_theme
         )
-        btn_theme.pack(side="right", padx=5)
+        btn_theme.pack(side="right", padx=4, pady=10)
 
-        btn_info = ctk.CTkButton(
-            top_panel,
-            text="ℹ️  v3.0 FASE 3",
-            command=lambda: Notification(
+        _make_nav_btn(
+            "ℹ️  Acerca de",
+            lambda: Notification(
                 self.root,
-                "ℹ️ DatenJäger v3.0 FASE 3",
-                "🔒 2FA (Google Authenticator)\n🔐 Encriptación AES-256\nSeguridad Empresarial",
-                notification_type="info",
-                duration=4000
-            ),
-            width=150,
-            height=35,
-            fg_color="#404040",
-            hover_color="#505050",
-            corner_radius=8,
-            font=("Arial", 10, "bold")
-        )
-        btn_info.pack(side="right", padx=5)
+                "🔐 DatenJäger v4.0",
+                "Encriptación AES-256 · PBKDF2 · 2FA\nSeguridad Empresarial Moderna",
+                notification_type="info", duration=4000
+            )
+        ).pack(side="right", padx=4, pady=10)
 
-        # Barra de progreso
+        # -- Progress bar --
         self.progress_bar = ProgressBarModerno(self.frame_principal)
-        self.progress_bar.pack(fill="x", pady=5)
+        self.progress_bar.pack(fill="x", pady=0)
 
-        # Dashboard
-        self.dashboard_container = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
-        self.dashboard_container.pack(fill="x", padx=20)
+        # -- Dashboard --
+        self.dashboard_container = ctk.CTkFrame(
+            self.frame_principal, fg_color="transparent"
+        )
+        self.dashboard_container.pack(fill="x", padx=14)
 
-        # Barra de búsqueda
-        search_frame = ctk.CTkFrame(self.frame_principal, fg_color=COLOR_BG_LIGHT)
-        search_frame.pack(pady=10, fill="x", padx=20)
+        # -- Toolbar (search + action buttons) --
+        toolbar = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
+        toolbar.pack(fill="x", padx=14, pady=(6, 0))
+
+        # Search
+        search_card = ctk.CTkFrame(toolbar, fg_color=("#e8f0fe", "#1e2a4a"), corner_radius=10)
+        search_card.pack(side="left")
 
         ctk.CTkLabel(
-            search_frame,
-            text="🔍 Buscar:",
-            text_color=colors["text_primary"],
-            font=("Arial", 12, "bold")
-        ).pack(side="left", padx=5)
+            search_card, text="🔍",
+            font=("Arial", 14), text_color=colors["text_secondary"]
+        ).pack(side="left", padx=(10, 2))
 
         self.entry_busqueda = ctk.CTkEntry(
-            search_frame,
-            placeholder_text="Buscar PDF...",
-            width=300,
-            height=35,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 11)
+            search_card, placeholder_text="Buscar PDF, cédula, persona…",
+            width=260, height=36, corner_radius=8, border_width=0,
+            font=("Arial", 11), fg_color="transparent"
         )
-        self.entry_busqueda.pack(side="left", padx=5)
+        self.entry_busqueda.pack(side="left", padx=4, pady=6)
         self.entry_busqueda.bind("<Return>", lambda e: self.buscar_pdfs())
         self.entry_busqueda.bind("<KeyRelease>", self._debounced_search)
 
-        btn_buscar = ctk.CTkButton(
-            search_frame,
-            text="🔎 Buscar",
+        ctk.CTkButton(
+            search_card, text="Buscar",
             command=self.buscar_pdfs,
-            fg_color=COLOR_SECONDARY,
-            hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=100,
-            height=35
-        )
-        btn_buscar.pack(side="left", padx=5)
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            font=("Arial", 10, "bold"),
+            corner_radius=7, width=70, height=30
+        ).pack(side="left", padx=(2, 8), pady=6)
 
-        # Botones de acciones
-        btn_frame = ctk.CTkFrame(self.frame_principal, fg_color=COLOR_BG_LIGHT)
-        btn_frame.pack(pady=10, fill="x", padx=20)
+        # Action buttons
+        actions = [
+            ("➕ Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
+            ("👁 Ver Todos", self.ver_pdfs,               COLOR_SECONDARY, "#1565c0"),
+            ("ℹ️ Detalles",  self.mostrar_detalles_pdf,   COLOR_WARNING,   "#E65100"),
+            ("✏️ Editar",    self.editar_pdf,             "#7B1FA2",       "#6A1B9A"),
+            ("⬇️ Exportar",  self.exportar_pdf,           "#00897B",       "#00695C"),
+            ("🗑️ Eliminar",  self.eliminar_pdf,           COLOR_ERROR,     "#B71C1C"),
+        ]
+        for text, cmd, fg, hover in actions:
+            ctk.CTkButton(
+                toolbar, text=text, command=cmd,
+                fg_color=fg, hover_color=hover,
+                text_color="white", font=("Arial", 10, "bold"),
+                corner_radius=7, height=36, width=108
+            ).pack(side="left", padx=4)
 
-        btn_agregar = ctk.CTkButton(
-            btn_frame,
-            text="➕ Agregar PDF",
-            command=self.mostrar_agregar_pdf,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=150,
-            height=40
-        )
-        btn_agregar.pack(side="left", padx=5)
+        # -- TreeView + Preview side panel --
+        content_area = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
+        content_area.pack(fill="both", expand=True, padx=14, pady=8)
 
-        btn_ver = ctk.CTkButton(
-            btn_frame,
-            text="👁️  Ver PDFs",
-            command=self.ver_pdfs,
-            fg_color=COLOR_SECONDARY,
-            hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=150,
-            height=40
-        )
-        btn_ver.pack(side="left", padx=5)
-
-        btn_detalles = ctk.CTkButton(
-            btn_frame,
-            text="ℹ️  Detalles",
-            command=self.mostrar_detalles_pdf,
-            fg_color=COLOR_WARNING,
-            hover_color="#F57C00",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=150,
-            height=40
-        )
-        btn_detalles.pack(side="left", padx=5)
-
-        btn_eliminar = ctk.CTkButton(
-            btn_frame,
-            text="🗑️  Eliminar",
-            command=self.eliminar_pdf,
-            fg_color=COLOR_ERROR,
-            hover_color="#D32F2F",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=150,
-            height=40
-        )
-        btn_eliminar.pack(side="left", padx=5)
-
-        btn_salir = ctk.CTkButton(
-            btn_frame,
-            text="🚪 Salir",
-            command=self.cerrar_conexion_y_salir,
-            fg_color="#9E9E9E",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=150,
-            height=40
-        )
-        btn_salir.pack(side="left", padx=5)
-
-        # TreeView
-        tree_frame = ctk.CTkFrame(self.frame_principal, fg_color=COLOR_BG_LIGHT)
-        tree_frame.pack(pady=10, fill="both", expand=True, padx=20)
+        # Treeview frame
+        tree_frame = ctk.CTkFrame(content_area, fg_color=("#ffffff", "#1e2a4a"), corner_radius=10)
+        tree_frame.pack(side="left", fill="both", expand=True)
 
         self.tree = ttk.Treeview(
             tree_frame,
             columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"),
             show="headings",
-            height=12
+            height=14
         )
 
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Nombre", text="Nombre del PDF")
-        self.tree.heading("Descripción", text="Descripción")
-        self.tree.heading("Tamaño", text="Tamaño")
-        self.tree.heading("Fecha", text="Fecha Subida")
-        self.tree.heading("Cédula", text="Cédula")
-        self.tree.heading("Nombres", text="Nombres")
-
-        self.tree.column("ID", width=50)
-        self.tree.column("Nombre", width=150)
-        self.tree.column("Descripción", width=200)
-        self.tree.column("Tamaño", width=100)
-        self.tree.column("Fecha", width=130)
-        self.tree.column("Cédula", width=100)
-        self.tree.column("Nombres", width=150)
+        for col, width in [("ID", 46), ("Nombre", 160), ("Descripción", 200),
+                           ("Tamaño", 90), ("Fecha", 120), ("Cédula", 100), ("Nombres", 160)]:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=width)
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
-
-        self.tree.pack(side="left", fill="both", expand=True)
+        self.tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
         scrollbar.pack(side="right", fill="y")
 
         self.tree.bind("<Double-1>", lambda e: self.abrir_pdf_doble_click())
+        self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+        self.tree.bind("<Button-3>", self._show_context_menu)
 
-        # Barra de estado
+        # Right-click context menu
+        self._ctx_menu = tk.Menu(self.root, tearoff=0)
+        self._ctx_menu.add_command(label="📂 Abrir / Desencriptar", command=self.abrir_pdf_doble_click)
+        self._ctx_menu.add_command(label="ℹ️  Ver Detalles",         command=self.mostrar_detalles_pdf)
+        self._ctx_menu.add_command(label="✏️  Editar Metadatos",     command=self.editar_pdf)
+        self._ctx_menu.add_command(label="⬇️  Exportar PDF",         command=self.exportar_pdf)
+        self._ctx_menu.add_separator()
+        self._ctx_menu.add_command(label="🗑️  Eliminar",             command=self.eliminar_pdf)
+
+        # Preview / detail sidebar
+        self._preview_panel = ctk.CTkFrame(
+            content_area, fg_color=("#e8f0fe", "#1a2540"),
+            corner_radius=10, width=230
+        )
+        self._preview_panel.pack(side="right", fill="y", padx=(8, 0))
+        self._preview_panel.pack_propagate(False)
+
+        ctk.CTkLabel(
+            self._preview_panel, text="📋 Detalle del Documento",
+            font=("Arial", 11, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(pady=(14, 6), padx=10)
+
+        sep = ctk.CTkFrame(self._preview_panel, height=1, fg_color=COLOR_SECONDARY)
+        sep.pack(fill="x", padx=10)
+
+        self._preview_name = ctk.CTkLabel(
+            self._preview_panel, text="—",
+            font=("Arial", 12, "bold"),
+            text_color=COLOR_SECONDARY, wraplength=200
+        )
+        self._preview_name.pack(pady=(10, 4), padx=10)
+
+        self._preview_info = ctk.CTkLabel(
+            self._preview_panel, text="Selecciona un PDF\npara ver sus detalles",
+            font=("Arial", 10),
+            text_color=colors["text_secondary"],
+            justify="left", wraplength=200
+        )
+        self._preview_info.pack(pady=4, padx=14, anchor="w")
+
+        ctk.CTkButton(
+            self._preview_panel,
+            text="📂 Abrir",
+            command=self.abrir_pdf_doble_click,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            font=("Arial", 10, "bold"),
+            corner_radius=7, width=160, height=34
+        ).pack(pady=(10, 4))
+
+        ctk.CTkButton(
+            self._preview_panel,
+            text="⬇️ Exportar",
+            command=self.exportar_pdf,
+            fg_color="#00897B", hover_color="#00695C",
+            font=("Arial", 10, "bold"),
+            corner_radius=7, width=160, height=34
+        ).pack(pady=4)
+
+        ctk.CTkButton(
+            self._preview_panel,
+            text="✏️ Editar",
+            command=self.editar_pdf,
+            fg_color="#7B1FA2", hover_color="#6A1B9A",
+            font=("Arial", 10, "bold"),
+            corner_radius=7, width=160, height=34
+        ).pack(pady=4)
+
+        ctk.CTkButton(
+            self._preview_panel,
+            text="🗑️ Eliminar",
+            command=self.eliminar_pdf,
+            fg_color=COLOR_ERROR, hover_color="#B71C1C",
+            font=("Arial", 10, "bold"),
+            corner_radius=7, width=160, height=34
+        ).pack(pady=4)
+
+        # -- Status bar --
         self.status = ctk.CTkLabel(
             self.frame_principal,
             text="✅ Listo",
             text_color=colors["text_primary"],
-            font=("Arial", 10, "bold"),
+            font=("Arial", 10),
             anchor="w"
         )
-        self.status.pack(side="bottom", fill="x", padx=20, pady=10)
+        self.status.pack(side="bottom", fill="x", padx=16, pady=(2, 6))
 
     def actualizar_colores_dinamicos(self):
         """Actualiza los colores dinámicos cuando cambia el tema"""
@@ -714,10 +803,8 @@ class AppDBPDF:
         bg = COLOR_BG_DARK if mode == "Dark" else COLOR_BG_LIGHT
         colors = self.get_colors()
 
-        # Update all frame backgrounds
-        for frame in [self.frame_principal, self.frame_inicial, self.frame_login,
-                      self.frame_2fa, self.frame_setup_2fa, self.frame_registro]:
-            frame.configure(fg_color=bg)
+        # Update main panel background
+        self.frame_principal.configure(fg_color=bg)
 
         # Update status bar text color
         self.status.configure(text_color=colors["text_primary"])
@@ -737,6 +824,7 @@ class AppDBPDF:
                   self.frame_2fa, self.frame_setup_2fa, self.frame_principal,
                   self.frame_registro]:
             f.pack_forget()
+            f.place_forget()
         self.root.update()
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -848,6 +936,86 @@ class AppDBPDF:
         self._search_timer = self.root.after(400, self.buscar_pdfs)
 
     # ═══════════════════════════════════════════════════════════════════════════
+    # HELPERS: UI UTILITIES
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _toggle_pw(self, entry, attr_name):
+        """Toggles password visibility on an entry widget."""
+        current = getattr(self, attr_name, False)
+        new_val = not current
+        setattr(self, attr_name, new_val)
+        entry.configure(show="" if new_val else "●")
+
+    def _copy_totp_secret(self):
+        """Copies the current TOTP secret to clipboard."""
+        secret = self.label_secret.cget("text")
+        if secret:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(secret)
+            Notification(self.root, "📋 Copiado",
+                         "Clave secreta copiada al portapapeles",
+                         notification_type="success", duration=2000)
+
+    def _start_totp_timer(self):
+        """Updates the TOTP countdown label every second while the 2FA frame is visible."""
+        import time
+
+        def tick():
+            if not self.root.winfo_exists():
+                return
+            remaining = 30 - (int(time.time()) % 30)
+            if hasattr(self, '_totp_timer_label') and self._totp_timer_label.winfo_exists():
+                color = "#4CAF50" if remaining > 10 else "#FF9800" if remaining > 5 else "#F44336"
+                self._totp_timer_label.configure(
+                    text=f"⏳ Código válido: {remaining}s",
+                    text_color=color
+                )
+            self.root.after(1000, tick)
+
+        tick()
+
+    def _show_context_menu(self, event):
+        """Shows the right-click context menu on the treeview."""
+        row = self.tree.identify_row(event.y)
+        if row:
+            self.tree.selection_set(row)
+            try:
+                self._ctx_menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                self._ctx_menu.grab_release()
+
+    def _on_tree_select(self, event=None):
+        """Updates the preview panel when a row is selected."""
+        selected = self.tree.selection()
+        if not selected:
+            self._reset_preview_panel()
+            return
+        values = self.tree.item(selected[0])['values']
+        if not values:
+            return
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        colors = self.get_colors()
+        self._preview_name.configure(text=pdf_nombre)
+        info = (
+            f"📄 {pdf_nombre}\n\n"
+            f"📝 {descripcion or '—'}\n\n"
+            f"💾 {tamano}\n"
+            f"📅 {fecha}\n"
+            f"🪪 Cédula: {cedula or '—'}\n"
+            f"👤 {nombres or '—'}\n\n"
+            f"🔒 AES-256 Encriptado"
+        )
+        self._preview_info.configure(text=info)
+
+    def _reset_preview_panel(self):
+        """Resets the preview panel to its default state."""
+        colors = self.get_colors()
+        self._preview_name.configure(text="—")
+        self._preview_info.configure(
+            text="Selecciona un PDF\npara ver sus detalles"
+        )
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # HELPERS: PDF OPERATIONS (thread callbacks + temp-file cleanup)
     # ═══════════════════════════════════════════════════════════════════════════
 
@@ -943,24 +1111,21 @@ class AppDBPDF:
     def mostrar_inicial(self):
         """Muestra la pantalla inicial"""
         self._hide_all_frames()
-        self.slide_in_frame(self.frame_inicial,
-                            callback=lambda: self.frame_inicial.pack(expand=True, fill="both"))
+        self.frame_inicial.pack(expand=True, fill="both")
 
     def mostrar_login(self):
         """Muestra la pantalla de login"""
         self._hide_all_frames()
         self.entry_usuario_login.delete(0, tk.END)
         self.entry_contrasena_login.delete(0, tk.END)
-        self.slide_in_frame(self.frame_login,
-                            callback=lambda: self.frame_login.pack(expand=True, fill="both"))
+        self.frame_login.pack(expand=True, fill="both")
 
     def mostrar_registro(self):
         """Muestra la pantalla de registro"""
         self._hide_all_frames()
         self.entry_usuario_registro.delete(0, tk.END)
         self.entry_contrasena_registro.delete(0, tk.END)
-        self.slide_in_frame(self.frame_registro,
-                            callback=lambda: self.frame_registro.pack(expand=True, fill="both"))
+        self.frame_registro.pack(expand=True, fill="both")
 
     def registrarse(self):
         """Registra un nuevo usuario"""
@@ -969,19 +1134,35 @@ class AppDBPDF:
 
         if not nombre or not contrasena:
             Notification(
-                self.root,
-                "❌ Error",
+                self.root, "❌ Error",
                 "Ingresa nombre de usuario y contraseña",
+                notification_type="error"
+            )
+            return
+
+        if len(nombre) < 3:
+            Notification(
+                self.root, "❌ Error",
+                "El nombre de usuario debe tener al menos 3 caracteres",
                 notification_type="error"
             )
             return
 
         if len(contrasena) < 8:
             Notification(
-                self.root,
-                "❌ Error",
+                self.root, "❌ Error",
                 "La contraseña debe tener mínimo 8 caracteres",
                 notification_type="error"
+            )
+            return
+
+        score, label, _ = password_strength(contrasena)
+        if score < 2:
+            Notification(
+                self.root, "⚠️ Contraseña insegura",
+                f"Fortaleza: {label}\n"
+                "Requisitos: 8+ caracteres, mayúsculas,\nnúmeros y caracteres especiales (!@#$…)",
+                notification_type="warning", duration=5000
             )
             return
 
@@ -998,18 +1179,19 @@ class AppDBPDF:
             self.mostrar_setup_2fa()
 
             Notification(
-                self.root,
-                "✅ Éxito",
-                f"Usuario {nombre} registrado\nConfigurando 2FA...",
+                self.root, "✅ Éxito",
+                f"Usuario {nombre} registrado\nConfigurando 2FA…",
                 notification_type="success"
             )
         except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
-            )
+            if "UNIQUE constraint failed" in str(e):
+                Notification(
+                    self.root, "❌ Error",
+                    f"El usuario '{nombre}' ya existe",
+                    notification_type="error"
+                )
+            else:
+                Notification(self.root, "❌ Error", str(e), notification_type="error")
 
     def login(self):
         """Inicia sesión (paso 1: validar usuario/contraseña)"""
@@ -1018,10 +1200,20 @@ class AppDBPDF:
 
         if not nombre or not contrasena:
             Notification(
-                self.root,
-                "❌ Error",
+                self.root, "❌ Error",
                 "Ingresa nombre de usuario y contraseña",
                 notification_type="error"
+            )
+            return
+
+        # Check account lockout
+        locked, secs = check_account_locked(self.cursor, nombre)
+        if locked:
+            mins = secs // 60 + 1
+            Notification(
+                self.root, "🔒 Cuenta bloqueada",
+                f"Demasiados intentos fallidos.\nIntenta de nuevo en {mins} minuto(s).",
+                notification_type="error", duration=5000
             )
             return
 
@@ -1034,38 +1226,61 @@ class AppDBPDF:
 
             if result:
                 usuario_id, hash_stored, totp_enabled = result
-                if hash_contrasena(contrasena) == hash_stored:
+                ok, needs_rehash = verify_contrasena(contrasena, hash_stored)
+
+                if ok:
+                    # Rehash legacy SHA-256 password on first successful login
+                    if needs_rehash:
+                        new_hash = hash_contrasena(contrasena)
+                        self.cursor.execute(
+                            "UPDATE Usuarios SET contrasena = ? WHERE id = ?",
+                            (new_hash, usuario_id)
+                        )
+                        self.cursor.execute(
+                            "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) "
+                            "VALUES (?, NULL, ?, ?)",
+                            ("Migración hash contraseña (SHA-256→PBKDF2)",
+                             usuario_id, datetime.now().isoformat())
+                        )
+                        self.conn.commit()
+
+                    reset_failed_attempts(self.cursor, self.conn, nombre)
+
                     self.usuario_actual = usuario_id
                     self.usuario_nombre = nombre
+                    self.usuario_contrasena = contrasena
 
                     if totp_enabled:
-                        self.frame_login.pack_forget()
+                        self._hide_all_frames()
                         self.entry_2fa_code.delete(0, tk.END)
                         self.frame_2fa.pack(expand=True, fill="both")
                         self.entry_2fa_code.focus()
                     else:
                         self.completar_login()
                 else:
-                    Notification(
-                        self.root,
-                        "❌ Error",
-                        "Contraseña incorrecta",
-                        notification_type="error"
-                    )
+                    record_failed_attempt(self.cursor, self.conn, nombre)
+                    locked2, secs2 = check_account_locked(self.cursor, nombre)
+                    if locked2:
+                        Notification(
+                            self.root, "🔒 Cuenta bloqueada",
+                            "Se bloqueó tu cuenta por múltiples intentos fallidos.\n"
+                            f"Espera {secs2 // 60 + 1} min.",
+                            notification_type="error", duration=5000
+                        )
+                    else:
+                        Notification(
+                            self.root, "❌ Error",
+                            "Contraseña incorrecta",
+                            notification_type="error"
+                        )
             else:
                 Notification(
-                    self.root,
-                    "❌ Error",
+                    self.root, "❌ Error",
                     "Usuario no encontrado",
                     notification_type="error"
                 )
         except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
-            )
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
 
     def mostrar_setup_2fa(self):
         """Muestra pantalla para configurar 2FA"""
@@ -1076,12 +1291,12 @@ class AppDBPDF:
             issuer_name='DatenJäger'
         )
 
-        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr = qrcode.QRCode(version=1, box_size=8, border=4)
         qr.add_data(totp_uri)
         qr.make(fit=True)
 
         img = qr.make_image(fill_color="black", back_color="white")
-        img = img.resize((250, 250))
+        img = img.resize((220, 220), Image.LANCZOS)
 
         photo = ImageTk.PhotoImage(img)
         self.label_qr.configure(image=photo, text="")
@@ -1089,7 +1304,7 @@ class AppDBPDF:
 
         self.label_secret.configure(text=self.totp_secret)
 
-        self.frame_registro.pack_forget()
+        self._hide_all_frames()
         self.frame_setup_2fa.pack(expand=True, fill="both")
         self.entry_confirm_2fa.focus()
 
@@ -1099,8 +1314,7 @@ class AppDBPDF:
 
         if not codigo or len(codigo) != 6:
             Notification(
-                self.root,
-                "❌ Error",
+                self.root, "❌ Error",
                 "Ingresa un código válido de 6 dígitos",
                 notification_type="error"
             )
@@ -1119,16 +1333,11 @@ class AppDBPDF:
                 )
                 self.conn.commit()
 
-                backup_text = "\n".join([f"• {code}" for code in backup_codes])
-                messagebox.showwarning(
-                    "⚠️ Códigos de Respaldo",
-                    f"Guarda estos códigos en lugar seguro:\n\n{backup_text}\n\nSi pierdes tu teléfono, necesitarás estos códigos.",
-                    parent=self.root
-                )
+                # Show backup codes in a modern dialog
+                self._mostrar_codigos_respaldo(backup_codes)
 
                 Notification(
-                    self.root,
-                    "✅ 2FA Configurado",
+                    self.root, "✅ 2FA Configurado",
                     "Autenticación 2FA activada correctamente",
                     notification_type="success"
                 )
@@ -1136,18 +1345,70 @@ class AppDBPDF:
                 self.mostrar_login()
             else:
                 Notification(
-                    self.root,
-                    "❌ Error",
+                    self.root, "❌ Error",
                     "El código es incorrecto o ha expirado",
                     notification_type="error"
                 )
         except Exception as e:
-            Notification(
-                self.root,
-                "❌ Error",
-                str(e),
-                notification_type="error"
-            )
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
+
+    def _mostrar_codigos_respaldo(self, backup_codes):
+        """Muestra los códigos de respaldo en una ventana moderna."""
+        colors = self.get_colors()
+        win = ctk.CTkToplevel(self.root)
+        win.title("⚠️ Códigos de Respaldo")
+        win.geometry("440x400")
+        win.resizable(False, False)
+        win.grab_set()
+        win.transient(self.root)
+        win.configure(fg_color=colors["bg_secondary"])
+
+        ctk.CTkLabel(
+            win, text="⚠️ Guarda tus Códigos de Respaldo",
+            font=("Arial", 16, "bold"),
+            text_color=COLOR_WARNING
+        ).pack(pady=(20, 8))
+
+        ctk.CTkLabel(
+            win,
+            text="Usa estos códigos si pierdes acceso a tu\naplicación autenticadora. Guárdalos en un lugar seguro.",
+            font=("Arial", 11),
+            text_color=colors["text_secondary"],
+            justify="center"
+        ).pack(padx=20)
+
+        codes_frame = ctk.CTkFrame(win, fg_color=("#f5f5f5", "#1e1e1e"), corner_radius=10)
+        codes_frame.pack(padx=30, pady=12, fill="x")
+
+        for code in backup_codes:
+            ctk.CTkLabel(
+                codes_frame, text=f"  🔑  {code}",
+                font=("Arial", 15, "bold"),
+                text_color=COLOR_WARNING
+            ).pack(pady=4)
+
+        def copiar_todos():
+            texto = "\n".join(backup_codes)
+            win.clipboard_clear()
+            win.clipboard_append(texto)
+            Notification(win, "📋 Copiado", "Códigos copiados al portapapeles",
+                         notification_type="success", duration=2000)
+
+        ctk.CTkButton(
+            win, text="📋 Copiar todos",
+            command=copiar_todos,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=200, height=36
+        ).pack(pady=8)
+
+        ctk.CTkButton(
+            win, text="✅ Entendido",
+            command=win.destroy,
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=200, height=40
+        ).pack(pady=(0, 20))
 
     def verificar_2fa(self):
         """Verifica código 2FA en login"""
@@ -1254,19 +1515,48 @@ class AppDBPDF:
 
     def completar_login(self):
         """Completa el proceso de login"""
-        self.frame_2fa.pack_forget()
+        self._hide_all_frames()
         self.frame_principal.pack(expand=True, fill="both")
         colors = self.get_colors()
-        self.status.configure(text=f"✅ Bienvenido, {self.usuario_nombre}!", text_color=colors["text_primary"])
+        self.status.configure(text=f"✅ Sesión activa: {self.usuario_nombre}",
+                              text_color=colors["text_primary"])
+        # Update user badge in navbar
+        if hasattr(self, '_user_badge'):
+            self._user_badge.configure(text=f" 👤 {self.usuario_nombre} ")
         Notification(
             self.root,
             "✅ Sesión Iniciada",
-            "Acceso verificado - 2FA Exitoso",
+            f"Bienvenido, {self.usuario_nombre}!\n2FA verificado – AES-256 activo",
             notification_type="success",
-            duration=2000
+            duration=3000
         )
         self.cargar_dashboard()
         self.ver_pdfs()
+
+    def _logout(self):
+        """Cierra la sesión del usuario actual"""
+        dlg = ConfirmDialog(
+            self.root,
+            "🚪 Cerrar Sesión",
+            f"¿Deseas cerrar la sesión de {self.usuario_nombre}?",
+            confirm_text="Cerrar Sesión",
+            cancel_text="Cancelar",
+            danger=False
+        )
+        if dlg.result:
+            self.usuario_actual = None
+            self.usuario_nombre = None
+            self.usuario_contrasena = None
+            # Clear treeview
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            self._reset_preview_panel()
+            self.mostrar_inicial()
+            Notification(
+                self.root, "👋 Sesión cerrada",
+                "Has cerrado sesión correctamente",
+                notification_type="info", duration=2500
+            )
 
     def cargar_dashboard(self):
         """Carga el dashboard"""
@@ -1280,117 +1570,94 @@ class AppDBPDF:
         """Muestra ventana para agregar PDF"""
         if not self.usuario_actual:
             Notification(
-                self.root,
-                "❌ Error",
+                self.root, "❌ Error",
                 "No hay usuario autenticado",
                 notification_type="error"
             )
             return
 
-        add_window = ctk.CTkToplevel(self.root)
-        add_window.title("Agregar PDF")
-        add_window.geometry("600x500")
         colors = self.get_colors()
-        add_window.configure(fg_color=COLOR_BG_LIGHT)
+        add_window = ctk.CTkToplevel(self.root)
+        add_window.title("➕ Agregar PDF")
+        add_window.geometry("500x580")
+        add_window.resizable(False, False)
+        add_window.grab_set()
+        add_window.transient(self.root)
+        add_window.configure(fg_color=colors["bg_secondary"])
 
         ctk.CTkLabel(
             add_window,
             text="➕ Agregar Nuevo PDF",
-            font=("Arial", 18, "bold"),
+            font=("Arial", 20, "bold"),
             text_color=colors["text_primary"]
-        ).pack(pady=15)
+        ).pack(pady=(20, 4))
+
+        ctk.CTkLabel(
+            add_window,
+            text="El archivo se encriptará con AES-256 antes de guardarse",
+            font=("Arial", 10),
+            text_color=COLOR_SECONDARY
+        ).pack(pady=(0, 12))
 
         self.selected_file = None
 
         btn_buscar = ctk.CTkButton(
             add_window,
-            text="📁 Buscar Archivo PDF",
+            text="📁 Seleccionar Archivo PDF",
             command=self.seleccionar_archivo,
             fg_color=COLOR_PRIMARY,
             hover_color="#388E3C",
-            text_color=COLOR_TEXT_DARK,
+            text_color="white",
             font=("Arial", 12, "bold"),
             corner_radius=8,
-            width=250,
-            height=40
+            width=300, height=44
         )
-        btn_buscar.pack(pady=15)
+        btn_buscar.pack(pady=8)
 
         self.label_file = ctk.CTkLabel(
             add_window,
             text="📄 Ningún archivo seleccionado",
-            text_color=colors["text_primary"],
+            text_color=colors["text_secondary"],
             font=("Arial", 10)
         )
-        self.label_file.pack(pady=10)
+        self.label_file.pack(pady=4)
 
-        ctk.CTkLabel(
-            add_window,
-            text="Descripción:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11, "bold")
-        ).pack()
+        sep = ctk.CTkFrame(add_window, height=1, fg_color=("#cccccc", "#3a3a3a"))
+        sep.pack(fill="x", padx=40, pady=8)
 
-        self.entry_descripcion = ctk.CTkEntry(
-            add_window,
-            placeholder_text="Descripción del PDF",
-            width=300,
-            height=35,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 11)
-        )
-        self.entry_descripcion.pack(pady=10)
+        def add_labeled_entry(parent, label, placeholder, width=360):
+            ctk.CTkLabel(parent, text=label,
+                         text_color=colors["text_primary"],
+                         font=("Arial", 11, "bold")).pack(anchor="w", padx=60)
+            e = ctk.CTkEntry(parent, placeholder_text=placeholder,
+                             width=width, height=38, corner_radius=8,
+                             border_width=2, font=("Arial", 11))
+            e.pack(pady=(4, 8))
+            return e
 
-        ctk.CTkLabel(
-            add_window,
-            text="Cédula:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11, "bold")
-        ).pack()
+        self.entry_descripcion = add_labeled_entry(add_window, "Descripción:", "Descripción del documento")
+        self.entry_cedula       = add_labeled_entry(add_window, "Cédula:", "Número de cédula")
+        self.entry_nombres      = add_labeled_entry(add_window, "Nombres completos:", "Nombres del titular")
 
-        self.entry_cedula = ctk.CTkEntry(
+        ctk.CTkButton(
             add_window,
-            placeholder_text="Cédula",
-            width=300,
-            height=35,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 11)
-        )
-        self.entry_cedula.pack(pady=10)
-
-        ctk.CTkLabel(
-            add_window,
-            text="Nombres:",
-            text_color=colors["text_primary"],
-            font=("Arial", 11, "bold")
-        ).pack()
-
-        self.entry_nombres = ctk.CTkEntry(
-            add_window,
-            placeholder_text="Nombres",
-            width=300,
-            height=35,
-            corner_radius=8,
-            border_width=2,
-            font=("Arial", 11)
-        )
-        self.entry_nombres.pack(pady=10)
-
-        btn_agregar = ctk.CTkButton(
-            add_window,
-            text="✅ Agregar (Encriptado)",
+            text="✅  Agregar y Encriptar (AES-256)",
             command=lambda: self.procesar_agregar_pdf(add_window),
             fg_color=COLOR_SECONDARY,
-            hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
+            hover_color="#1565c0",
+            text_color="white",
             font=("Arial", 12, "bold"),
             corner_radius=8,
-            width=250,
-            height=40
-        )
-        btn_agregar.pack(pady=15)
+            width=340, height=44
+        ).pack(pady=10)
+
+        ctk.CTkButton(
+            add_window, text="Cancelar",
+            command=add_window.destroy,
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=180, height=34
+        ).pack(pady=(0, 16))
 
     def seleccionar_archivo(self):
         """Selecciona un archivo PDF"""
@@ -1521,8 +1788,7 @@ class AppDBPDF:
 
         if not selected:
             Notification(
-                self.root,
-                "⚠️ Advertencia",
+                self.root, "⚠️ Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
@@ -1531,52 +1797,79 @@ class AppDBPDF:
         values = self.tree.item(selected[0])['values']
         pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
 
-        details_window = ctk.CTkToplevel(self.root)
-        details_window.title("Detalles del PDF")
-        details_window.geometry("500x400")
         colors = self.get_colors()
-        details_window.configure(fg_color=COLOR_BG_LIGHT)
+        details_window = ctk.CTkToplevel(self.root)
+        details_window.title("ℹ️ Detalles del PDF")
+        details_window.geometry("460x440")
+        details_window.resizable(False, False)
+        details_window.grab_set()
+        details_window.transient(self.root)
+        details_window.configure(fg_color=colors["bg_secondary"])
 
         ctk.CTkLabel(
-            details_window,
-            text="ℹ️  Detalles del PDF",
+            details_window, text="📋 Detalles del Documento",
             font=("Arial", 18, "bold"),
             text_color=colors["text_primary"]
-        ).pack(pady=15)
+        ).pack(pady=(20, 4))
 
-        info_text = f"""
-ID: {pdf_id}
-Nombre: {pdf_nombre}
-Descripción: {descripcion}
-Tamaño: {tamano}
-Fecha: {fecha}
-Cédula: {cedula}
-Nombres: {nombres}
+        sep = ctk.CTkFrame(details_window, height=1, fg_color=COLOR_SECONDARY)
+        sep.pack(fill="x", padx=30)
 
-🔒 Estado: Encriptado con AES-256
-        """
-
-        ctk.CTkLabel(
-            details_window,
-            text=info_text,
-            text_color=colors["text_primary"],
-            font=("Arial", 11),
-            justify="left"
-        ).pack(pady=10, padx=20)
-
-        btn_abrir = ctk.CTkButton(
-            details_window,
-            text="📂 Desencriptar y Abrir",
-            command=lambda: self.abrir_pdf_id(pdf_id, details_window),
-            fg_color=COLOR_SECONDARY,
-            hover_color="#1976D2",
-            text_color=COLOR_TEXT_DARK,
-            font=("Arial", 11, "bold"),
-            corner_radius=8,
-            width=200,
-            height=40
+        info_frame = ctk.CTkFrame(
+            details_window, fg_color=("#f0f4ff", "#1a2540"),
+            corner_radius=10
         )
-        btn_abrir.pack(pady=10)
+        info_frame.pack(padx=30, pady=14, fill="x")
+
+        def info_row(label, value):
+            row = ctk.CTkFrame(info_frame, fg_color="transparent")
+            row.pack(fill="x", padx=16, pady=4)
+            ctk.CTkLabel(
+                row, text=label, font=("Arial", 11, "bold"),
+                text_color=colors["text_secondary"], width=120, anchor="w"
+            ).pack(side="left")
+            ctk.CTkLabel(
+                row, text=str(value) if value else "—",
+                font=("Arial", 11),
+                text_color=colors["text_primary"],
+                wraplength=250, anchor="w"
+            ).pack(side="left")
+
+        info_row("🆔  ID:", pdf_id)
+        info_row("📄  Nombre:", pdf_nombre)
+        info_row("📝  Descripción:", descripcion)
+        info_row("💾  Tamaño:", tamano)
+        info_row("📅  Fecha:", fecha)
+        info_row("🪪  Cédula:", cedula)
+        info_row("👤  Nombres:", nombres)
+        info_row("🔒  Encriptación:", "AES-256 (Fernet)")
+
+        btn_row = ctk.CTkFrame(details_window, fg_color="transparent")
+        btn_row.pack(pady=14)
+
+        ctk.CTkButton(
+            btn_row, text="📂 Abrir",
+            command=lambda: self.abrir_pdf_id(pdf_id, details_window),
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=150, height=40
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            btn_row, text="⬇️ Exportar",
+            command=lambda: (details_window.destroy(), self.exportar_pdf()),
+            fg_color="#00897B", hover_color="#00695C",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=150, height=40
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            details_window, text="Cerrar",
+            command=details_window.destroy,
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=200, height=36
+        ).pack(pady=(0, 16))
 
     def abrir_pdf_doble_click(self):
         """Abre un PDF con doble click"""
@@ -1637,62 +1930,242 @@ Nombres: {nombres}
         threading.Thread(target=decrypt_task, daemon=True).start()
 
     def eliminar_pdf(self):
-        """Elimina un PDF seleccionado"""
+        """Elimina un PDF seleccionado usando el diálogo moderno"""
         selected = self.tree.selection()
 
         if not selected:
             Notification(
-                self.root,
-                "⚠️ Advertencia",
+                self.root, "⚠️ Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
             return
 
         pdf_id = self.tree.item(selected[0])['values'][0]
+        pdf_nombre = self.tree.item(selected[0])['values'][1]
 
-        if messagebox.askyesno("Confirmación", "¿Estás seguro de que deseas eliminar este PDF?", parent=self.root):
-            self.progress_bar.start("Eliminando PDF...")
+        dlg = ConfirmDialog(
+            self.root,
+            "🗑️  Eliminar PDF",
+            f"¿Eliminar permanentemente\n\"{pdf_nombre}\"?\n\nEsta acción no se puede deshacer.",
+            confirm_text="Sí, eliminar",
+            cancel_text="Cancelar",
+            danger=True
+        )
+        if not dlg.result:
+            return
+
+        self.progress_bar.start("Eliminando PDF…")
+
+        try:
+            self.cursor.execute(
+                "DELETE FROM PDFs WHERE id = ? AND usuario_id = ?",
+                (pdf_id, self.usuario_actual)
+            )
+
+            if self.cursor.rowcount == 0:
+                Notification(self.root, "❌ Error", "PDF no encontrado",
+                             notification_type="error")
+                return
+
+            self.cursor.execute(
+                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
+                ("Eliminar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
+            )
+
+            self.conn.commit()
+            self._reset_preview_panel()
+            Notification(self.root, "✅ Eliminado",
+                         f"'{pdf_nombre}' eliminado correctamente",
+                         notification_type="success")
+            self.cargar_dashboard()
+            self.ver_pdfs()
+        except Exception as e:
+            self.conn.rollback()
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
+        finally:
+            self.progress_bar.stop()
+
+    def editar_pdf(self):
+        """Abre diálogo para editar los metadatos de un PDF"""
+        selected = self.tree.selection()
+
+        if not selected:
+            Notification(
+                self.root, "⚠️ Advertencia",
+                "Selecciona un PDF de la lista",
+                notification_type="warning"
+            )
+            return
+
+        values = self.tree.item(selected[0])['values']
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+
+        colors = self.get_colors()
+        edit_win = ctk.CTkToplevel(self.root)
+        edit_win.title("✏️ Editar Metadatos del PDF")
+        edit_win.geometry("480x460")
+        edit_win.resizable(False, False)
+        edit_win.grab_set()
+        edit_win.transient(self.root)
+        edit_win.configure(fg_color=colors["bg_secondary"])
+
+        ctk.CTkLabel(
+            edit_win, text="✏️ Editar Metadatos",
+            font=("Arial", 18, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(pady=(20, 4))
+
+        ctk.CTkLabel(
+            edit_win, text=f"Editando: {pdf_nombre}",
+            font=("Arial", 10), text_color=COLOR_SECONDARY
+        ).pack(pady=(0, 16))
+
+        def add_field(label, current, placeholder=""):
+            ctk.CTkLabel(
+                edit_win, text=label,
+                text_color=colors["text_primary"],
+                font=("Arial", 11, "bold")
+            ).pack(anchor="w", padx=40)
+            e = ctk.CTkEntry(
+                edit_win, width=380, height=40,
+                corner_radius=8, border_width=2,
+                font=("Arial", 11),
+                placeholder_text=placeholder
+            )
+            e.insert(0, str(current) if current else "")
+            e.pack(pady=(4, 10))
+            return e
+
+        e_nombre = add_field("Nombre del archivo:", pdf_nombre)
+        e_desc   = add_field("Descripción:", descripcion or "", "Sin descripción")
+        e_cedula = add_field("Cédula:", cedula or "")
+        e_nombres = add_field("Nombres:", nombres or "")
+
+        def guardar():
+            nuevo_nombre = e_nombre.get().strip()
+            nueva_desc   = e_desc.get().strip()
+            nueva_cedula = e_cedula.get().strip()
+            nuevos_nombres = e_nombres.get().strip()
+
+            if not nuevo_nombre:
+                Notification(edit_win, "❌ Error", "El nombre no puede estar vacío",
+                             notification_type="error")
+                return
 
             try:
                 self.cursor.execute(
-                    "DELETE FROM PDFs WHERE id = ? AND usuario_id = ?",
-                    (pdf_id, self.usuario_actual)
+                    "UPDATE PDFs SET nombre = ?, descripcion = ? WHERE id = ? AND usuario_id = ?",
+                    (nuevo_nombre, nueva_desc, pdf_id, self.usuario_actual)
                 )
-
-                if self.cursor.rowcount == 0:
-                    Notification(
-                        self.root,
-                        "❌ Error",
-                        "PDF no encontrado",
-                        notification_type="error"
+                if nueva_cedula:
+                    self.cursor.execute(
+                        """UPDATE Personas SET nombres = ? 
+                           WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",
+                        (nuevos_nombres, pdf_id)
                     )
-                    return
-
                 self.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                    ("Eliminar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
+                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
+                    ("Editar metadatos PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
                 )
-
                 self.conn.commit()
-                Notification(
-                    self.root,
-                    "✅ Éxito",
-                    "PDF eliminado correctamente",
-                    notification_type="success"
-                )
-                self.cargar_dashboard()
+                Notification(self.root, "✅ Guardado",
+                             "Metadatos actualizados correctamente",
+                             notification_type="success")
+                edit_win.destroy()
                 self.ver_pdfs()
-            except Exception as e:
+                self._reset_preview_panel()
+            except Exception as exc:
                 self.conn.rollback()
-                Notification(
-                    self.root,
-                    "❌ Error",
-                    str(e),
-                    notification_type="error"
+                Notification(edit_win, "❌ Error", str(exc), notification_type="error")
+
+        ctk.CTkButton(
+            edit_win, text="💾 Guardar Cambios",
+            command=guardar,
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            corner_radius=8, width=260, height=42
+        ).pack(pady=(8, 4))
+
+        ctk.CTkButton(
+            edit_win, text="Cancelar",
+            command=edit_win.destroy,
+            fg_color="#9E9E9E", hover_color="#757575",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=260, height=36
+        ).pack(pady=(0, 20))
+
+    def exportar_pdf(self):
+        """Exporta (guarda) el PDF desencriptado a una ruta elegida por el usuario"""
+        selected = self.tree.selection()
+
+        if not selected:
+            Notification(
+                self.root, "⚠️ Advertencia",
+                "Selecciona un PDF de la lista",
+                notification_type="warning"
+            )
+            return
+
+        values = self.tree.item(selected[0])['values']
+        pdf_id = values[0]
+        pdf_nombre = values[1]
+
+        dest = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            initialfile=pdf_nombre,
+            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+        )
+        if not dest:
+            return
+
+        self.progress_bar.start("Desencriptando y exportando…")
+
+        try:
+            self.cursor.execute(
+                "SELECT datos, datos_encriptados FROM PDFs WHERE id = ? AND usuario_id = ?",
+                (pdf_id, self.usuario_actual)
+            )
+            result = self.cursor.fetchone()
+        except Exception as e:
+            self.progress_bar.stop()
+            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            return
+
+        if not result:
+            self.progress_bar.stop()
+            Notification(self.root, "❌ Error", "PDF no encontrado", notification_type="error")
+            return
+
+        datos_enc, encriptado = result
+        usuario_nombre = self.usuario_nombre
+
+        def export_task():
+            try:
+                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
+                         if encriptado else bytes(datos_enc))
+                with open(dest, 'wb') as f:
+                    f.write(datos)
+                self.root.after(0, lambda: Notification(
+                    self.root, "✅ Exportado",
+                    f"PDF exportado a:\n{dest}",
+                    notification_type="success", duration=4000
+                ))
+                self.cursor.execute(
+                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
+                    ("Exportar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
                 )
+                self.conn.commit()
+            except Exception as e:
+                self.root.after(0, lambda err=e: Notification(
+                    self.root, "❌ Error",
+                    f"Error al exportar: {err}",
+                    notification_type="error"
+                ))
             finally:
-                self.progress_bar.stop()
+                self.root.after(0, self.progress_bar.stop)
+
+        threading.Thread(target=export_task, daemon=True).start()
 
     def slide_in_frame(self, frame, start_relx=1.0, end_relx=0.0, steps=20, callback=None):
         """Anima el deslizamiento de un frame"""
@@ -1721,7 +2194,7 @@ Nombres: {nombres}
         if hasattr(self, 'conn') and self.conn:
             self.conn.close()
 
-    def on_intro_click(self, event):
+    def on_intro_click(self, event=None):
         """Evento al hacer clic en intro"""
         self.frame_intro.pack_forget()
         self.mostrar_inicial()
