@@ -122,7 +122,7 @@ class AppDBPDF:
         self._intro_bg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         intro_card = ctk.CTkFrame(
-            self.frame_intro, fg_color=("#ffffff20", "#00000040"),
+            self.frame_intro, fg_color=("#e8eeff", "#1a1a3e"),
             corner_radius=20
         )
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
@@ -167,7 +167,7 @@ class AppDBPDF:
         _bg_inicial.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_inicial = ctk.CTkFrame(
-            self.frame_inicial, fg_color=("#ffffffcc", "#1e2a4aee"),
+            self.frame_inicial, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=20, width=380
         )
         card_inicial.place(relx=0.5, rely=0.5, anchor="center")
@@ -229,7 +229,7 @@ class AppDBPDF:
         _bg_login.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_login = ctk.CTkFrame(
-            self.frame_login, fg_color=("#ffffffdd", "#1e2a4aee"),
+            self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=20, width=400
         )
         card_login.place(relx=0.5, rely=0.5, anchor="center")
@@ -259,6 +259,7 @@ class AppDBPDF:
             font=("Arial", 12)
         )
         self.entry_usuario_login.pack(pady=(4, 12))
+        self.entry_usuario_login.bind("<Return>", lambda e: self.entry_contrasena_login.focus())
 
         ctk.CTkLabel(
             card_login, text="Contraseña",
@@ -310,7 +311,7 @@ class AppDBPDF:
         _bg_2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_2fa = ctk.CTkFrame(
-            self.frame_2fa, fg_color=("#ffffffdd", "#1e1a2eee"),
+            self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
             corner_radius=20, width=420
         )
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
@@ -386,7 +387,7 @@ class AppDBPDF:
         _bg_reg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_reg = ctk.CTkFrame(
-            self.frame_registro, fg_color=("#ffffffdd", "#142e1eee"),
+            self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
             corner_radius=20, width=420
         )
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
@@ -476,7 +477,7 @@ class AppDBPDF:
         # Scrollable to fit QR + instructions
         self._setup2fa_scroll = ctk.CTkScrollableFrame(
             self.frame_setup_2fa,
-            fg_color=("#ffffffdd", "#1e1600ee"),
+            fg_color=("#fffde7", "#1e1600"),
             corner_radius=20, width=460, height=520
         )
         self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
@@ -1158,9 +1159,10 @@ class AppDBPDF:
         score, label, _ = password_strength(contrasena)
         if score < 2:
             Notification(
-                self.root, "⚠️ Contraseña débil",
-                f"Fortaleza: {label}\nUsa mayúsculas, números y caracteres especiales",
-                notification_type="warning"
+                self.root, "⚠️ Contraseña insegura",
+                f"Fortaleza: {label}\n"
+                "Requisitos: 8+ caracteres, mayúsculas,\nnúmeros y caracteres especiales (!@#$…)",
+                notification_type="warning", duration=5000
             )
             return
 
@@ -1233,6 +1235,12 @@ class AppDBPDF:
                         self.cursor.execute(
                             "UPDATE Usuarios SET contrasena = ? WHERE id = ?",
                             (new_hash, usuario_id)
+                        )
+                        self.cursor.execute(
+                            "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) "
+                            "VALUES (?, NULL, ?, ?)",
+                            ("Migración hash contraseña (SHA-256→PBKDF2)",
+                             usuario_id, datetime.now().isoformat())
                         )
                         self.conn.commit()
 
