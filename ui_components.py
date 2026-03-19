@@ -255,6 +255,7 @@ class GradientBackground(tk.Canvas):
         self._colors_dark  = colors_dark  or [("#0d0d2b", "#1a237e"), ("#1a237e", "#0d47a1")]
         self._colors_light = colors_light or [("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         self.bind("<Configure>", self._on_resize)
+        self.bind("<Map>", self._on_resize)
         self._animate()
 
     def _lerp_color(self, c1, c2, t):

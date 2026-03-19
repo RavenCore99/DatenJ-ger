@@ -80,6 +80,7 @@ class AppDBPDF:
         self.usuario_contrasena = None
         self.animating = False
         self._search_timer = None  # For debounced live search
+        self._configure_timer = None  # Debounce for <Configure> saves
 
         self._setup_atajos()
         self._crear_frames()
@@ -89,6 +90,11 @@ class AppDBPDF:
         self.mostrar_inicial()
 
         self.root.bind("<F11>", self.toggle_fullscreen)
+        self.root.bind("<Configure>", self._on_window_configure)
+
+        # Restore maximized state after the window is fully rendered
+        if self.config.get("window_maximized", False):
+            self.root.after(100, self._maximize_window)
 
     def get_colors(self):
         """Obtiene colores dinámicos"""
@@ -102,11 +108,55 @@ class AppDBPDF:
         self.root.bind("<Delete>", lambda e: self.eliminar_pdf() if self.usuario_actual else None)
 
     def toggle_fullscreen(self, event=None):
-        """Alterna fullscreen (F11)"""
+        """Alterna fullscreen/maximizado (F11) de forma multiplataforma"""
         try:
-            state = self.root.attributes('-zoomed')
-            self.root.attributes('-zoomed', not state)
-        except:
+            if os.name == 'nt':  # Windows
+                state = self.root.state()
+                if state == 'zoomed':
+                    self.root.state('normal')
+                else:
+                    self.root.state('zoomed')
+            else:  # Linux / macOS
+                zoomed = self.root.attributes('-zoomed')
+                self.root.attributes('-zoomed', not zoomed)
+        except Exception:
+            pass
+
+    def _maximize_window(self):
+        """Maximiza la ventana de forma multiplataforma"""
+        try:
+            if os.name == 'nt':
+                self.root.state('zoomed')
+            else:
+                self.root.attributes('-zoomed', True)
+        except Exception:
+            pass
+
+    def _on_window_configure(self, event=None):
+        """Persiste el tamaño/estado de ventana cuando cambia, con debounce"""
+        if event is None or event.widget is not self.root:
+            return
+        # Cancel any pending save to avoid thrashing
+        if self._configure_timer:
+            self.root.after_cancel(self._configure_timer)
+        self._configure_timer = self.root.after(500, self._save_window_state)
+
+    def _save_window_state(self):
+        """Guarda el tamaño y el estado maximizado de la ventana"""
+        self._configure_timer = None
+        try:
+            maximized = False
+            if os.name == 'nt':
+                maximized = self.root.state() == 'zoomed'
+            else:
+                maximized = bool(self.root.attributes('-zoomed'))
+            self.config.set("window_maximized", maximized)
+            if not maximized:
+                w = self.root.winfo_width()
+                h = self.root.winfo_height()
+                if w > 100 and h > 100:
+                    self.config.set("window_size", f"{w}x{h}")
+        except Exception:
             pass
 
     def _crear_frames(self):
@@ -556,7 +606,8 @@ class AppDBPDF:
         ).pack(pady=(4, 16))
 
         # ── PANEL PRINCIPAL ────────────────────────────────────────────────────
-        self.frame_principal = ctk.CTkFrame(self.root, fg_color=COLOR_BG_LIGHT)
+        # Use a tuple so CTk automatically switches between light/dark colors
+        self.frame_principal = ctk.CTkFrame(self.root, fg_color=(COLOR_BG_LIGHT, COLOR_BG_DARK))
 
         # -- Top navbar --
         navbar = ctk.CTkFrame(
@@ -630,12 +681,16 @@ class AppDBPDF:
         )
         self.dashboard_container.pack(fill="x", padx=14)
 
-        # -- Toolbar (search + action buttons) --
-        toolbar = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
-        toolbar.pack(fill="x", padx=14, pady=(6, 0))
+        # -- Toolbar (search row + action buttons row) --
+        toolbar_container = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
+        toolbar_container.pack(fill="x", padx=14, pady=(6, 0))
+
+        # Row 1: Search bar
+        search_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
+        search_row.pack(fill="x", pady=(0, 4))
 
         # Search
-        search_card = ctk.CTkFrame(toolbar, fg_color=("#e8f0fe", "#1e2a4a"), corner_radius=10)
+        search_card = ctk.CTkFrame(search_row, fg_color=("#e8f0fe", "#1e2a4a"), corner_radius=10)
         search_card.pack(side="left")
 
         ctk.CTkLabel(
@@ -660,6 +715,10 @@ class AppDBPDF:
             corner_radius=7, width=70, height=30
         ).pack(side="left", padx=(2, 8), pady=6)
 
+        # Row 2: Action buttons
+        actions_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
+        actions_row.pack(fill="x", pady=(0, 2))
+
         # Action buttons
         actions = [
             ("➕ Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
@@ -671,7 +730,7 @@ class AppDBPDF:
         ]
         for text, cmd, fg, hover in actions:
             ctk.CTkButton(
-                toolbar, text=text, command=cmd,
+                actions_row, text=text, command=cmd,
                 fg_color=fg, hover_color=hover,
                 text_color="white", font=("Arial", 10, "bold"),
                 corner_radius=7, height=36, width=108
@@ -795,14 +854,10 @@ class AppDBPDF:
 
     def actualizar_colores_dinamicos(self):
         """Actualiza los colores dinámicos cuando cambia el tema"""
-        mode = ctk.get_appearance_mode()
-        bg = COLOR_BG_DARK if mode == "Dark" else COLOR_BG_LIGHT
         colors = self.get_colors()
 
-        # Update main panel background
-        self.frame_principal.configure(fg_color=bg)
-
-        # Update status bar text color
+        # frame_principal uses a (light, dark) tuple so CTk updates it automatically;
+        # we still update the status bar text color here.
         self.status.configure(text_color=colors["text_primary"])
 
         # Re-apply TreeView styling and refresh alternating row colors
