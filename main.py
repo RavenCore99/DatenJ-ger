@@ -168,10 +168,9 @@ class AppDBPDF:
 
         card_inicial = ctk.CTkFrame(
             self.frame_inicial, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=20, width=380
+            corner_radius=20
         )
         card_inicial.place(relx=0.5, rely=0.5, anchor="center")
-        card_inicial.pack_propagate(False)
 
         ctk.CTkLabel(
             card_inicial,
@@ -230,10 +229,9 @@ class AppDBPDF:
 
         card_login = ctk.CTkFrame(
             self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=20, width=400
+            corner_radius=20
         )
         card_login.place(relx=0.5, rely=0.5, anchor="center")
-        card_login.pack_propagate(False)
 
         ctk.CTkLabel(
             card_login,
@@ -312,10 +310,9 @@ class AppDBPDF:
 
         card_2fa = ctk.CTkFrame(
             self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
-            corner_radius=20, width=420
+            corner_radius=20
         )
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
-        card_2fa.pack_propagate(False)
 
         ctk.CTkLabel(
             card_2fa, text="🔐 Verificación 2FA",
@@ -388,10 +385,9 @@ class AppDBPDF:
 
         card_reg = ctk.CTkFrame(
             self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
-            corner_radius=20, width=420
+            corner_radius=20
         )
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
-        card_reg.pack_propagate(False)
 
         ctk.CTkLabel(
             card_reg, text="✍️  Crear Usuario",
