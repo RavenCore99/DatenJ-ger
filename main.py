@@ -60,7 +60,7 @@ COLOR_TEXT_DARK  = "#e0e0e0"
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class AppDBPDF:
-    """Aplicación principal v4.0 con 2FA + Encriptación + UI Moderna"""
+    """Aplicación principal v.2.0 con 2FA + Encriptación + UI Moderna"""
 
     def __init__(self, root):
         """Inicializa la aplicación"""

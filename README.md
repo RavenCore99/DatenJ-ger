@@ -21,9 +21,9 @@
 
 |                 Nombre                     |          Rol           |                 Contacto                         |
 |--------------------------------------------|------------------------|--------------------------------------------------|
-| <!-- Jorge Nicolas Castro Ballesteros -->  | <!-- DevOps Leader --> | <!-- jncastro@ucundinamarca.edu.co -->           |
-| <!-- Yaderli Catalina Rodriguez Medina --> | <!-- DevOps Support--> | <!-- ycatalinarodriguez@ucundinamarca.edu.co --> |
-| -------------------------------------------|------------------------|--------------------------------------------------|
+| Jorge Nicolas Castro Ballesteros           | DevOps Leader          |  jncastro@ucundinamarca.edu.co                   |
+|  Yaderli Catalina Rodriguez Medina         | DevOps Support         |  ycatalinarodriguez@ucundinamarca.edu.co         |
+
 
 > **Institución:** Universidad de Cundinamarca Seccional Ubaté 
 > **Programa:**    Ingenieria de Sistemas y Computación
@@ -76,13 +76,22 @@ DatenJäger digitaliza los documentos e implementa un sistema de gestión docume
 
 ## 📸 Capturas del Sistema
 ```
+A continuación podrás ver un vistazo rapido de la versión actual del sistema
 ```
 ### Pantalla de Login y Registro
 
-```
-[📷 Imagen: Pantalla de inicio de sesión con validación de fortaleza de contraseña]
-```
+![Login](docs/screenshots/login.png)
 
+```
+[📷 Imagen: Pantalla de creación de usuario con validación de fortaleza de contraseña]
+```
+![R. debil](docs/screenshots/debil.png)
+
+![R. regular](docs/screenshots/regular.png)
+
+![R. fuerte](docs/screenshots/fuerte.png)
+
+![R. muy fuerte](docs/screenshots/Mfuerte.png)
 ---
 
 ### Configuración de Autenticación de Dos Factores (2FA)
