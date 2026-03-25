@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
+#  utf-8 -*-
 """
 database.py - Módulo de Base de Datos
 Gestiona toda la conexión y operaciones con SQLite
 """
+# Copyright (c) 2024 DatenJäger. All rights reserved.
 
 import sqlite3
 import sys
@@ -23,7 +24,7 @@ def conectar_db():
     conn = sqlite3.connect(dbpath, check_same_thread=False)
     cursor = conn.cursor()
 
-    # Performance pragmas: WAL for better concurrency, NORMAL sync for speed
+    # Pragmas de rendimiento: WAL para una mejor concurrencia, sincronización NORMAL para mayor velocidad.
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
 
@@ -153,10 +154,10 @@ def verify_contrasena(contrasena, stored_hash):
         ok = dk.hex() == expected
         return ok, False
     else:
-        # Legacy SHA-256 – migrate on next successful login
+        # SHA-256 heredado: migrar en el próximo inicio de sesión exitoso.
         legacy = hashlib.sha256(contrasena.encode()).hexdigest()
         ok = legacy == stored_hash
-        return ok, ok  # needs_rehash=True when password matches
+        return ok, ok  # needs_rehash=True cuando la contraseña coincide
 
 def format_size(bytes_size):
     """Convierte bytes a formato legible"""
@@ -211,7 +212,7 @@ def ease_in_out(t):
     return t ** 2 if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2
 
 
-# ─── Login rate-limiting helpers ─────────────────────────────────────────────
+# ─── Login limitante de velocidad helpers ─────────────────────────────────────────────
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
@@ -272,7 +273,7 @@ def reset_failed_attempts(cursor, conn, nombre):
     conn.commit()
 
 
-# ─── Password strength validator ─────────────────────────────────────────────
+# ─── Password strength(robustes) validator ─────────────────────────────────────────────
 
 def password_strength(password: str) -> tuple:
     """Evalúa la fortaleza de una contraseña.
@@ -293,3 +294,4 @@ def password_strength(password: str) -> tuple:
     labels = {0: "Muy débil", 1: "Débil", 2: "Regular", 3: "Fuerte", 4: "Muy fuerte"}
     colors = {0: "#F44336", 1: "#FF9800", 2: "#FFC107", 3: "#8BC34A", 4: "#4CAF50"}
     return score, labels[score], colors[score]
+# Copyright (c) 2024 DatenJäger. All rights reserved.

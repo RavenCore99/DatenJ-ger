@@ -1,11 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
+#  utf-8 -*-
 """
 encryption.py - Módulo de Encriptación
 Gestiona encriptación AES-256 (Fernet) de PDFs y datos sensibles.
 La clave se deriva usando PBKDF2-HMAC-SHA256 (600 000 iteraciones) para
 mayor resistencia a ataques de fuerza bruta.
 """
+# Copyright (c) 2024 DatenJäger. All rights reserved.
 
 import hashlib
 import base64
@@ -53,3 +54,5 @@ class EncryptionManager:
             return decrypted
         except Exception as e:
             raise Exception(f"Error desencriptando datos: {e}")
+        
+        # Copyright (c) 2024 DatenJäger. All rights reserved.

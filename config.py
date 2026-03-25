@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
+# : utf-8 -*-
 """
+# Copyright (c) 2024 DatenJäger. All rights reserved.
 config.py - Módulo de Configuración
-Gestiona configuración persistente en JSON
+Gestiona configuración persistente para el JSON generado
 """
 
 import json
@@ -51,3 +52,5 @@ class Config:
         """Establece valor"""
         self.data[key] = value
         self.save()
+
+# Copyright (c) 2024 DatenJäger. All rights reserved.

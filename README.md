@@ -17,18 +17,17 @@
 
 ## 👥 Equipo del Proyecto
 
-<!-- Agrega aquí a los integrantes del equipo -->
 
-| Nombre | Rol | Contacto |
-|--------|-----|---------|
-| <!-- Nombre --> | <!-- Rol --> | <!-- Email / GitHub --> |
-| <!-- Nombre --> | <!-- Rol --> | <!-- Email / GitHub --> |
-| <!-- Nombre --> | <!-- Rol --> | <!-- Email / GitHub --> |
 
-> **Institución:** <!-- Nombre de la institución / universidad -->  
-> **Programa:** <!-- Nombre del programa académico o área -->  
-> **Año:** <!-- Año del proyecto -->
+|                 Nombre                     |          Rol           |                 Contacto                         |
+|--------------------------------------------|------------------------|--------------------------------------------------|
+| <!-- Jorge Nicolas Castro Ballesteros -->  | <!-- DevOps Leader --> | <!-- jncastro@ucundinamarca.edu.co -->           |
+| <!-- Yaderli Catalina Rodriguez Medina --> | <!-- DevOps Support--> | <!-- ycatalinarodriguez@ucundinamarca.edu.co --> |
+| -------------------------------------------|------------------------|--------------------------------------------------|
 
+> **Institución:** Universidad de Cundinamarca Seccional Ubaté 
+> **Programa:**    Ingenieria de Sistemas y Computación
+> **Año:**         2026
 ---
 
 ## 📋 Tabla de Contenidos
@@ -76,22 +75,9 @@ DatenJäger digitaliza los documentos e implementa un sistema de gestión docume
 ---
 
 ## 📸 Capturas del Sistema
-
-### Pantalla de Inicio
-
-<!-- Inserta aquí una imagen de la pantalla de inicio/splash del sistema -->
-<!-- Ejemplo: ![Pantalla de Inicio](docs/images/pantalla_inicio.png) -->
-
 ```
-[📷 Imagen: Pantalla de inicio — DatenJäger splash screen]
 ```
-
----
-
 ### Pantalla de Login y Registro
-
-<!-- Inserta aquí una imagen de la pantalla de autenticación -->
-<!-- Ejemplo: ![Login](docs/images/login.png) -->
 
 ```
 [📷 Imagen: Pantalla de inicio de sesión con validación de fortaleza de contraseña]
@@ -101,57 +87,48 @@ DatenJäger digitaliza los documentos e implementa un sistema de gestión docume
 
 ### Configuración de Autenticación de Dos Factores (2FA)
 
-<!-- Inserta aquí una imagen del flujo de configuración del 2FA con QR -->
-<!-- Ejemplo: ![2FA Setup](docs/images/2fa_setup.png) -->
-
 ```
 [📷 Imagen: Configuración del código QR para Google Authenticator]
 ```
-
+![2FA](docs/screenshots/2fa.png)
 ---
-
 ### Panel Principal — Dashboard
-
-<!-- Inserta aquí una imagen del panel principal con estadísticas -->
-<!-- Ejemplo: ![Dashboard](docs/images/dashboard.png) -->
 
 ```
 [📷 Imagen: Panel principal mostrando estadísticas (PDFs totales, espacio usado, personas)]
 ```
-
+![Panel Principal](docs/screenshots/panel.png)
 ---
 
 ### Gestión de Documentos
-
-<!-- Inserta aquí una imagen de la lista de documentos con búsqueda y filtros -->
-<!-- Ejemplo: ![Gestión de Documentos](docs/images/documentos.png) -->
-
 ```
-[📷 Imagen: Vista de lista de documentos con filtros, búsqueda en tiempo real y etiquetas]
+[📷 Imagen: Vista de lista de documentos con filtros y etiquetas]
 ```
-
+![Estadisticas](docs/screenshots/estats.png)
 ---
 
 ### Subida y Registro de Documentos
 
-<!-- Inserta aquí una imagen del formulario de carga de PDFs -->
-<!-- Ejemplo: ![Subir PDF](docs/images/subir_pdf.png) -->
-
 ```
 [📷 Imagen: Formulario de subida de PDF con asociación a persona y etiquetas]
 ```
-
+![Formulario para datos](docs/screenshots/formulario.png)
 ---
 
 ### Modo Oscuro / Modo Claro
 
-<!-- Inserta aquí una comparativa de temas -->
-<!-- Ejemplo: ![Temas](docs/images/temas.png) -->
+```
+[📷 Imagenes: Comparativa del sistema en modo oscuro vs modo claro]
+
 
 ```
-[📷 Imagen: Comparativa del sistema en modo oscuro vs modo claro]
-```
+[📷 Imagen: modo oscuro]
 
+![Modo Oscuro](docs/screenshots/oscuro.png)
+
+[📷 Imagen: modo claro]
+
+![Modo Claro](docs/screenshots/claro.png)
 ---
 
 ## ✨ Características Principales
@@ -434,7 +411,7 @@ El tema puede cambiarse desde la interfaz del sistema sin necesidad de editar el
 
 <div align="center">
 
-**DatenJäger v4.0** — Desarrollado con ❤️ para la gestión documental segura
+**DatenJäger v.2.0** — Desarrollado con ❤️ para la gestión documental segura
 
 *"La información es poder; protegerla es responsabilidad."*
 
