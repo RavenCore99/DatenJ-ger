@@ -1,5 +1,5 @@
 
-#  utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 database.py - Módulo de Base de Datos
 Gestiona toda la conexión y operaciones con SQLite
@@ -73,6 +73,7 @@ def conectar_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
             descripcion TEXT,
+            empresa TEXT,
             datos BLOB NOT NULL,
             datos_encriptados INTEGER DEFAULT 1,
             tamano INTEGER NOT NULL,
@@ -90,6 +91,9 @@ def conectar_db():
         cursor.execute("ALTER TABLE PDFs ADD COLUMN datos_encriptados INTEGER DEFAULT 1")
     if 'persona_id' not in columns:
         cursor.execute("ALTER TABLE PDFs ADD COLUMN persona_id INTEGER REFERENCES Personas(id) ON DELETE SET NULL")
+    # Migración: agregar columna empresa si no existe (bases de datos anteriores)
+    if 'empresa' not in columns:
+        cursor.execute("ALTER TABLE PDFs ADD COLUMN empresa TEXT")
 
     # Crear tabla de Etiquetas
     cursor.execute('''
@@ -125,6 +129,7 @@ def conectar_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_usuario ON PDFs(usuario_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_fecha ON PDFs(fecha_subida)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_persona ON PDFs(persona_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_empresa ON PDFs(empresa)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON Auditoria(fecha)")
 
     conn.commit()
@@ -196,14 +201,14 @@ def format_date_friendly(iso_date):
             return f"Hace {delta.days}d"
         elif delta.days < 30:
             weeks = delta.days // 7
-            return f"Hace {weeks}w"
+            return f"Hace {weeks}sem"
         else:
             months = delta.days // 30
             if months < 12:
-                return f"Hace {months}mo"
+                return f"Hace {months}mes"
             else:
                 years = delta.days // 365
-                return f"Hace {years}y"
+                return f"Hace {years}año"
     except:
         return iso_date
 

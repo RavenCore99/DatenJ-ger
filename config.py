@@ -1,5 +1,5 @@
 
-# : utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 config.py - Módulo de Configuración

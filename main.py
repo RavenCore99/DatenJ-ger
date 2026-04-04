@@ -1,8 +1,6 @@
-
 # -*- coding: utf-8 -*-
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# Prototipo de sistema de gestión documental seguro con 2FA, encriptación AES-256 y UI moderna actualizado
-# --.-.-.-.-.-.-.-.-.-.-.--.-.-.-.-.-.
+# Sistema de gestión documental seguro con 2FA, encriptación AES-256 y UI moderna v2.0
 """
 main.py - Aplicación Principal
 DatenJäger v.2.0. - Sistema de Gestión Documental Seguro
@@ -16,8 +14,7 @@ import os
 import tempfile
 import webbrowser
 from datetime import datetime
-import hashlib
-import random
+import secrets
 import threading
 import pyotp
 import qrcode
@@ -44,16 +41,18 @@ ctk.set_default_color_theme("blue")
 # ═══════════════════════════════════════════════════════════════════════════════
 # DEFINICIÓN DE COLORES
 # ═══════════════════════════════════════════════════════════════════════════════
+# [AJUSTE VISUAL] - Colores base para botones y elementos de la interfaz.
+#                  Estos valores son coherentes con los de ui_components.py.
 
-COLOR_BG_LIGHT   = "#f0f4ff"
-COLOR_BG_DARK    = "#1a1a2e"
-COLOR_PRIMARY    = "#4CAF50"
-COLOR_SECONDARY  = "#2196F3"
-COLOR_WARNING    = "#FF9800"
-COLOR_ERROR      = "#F44336"
-COLOR_SUCCESS    = "#4CAF50"
+COLOR_BG_LIGHT   = "#eef2ff"
+COLOR_BG_DARK    = "#0d0f1a"
+COLOR_PRIMARY    = "#2e7d32"   # verde bosque — acciones principales
+COLOR_SECONDARY  = "#1565c0"   # azul rey — acciones secundarias
+COLOR_WARNING    = "#e65100"   # naranja quemado — advertencias
+COLOR_ERROR      = "#c62828"   # rojo oscuro — errores/eliminar
+COLOR_SUCCESS    = "#2e7d32"   # verde bosque — confirmaciones
 COLOR_TEXT_LIGHT = "#1a237e"
-COLOR_TEXT_DARK  = "#e0e0e0"
+COLOR_TEXT_DARK  = "#ffffff"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CLASE PRINCIPAL ACTUALIZADA V.2.0
@@ -749,13 +748,16 @@ class AppDBPDF:
 
         self.tree = ttk.Treeview(
             tree_frame,
-            columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"),
+            columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha",
+                     "Empresa", "Cédula", "Nombres"),
             show="headings",
             height=14
         )
 
-        for col, width in [("ID", 46), ("Nombre", 160), ("Descripción", 200),
-                           ("Tamaño", 90), ("Fecha", 120), ("Cédula", 100), ("Nombres", 160)]:
+        # [AJUSTE VISUAL] - Ancho de cada columna del listado de PDFs (en píxeles)
+        for col, width in [("ID", 46), ("Nombre", 150), ("Descripción", 180),
+                           ("Tamaño", 90), ("Fecha", 110),
+                           ("Empresa", 130), ("Cédula", 90), ("Nombres", 140)]:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width)
 
@@ -933,7 +935,8 @@ class AppDBPDF:
 
     def _setup_treeview_sorting(self):
         """Permite ordenar haciendo clic en cada encabezado de columna de TreeView."""
-        for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"):
+        for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha",
+                    "Empresa", "Cédula", "Nombres"):
             self.tree.heading(col, text=col,
                               command=lambda c=col: self._sort_column(c, False))
 
@@ -961,15 +964,18 @@ class AppDBPDF:
     # ═══════════════════════════════════════════════════════════════════════════
 
     def _format_pdf_row(self, row):
-        """ Formatea una tupla de fila de la base de datos para mostrarla en la vista de árbol."""
+        """Formatea una tupla de fila de la base de datos para mostrarla en la vista de árbol.
+        Orden de campos: id, nombre, descripcion, tamano, fecha_subida, empresa, cedula, nombres
+        """
         return (
             row[0],
             row[1],
             row[2][:50] + "..." if row[2] and len(row[2]) > 50 else (row[2] or ""),
             format_size(row[3]),
             format_date_friendly(row[4]),
-            row[5] or "",
-            row[6] or ""
+            row[5] or "",   # empresa
+            row[6] or "",   # cedula
+            row[7] or "",   # nombres
         )
 
     def _populate_treeview(self, rows):
@@ -1040,7 +1046,7 @@ class AppDBPDF:
                 self._ctx_menu.grab_release()
 
     def _on_tree_select(self, event=None):
-        """Actualiza el panel de vista previa cuando se selecciona una fila.."""
+        """Actualiza el panel de vista previa cuando se selecciona una fila."""
         selected = self.tree.selection()
         if not selected:
             self._reset_preview_panel()
@@ -1048,12 +1054,14 @@ class AppDBPDF:
         values = self.tree.item(selected[0])['values']
         if not values:
             return
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        # Orden: ID, Nombre, Descripción, Tamaño, Fecha, Empresa, Cédula, Nombres
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, empresa, cedula, nombres = values
         colors = self.get_colors()
         self._preview_name.configure(text=pdf_nombre)
         info = (
             f"📄 {pdf_nombre}\n\n"
             f"📝 {descripcion or '—'}\n\n"
+            f"🏢 {empresa or '—'}\n"
             f"💾 {tamano}\n"
             f"📅 {fecha}\n"
             f"🪪 Cédula: {cedula or '—'}\n"
@@ -1075,7 +1083,7 @@ class AppDBPDF:
     # ═══════════════════════════════════════════════════════════════════════════
 
     def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
-                        cedula, nombres, usuario_actual, window):
+                        empresa, cedula, nombres, usuario_actual, window):
         """Guarda el blob PDF ya cifrado en la base de datos (se ejecuta en el hilo principal)."""
         try:
             self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
@@ -1094,9 +1102,9 @@ class AppDBPDF:
                 persona_id = self.cursor.lastrowid
 
             self.cursor.execute(
-                "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, "
-                "tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (nombre, descripcion, datos_enc, 1, tamano,
+                "INSERT INTO PDFs (nombre, descripcion, empresa, datos, datos_encriptados, "
+                "tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (nombre, descripcion, empresa or None, datos_enc, 1, tamano,
                  datetime.now().isoformat(), usuario_actual, persona_id)
             )
             pdf_id = self.cursor.lastrowid
@@ -1379,7 +1387,10 @@ class AppDBPDF:
             totp = pyotp.TOTP(self.totp_secret)
 
             if totp.verify(codigo):
-                backup_codes = [f"{random.randint(100000, 999999)}" for _ in range(5)]
+                # Genera códigos de respaldo con entropía criptográfica (secrets)
+                backup_codes = [
+                    str(100000 + secrets.randbelow(900000)) for _ in range(5)
+                ]
                 backup_codes_str = ",".join(backup_codes)
 
                 self.cursor.execute(
@@ -1575,7 +1586,7 @@ class AppDBPDF:
         colors = self.get_colors()
         self.status.configure(text=f"✅ Sesión activa: {self.usuario_nombre}",
                               text_color=colors["text_primary"])
-        # Update user badge in navbar
+        # Actualizar insignia de usuario en la barra de navegación
         if hasattr(self, '_user_badge'):
             self._user_badge.configure(text=f" 👤 {self.usuario_nombre} ")
         Notification(
@@ -1587,6 +1598,61 @@ class AppDBPDF:
         )
         self.cargar_dashboard()
         self.ver_pdfs()
+        # Lanzar animaciones de entrada al panel principal
+        self.root.after(80, self._animar_interfaz_post_login)
+
+    def _animar_interfaz_post_login(self):
+        """Ejecuta animaciones de fade-in en textos y tarjetas del dashboard tras el login.
+        Las tarjetas aparecen de forma escalonada dando un efecto de carga progresiva.
+        [AJUSTE VISUAL] - Cambia el delay_base (ms) para retrasar el inicio de la animación.
+        """
+        # Animar tarjetas del dashboard (revelación escalonada)
+        for widget in self.dashboard_container.winfo_children():
+            if hasattr(widget, 'frame') and hasattr(widget, 'animar_entrada'):
+                widget.animar_entrada(delay_base=0)
+            elif hasattr(widget, 'animar_entrada'):
+                widget.animar_entrada(delay_base=0)
+
+        # Animar barra de estado con fade de color
+        colors = self.get_colors()
+        # Color de inicio del fade: gris muy oscuro en dark mode, gris claro en light mode
+        fade_start = colors["bg_primary"]
+        self._fade_texto(
+            self.status,
+            start_color=fade_start,
+            end_color=colors["text_primary"],
+            steps=20,
+            interval=20
+        )
+
+    def _fade_texto(self, widget, start_color: str, end_color: str,
+                    steps: int = 20, interval: int = 20):
+        """Anima la transición del color de texto de un widget CTkLabel.
+        [AJUSTE VISUAL] - steps: cantidad de pasos de la animación
+                          interval: milisegundos entre cada paso
+        """
+        def lerp_hex(c1: str, c2: str, t: float) -> str:
+            r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
+            r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
+            r = int(r1 + (r2 - r1) * t)
+            g = int(g1 + (g2 - g1) * t)
+            b = int(b1 + (b2 - b1) * t)
+            return f"#{r:02x}{g:02x}{b:02x}"
+
+        def ease(t: float) -> float:
+            return t * t * (3 - 2 * t)
+
+        def tick(step: int = 0):
+            if not widget.winfo_exists():
+                return
+            if step > steps:
+                widget.configure(text_color=end_color)
+                return
+            color = lerp_hex(start_color, end_color, ease(step / steps))
+            widget.configure(text_color=color)
+            self.root.after(interval, tick, step + 1)
+
+        tick()
 
     def _logout(self):
         """Cierra la sesión del usuario actual"""
@@ -1614,12 +1680,16 @@ class AppDBPDF:
             )
 
     def cargar_dashboard(self):
-        """Carga el dashboard"""
+        """Carga el dashboard y lanza la animación de entrada de las tarjetas"""
         for widget in self.dashboard_container.winfo_children():
             widget.destroy()
 
-        dashboard = DashboardWidget(self.dashboard_container, self.cursor, self.usuario_actual)
-        dashboard.pack(fill="both", padx=20)
+        self._dashboard_widget = DashboardWidget(
+            self.dashboard_container, self.cursor, self.usuario_actual
+        )
+        self._dashboard_widget.pack(fill="both", padx=20)
+        # Iniciar animación de revelación escalonada de tarjetas
+        self.root.after(60, self._dashboard_widget.animar_entrada)
 
     def mostrar_agregar_pdf(self):
         """Muestra ventana para agregar PDF"""
@@ -1634,12 +1704,14 @@ class AppDBPDF:
         colors = self.get_colors()
         add_window = ctk.CTkToplevel(self.root)
         add_window.title("➕ Agregar PDF")
-        add_window.geometry("500x580")
+        # [AJUSTE VISUAL] - Dimensiones de la ventana de agregar PDF (ancho x alto)
+        add_window.geometry("500x660")
         add_window.resizable(False, False)
         add_window.grab_set()
         add_window.transient(self.root)
         add_window.configure(fg_color=colors["bg_secondary"])
 
+        # [AJUSTE VISUAL] - Título y subtítulo del formulario de agregar PDF
         ctk.CTkLabel(
             add_window,
             text="➕ Agregar Nuevo PDF",
@@ -1656,12 +1728,13 @@ class AppDBPDF:
 
         self.selected_file = None
 
+        # [AJUSTE VISUAL] - Botón de selección de archivo (width, height, corner_radius)
         btn_buscar = ctk.CTkButton(
             add_window,
             text="📁 Seleccionar Archivo PDF",
             command=self.seleccionar_archivo,
             fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
+            hover_color="#1b5e20",
             text_color="white",
             font=("Arial", 12, "bold"),
             corner_radius=8,
@@ -1680,6 +1753,8 @@ class AppDBPDF:
         sep = ctk.CTkFrame(add_window, height=1, fg_color=("#cccccc", "#3a3a3a"))
         sep.pack(fill="x", padx=40, pady=8)
 
+        # [AJUSTE VISUAL] - Campos del formulario: ajusta width para cambiar el
+        #                   ancho de los campos, height para la altura de cada fila.
         def add_labeled_entry(parent, label, placeholder, width=360):
             ctk.CTkLabel(parent, text=label,
                          text_color=colors["text_primary"],
@@ -1690,26 +1765,33 @@ class AppDBPDF:
             e.pack(pady=(4, 8))
             return e
 
-        self.entry_descripcion = add_labeled_entry(add_window, "Descripción:", "Descripción del documento")
-        self.entry_cedula       = add_labeled_entry(add_window, "Cédula:", "Número de cédula")
-        self.entry_nombres      = add_labeled_entry(add_window, "Nombres completos:", "Nombres del titular")
+        self.entry_descripcion = add_labeled_entry(
+            add_window, "Descripción:", "Descripción del documento")
+        self.entry_empresa     = add_labeled_entry(
+            add_window, "🏢 Empresa / Entidad:", "Nombre de la empresa u organización")
+        self.entry_cedula      = add_labeled_entry(
+            add_window, "Cédula:", "Número de cédula")
+        self.entry_nombres     = add_labeled_entry(
+            add_window, "Nombres completos:", "Nombres del titular")
 
+        # [AJUSTE VISUAL] - Botón de acción principal del formulario (width, height)
         ctk.CTkButton(
             add_window,
             text="✅  Agregar y Encriptar (AES-256)",
             command=lambda: self.procesar_agregar_pdf(add_window),
             fg_color=COLOR_SECONDARY,
-            hover_color="#1565c0",
+            hover_color="#0d47a1",
             text_color="white",
             font=("Arial", 12, "bold"),
             corner_radius=8,
             width=340, height=44
         ).pack(pady=10)
 
+        # [AJUSTE VISUAL] - Botón cancelar del formulario (width, height)
         ctk.CTkButton(
             add_window, text="Cancelar",
             command=add_window.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color="#616161", hover_color="#424242",
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=180, height=34
         ).pack(pady=(0, 16))
@@ -1730,6 +1812,7 @@ class AppDBPDF:
             return
 
         descripcion = self.entry_descripcion.get().strip()
+        empresa     = self.entry_empresa.get().strip()
         cedula      = self.entry_cedula.get().strip()
         nombres     = self.entry_nombres.get().strip()
 
@@ -1740,9 +1823,7 @@ class AppDBPDF:
 
         self.progress_bar.start("Encriptando y agregando PDF...")
 
-        # Capturar el estado para el hilo en segundo plano para evitar el cierre de atributos.
-
-        # Esto podría cambiar mientras el hilo se ejecuta.      
+        # Capturar el estado para el hilo en segundo plano para evitar condiciones de carrera
         selected_file  = self.selected_file
         usuario_nombre = self.usuario_nombre
         usuario_actual = self.usuario_actual
@@ -1754,10 +1835,10 @@ class AppDBPDF:
                 datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
                 tamano    = len(datos_originales)
                 nombre    = os.path.basename(selected_file)
-                # Transferir la escritura de la base de datos al hilo principal.
+                # Transferir la escritura de la base de datos al hilo principal
                 self.root.after(0, lambda: self._save_pdf_to_db(
                     datos_enc, tamano, nombre, descripcion,
-                    cedula, nombres, usuario_actual, window
+                    empresa, cedula, nombres, usuario_actual, window
                 ))
             except Exception as e:
                 self.root.after(0, lambda err=e: self._on_pdf_add_error(err))
@@ -1775,7 +1856,7 @@ class AppDBPDF:
         try:
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres
+                       p.fecha_subida, p.empresa, pe.cedula, pe.nombres
                 FROM PDFs p
                 LEFT JOIN Personas pe ON p.persona_id = pe.id
                 WHERE p.usuario_id = ?
@@ -1808,15 +1889,17 @@ class AppDBPDF:
         try:
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres
+                       p.fecha_subida, p.empresa, pe.cedula, pe.nombres
                 FROM PDFs p
                 LEFT JOIN Personas pe ON p.persona_id = pe.id
                 WHERE p.usuario_id = ? AND (
                     p.nombre LIKE ? OR p.descripcion LIKE ?
+                    OR p.empresa LIKE ?
                     OR pe.cedula LIKE ? OR pe.nombres LIKE ?
                 )
             """, (self.usuario_actual,
-                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
+                  f"%{term}%", f"%{term}%", f"%{term}%",
+                  f"%{term}%", f"%{term}%"))
 
             rows = self.cursor.fetchall()
             self._populate_treeview(rows)
@@ -1851,12 +1934,14 @@ class AppDBPDF:
             return
 
         values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        # Orden: ID, Nombre, Descripción, Tamaño, Fecha, Empresa, Cédula, Nombres
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, empresa, cedula, nombres = values
 
         colors = self.get_colors()
         details_window = ctk.CTkToplevel(self.root)
         details_window.title("ℹ️ Detalles del PDF")
-        details_window.geometry("460x440")
+        # [AJUSTE VISUAL] - Tamaño de la ventana de detalles
+        details_window.geometry("460x480")
         details_window.resizable(False, False)
         details_window.grab_set()
         details_window.transient(self.root)
@@ -1872,7 +1957,7 @@ class AppDBPDF:
         sep.pack(fill="x", padx=30)
 
         info_frame = ctk.CTkFrame(
-            details_window, fg_color=("#f0f4ff", "#1a2540"),
+            details_window, fg_color=("#eef2ff", "#141628"),
             corner_radius=10
         )
         info_frame.pack(padx=30, pady=14, fill="x")
@@ -1894,6 +1979,7 @@ class AppDBPDF:
         info_row("🆔  ID:", pdf_id)
         info_row("📄  Nombre:", pdf_nombre)
         info_row("📝  Descripción:", descripcion)
+        info_row("🏢  Empresa:", empresa)
         info_row("💾  Tamaño:", tamano)
         info_row("📅  Fecha:", fecha)
         info_row("🪪  Cédula:", cedula)
@@ -2056,12 +2142,14 @@ class AppDBPDF:
             return
 
         values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        # Orden: ID, Nombre, Descripción, Tamaño, Fecha, Empresa, Cédula, Nombres
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, empresa, cedula, nombres = values
 
         colors = self.get_colors()
         edit_win = ctk.CTkToplevel(self.root)
         edit_win.title("✏️ Editar Metadatos del PDF")
-        edit_win.geometry("480x460")
+        # [AJUSTE VISUAL] - Tamaño de la ventana de edición de metadatos
+        edit_win.geometry("480x540")
         edit_win.resizable(False, False)
         edit_win.grab_set()
         edit_win.transient(self.root)
@@ -2078,6 +2166,7 @@ class AppDBPDF:
             font=("Arial", 10), text_color=COLOR_SECONDARY
         ).pack(pady=(0, 16))
 
+        # [AJUSTE VISUAL] - Campos del formulario de edición (width, height)
         def add_field(label, current, placeholder=""):
             ctk.CTkLabel(
                 edit_win, text=label,
@@ -2094,16 +2183,19 @@ class AppDBPDF:
             e.pack(pady=(4, 10))
             return e
 
-        e_nombre = add_field("Nombre del archivo:", pdf_nombre)
-        e_desc   = add_field("Descripción:", descripcion or "", "Sin descripción")
-        e_cedula = add_field("Cédula:", cedula or "")
+        e_nombre  = add_field("Nombre del archivo:", pdf_nombre)
+        e_desc    = add_field("Descripción:", descripcion or "", "Sin descripción")
+        e_empresa = add_field("🏢 Empresa / Entidad:", empresa or "",
+                              "Nombre de la empresa u organización")
+        e_cedula  = add_field("Cédula:", cedula or "")
         e_nombres = add_field("Nombres:", nombres or "")
 
         def guardar():
-            nuevo_nombre = e_nombre.get().strip()
-            nueva_desc   = e_desc.get().strip()
-            nueva_cedula = e_cedula.get().strip()
-            nuevos_nombres = e_nombres.get().strip()
+            nuevo_nombre    = e_nombre.get().strip()
+            nueva_desc      = e_desc.get().strip()
+            nueva_empresa   = e_empresa.get().strip()
+            nueva_cedula    = e_cedula.get().strip()
+            nuevos_nombres  = e_nombres.get().strip()
 
             if not nuevo_nombre:
                 Notification(edit_win, "❌ Error", "El nombre no puede estar vacío",
@@ -2112,12 +2204,14 @@ class AppDBPDF:
 
             try:
                 self.cursor.execute(
-                    "UPDATE PDFs SET nombre = ?, descripcion = ? WHERE id = ? AND usuario_id = ?",
-                    (nuevo_nombre, nueva_desc, pdf_id, self.usuario_actual)
+                    "UPDATE PDFs SET nombre = ?, descripcion = ?, empresa = ? "
+                    "WHERE id = ? AND usuario_id = ?",
+                    (nuevo_nombre, nueva_desc, nueva_empresa or None,
+                     pdf_id, self.usuario_actual)
                 )
                 if nueva_cedula:
                     self.cursor.execute(
-                        """UPDATE Personas SET nombres = ? 
+                        """UPDATE Personas SET nombres = ?
                            WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",
                         (nuevos_nombres, pdf_id)
                     )
@@ -2136,10 +2230,11 @@ class AppDBPDF:
                 self.conn.rollback()
                 Notification(edit_win, "❌ Error", str(exc), notification_type="error")
 
+        # [AJUSTE VISUAL] - Botones de guardar/cancelar en editar PDF (width, height)
         ctk.CTkButton(
             edit_win, text="💾 Guardar Cambios",
             command=guardar,
-            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            fg_color=COLOR_PRIMARY, hover_color="#1b5e20",
             text_color="white", font=("Arial", 12, "bold"),
             corner_radius=8, width=260, height=42
         ).pack(pady=(8, 4))
@@ -2147,7 +2242,7 @@ class AppDBPDF:
         ctk.CTkButton(
             edit_win, text="Cancelar",
             command=edit_win.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color="#616161", hover_color="#424242",
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=260, height=36
         ).pack(pady=(0, 20))
@@ -2203,16 +2298,8 @@ class AppDBPDF:
                          if encriptado else bytes(datos_enc))
                 with open(dest, 'wb') as f:
                     f.write(datos)
-                self.root.after(0, lambda: Notification(
-                    self.root, "✅ Exportado",
-                    f"PDF exportado a:\n{dest}",
-                    notification_type="success", duration=4000
-                ))
-                self.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
-                    ("Exportar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
-                )
-                self.conn.commit()
+                # Programar notificación y escritura de auditoría en el hilo principal
+                self.root.after(0, lambda: self._finalizar_exportacion(pdf_id, dest))
             except Exception as e:
                 self.root.after(0, lambda err=e: Notification(
                     self.root, "❌ Error",
@@ -2223,6 +2310,22 @@ class AppDBPDF:
                 self.root.after(0, self.progress_bar.stop)
 
         threading.Thread(target=export_task, daemon=True).start()
+
+    def _finalizar_exportacion(self, pdf_id: int, dest: str):
+        """Registra la auditoría de exportación y notifica al usuario (hilo principal)."""
+        try:
+            self.cursor.execute(
+                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
+                ("Exportar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
+            )
+            self.conn.commit()
+        except Exception:
+            pass
+        Notification(
+            self.root, "✅ Exportado",
+            f"PDF exportado a:\n{dest}",
+            notification_type="success", duration=4000
+        )
 
     def slide_in_frame(self, frame, start_relx=1.0, end_relx=0.0, steps=20, callback=None):
         """Anima el deslizamiento de un frame"""
@@ -2253,7 +2356,7 @@ class AppDBPDF:
 
     def on_intro_click(self, event=None):
         """Evento al hacer clic en intro"""
-        self.frame_intro.pack_forget()
+        self._hide_all_frames()
         self.mostrar_inicial()
 
 # ═══════════════════════════════════════════════════════════════════════════════

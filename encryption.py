@@ -1,5 +1,5 @@
 
-#  utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 encryption.py - Módulo de Encriptación
 Gestiona encriptación AES-256 (Fernet) de PDFs y datos sensibles.
@@ -14,7 +14,7 @@ from cryptography.fernet import Fernet
 
 # Número de iteraciones PBKDF2 para derivación de clave de archivo
 _PBKDF2_ITERATIONS = 600_000
-# Salt fijo por aplicación (la clave maestra es la contraseña del usuario)
+# Salt fijo por aplicación (la clave maestra es el nombre de usuario)
 _APP_SALT = b"DatenJager_v3_AES256_salt_2024"
 
 
@@ -54,5 +54,3 @@ class EncryptionManager:
             return decrypted
         except Exception as e:
             raise Exception(f"Error desencriptando datos: {e}")
-        
-        # Copyright (c) 2024 DatenJäger. All rights reserved.
