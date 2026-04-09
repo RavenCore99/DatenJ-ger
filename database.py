@@ -1,8 +1,8 @@
 
-#  utf-8 -*-
+
 """
-database.py - Módulo de Base de Datos
-Gestiona toda la conexión y operaciones con SQLite
+database.py - Modulo de Base de Datos
+Gestion de toda la conexion y operaciones con SQLite
 """
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 
@@ -14,7 +14,7 @@ import secrets
 from datetime import datetime
 
 def conectar_db():
-    """Conecta a la base de datos SQLite"""
+    # conecta a la base de datos SQLite
     if getattr(sys, 'frozen', False):
         basepath = sys.MEIPASS
     else:
@@ -24,11 +24,11 @@ def conectar_db():
     conn = sqlite3.connect(dbpath, check_same_thread=False)
     cursor = conn.cursor()
 
-    # Pragmas de rendimiento: WAL para una mejor concurrencia, sincronización NORMAL para mayor velocidad.
+    # pragmas de rendimiento: WAL para una mejor concurrencia, sincronización NORMAL para mayor velocidad.
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
 
-    # Crear tabla de usuarios con 2FA y seguimiento de intentos fallidos
+    #  tabla de usuarios con 2FA y seguimiento de intentos fallidos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +58,7 @@ def conectar_db():
     if 'locked_until' not in columns:
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN locked_until TEXT")
 
-    # Crear tabla de Personas
+    #  tabla de Personas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Personas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +67,7 @@ def conectar_db():
         )
     ''')
 
-    # Crear tabla de PDFs con encriptación
+    #  tabla de PDFs con encriptación
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS PDFs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +91,7 @@ def conectar_db():
     if 'persona_id' not in columns:
         cursor.execute("ALTER TABLE PDFs ADD COLUMN persona_id INTEGER REFERENCES Personas(id) ON DELETE SET NULL")
 
-    # Crear tabla de Etiquetas
+    #  tabla de Etiquetas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Etiquetas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,7 +99,7 @@ def conectar_db():
         )
     ''')
 
-    # Crear tabla de PDF_Etiquetas
+    #  tabla de PDF_Etiquetas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS PDF_Etiquetas (
             pdf_id INTEGER,
@@ -110,7 +110,7 @@ def conectar_db():
         )
     ''')
 
-    # Crear tabla de Auditoría
+    # tabla de Auditoria
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Auditoria (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -121,7 +121,7 @@ def conectar_db():
         )
     ''')
 
-    # Crear índices
+    # índices
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_usuario ON PDFs(usuario_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_fecha ON PDFs(fecha_subida)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_persona ON PDFs(persona_id)")
@@ -131,20 +131,20 @@ def conectar_db():
     return conn, cursor
 
 def hash_contrasena(contrasena):
-    """Hashea una contraseña usando PBKDF2-HMAC-SHA256 con salt aleatorio.
-    Retorna una cadena 'pbkdf2:salt_hex:hash_hex' para almacenamiento seguro.
-    Mantiene compatibilidad retroactiva con hashes SHA256 legacy (sin prefijo).
-    """
+    # Hashea una contraseña usando PBKDF2-HMAC-SHA256 con salt aleatorio
+    # Retorna una cadena 'pbkdf2:salt_hex:hash_hex' para almacenamiento seguro
+    # Mantiene compatiblidad retroactiva con hashes SHA256 legacy 
+    
     salt = secrets.token_hex(16)
     dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
     return f"pbkdf2:{salt}:{dk.hex()}"
 
 
 def verify_contrasena(contrasena, stored_hash):
-    """Verifica una contraseña contra el hash almacenado.
-    Soporta tanto el formato moderno PBKDF2 como el legacy SHA256 sin salt.
-    Retorna (ok: bool, needs_rehash: bool).
-    """
+    # verifica una contraseña contra el hash almacenado.
+    # soporta tanto el formato moderno PBKDF2 como el legacy SHA256 sin salt.
+    # retorna (ok: bool, needs_rehash: bool).
+    
     if stored_hash.startswith("pbkdf2:"):
         parts = stored_hash.split(":")
         if len(parts) != 3:
@@ -160,7 +160,7 @@ def verify_contrasena(contrasena, stored_hash):
         return ok, ok  # needs_rehash=True cuando la contraseña coincide
 
 def format_size(bytes_size):
-    """Convierte bytes a formato legible"""
+    # convierte bytes a formato legible
     if bytes_size is None:
         return "0 B"
 
@@ -172,7 +172,7 @@ def format_size(bytes_size):
     return f"{bytes_size:.1f} TB"
 
 def format_date_friendly(iso_date):
-    """Convierte fecha ISO a formato amigable"""
+    # convierte fecha ISO a formato amigable
     if not iso_date:
         return "Desconocida"
 
@@ -208,20 +208,20 @@ def format_date_friendly(iso_date):
         return iso_date
 
 def ease_in_out(t):
-    """Función de easing in-out"""
+     # f uncion de easing in-out para animaciones suaves (t en [0,1])
     return t ** 2 if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2
 
 
-# ─── Login limitante de velocidad helpers ─────────────────────────────────────────────
+# Login limitante de velocidad helpers 
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
 
 def check_account_locked(cursor, nombre):
-    """Retorna (locked: bool, seconds_remaining: int).
-    Si la cuenta no existe devuelve (False, 0).
-    """
+    # retorna (locked: bool, seconds_remaining: int).
+    # si la cuenta no existe devuelve (False, 0).
+    
     cursor.execute(
         "SELECT failed_attempts, locked_until FROM Usuarios WHERE nombre = ?",
         (nombre,)
@@ -247,7 +247,7 @@ def check_account_locked(cursor, nombre):
 
 
 def record_failed_attempt(cursor, conn, nombre):
-    """Incrementa el contador de intentos fallidos; bloquea la cuenta si se supera el límite."""
+     # incrementa el contador de intentos fallidos; bloquea la cuenta si se supera el límite
     cursor.execute(
         "UPDATE Usuarios SET failed_attempts = failed_attempts + 1 WHERE nombre = ?",
         (nombre,)
@@ -265,7 +265,7 @@ def record_failed_attempt(cursor, conn, nombre):
 
 
 def reset_failed_attempts(cursor, conn, nombre):
-    """Restablece el contador de intentos fallidos tras un login exitoso."""
+     # restablece el contador de intentos fallidos tras un login exitoso
     cursor.execute(
         "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
         (nombre,)
@@ -273,13 +273,13 @@ def reset_failed_attempts(cursor, conn, nombre):
     conn.commit()
 
 
-# ─── Password strength(robustes) validator ─────────────────────────────────────────────
+#  Password strength(robustes) validator 
 
 def password_strength(password: str) -> tuple:
-    """Evalúa la fortaleza de una contraseña.
-    Retorna (score: int 0-4, label: str, color: str).
-    Reglas: longitud ≥8, mayúsculas, minúsculas, dígitos, caracteres especiales.
-    """
+    # evalúa la fortaleza de una contraseña
+    # retorna (score: int 0-4, label: str, color: str)
+    # reglas: longitud ≥8, mayúsculas, minúsculas, dígitos, caracteres especiales
+    
     import re
     score = 0
     if len(password) >= 8:
@@ -294,4 +294,10 @@ def password_strength(password: str) -> tuple:
     labels = {0: "Muy débil", 1: "Débil", 2: "Regular", 3: "Fuerte", 4: "Muy fuerte"}
     colors = {0: "#F44336", 1: "#FF9800", 2: "#FFC107", 3: "#8BC34A", 4: "#4CAF50"}
     return score, labels[score], colors[score]
+
+
+
+
+
+
 # Copyright (c) 2024 DatenJäger. All rights reserved.
