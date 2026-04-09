@@ -1,12 +1,12 @@
 
-# -*- coding: utf-8 -*-
+
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# Prototipo de sistema de gestión documental seguro con 2FA, encriptación AES-256 y UI moderna actualizado
-# --.-.-.-.-.-.-.-.-.-.-.--.-.-.-.-.-.
+# Prototipo de sistema de gestion documental seguro | 2FA | encriptacion AES-256-GCM | UI actualizada|
+ # --.-.-.-.-.-.-.-.-.-.-.--.-.-.-.-.-.
 """
-main.py - Aplicación Principal
-DatenJäger v.2.0. - Sistema de Gestión Documental Seguro
-Con 2FA (Google Authenticator) + Encriptación AES-256 y UI actualizada
+main.py - aplicacion Principal
+DatenJäger v.2.0. - Sistema de Gestion Documental
+
 """
 
 import customtkinter as ctk
@@ -19,12 +19,13 @@ from datetime import datetime
 import hashlib
 import random
 import threading
+import subprocess
 import pyotp
 import qrcode
 from PIL import ImageTk, Image
 from io import BytesIO
 
-# Importar módulos locales
+#  módulos locales
 from config import Config
 from encryption import EncryptionManager
 from database import (conectar_db, hash_contrasena, verify_contrasena,
@@ -35,15 +36,15 @@ from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            GradientBackground, PasswordStrengthBar, ConfirmDialog,
                            get_dynamic_colors)
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN GLOBAL DE CUSTOMTKINTER
-# ═══════════════════════════════════════════════════════════════════════════════
+
+
+# Config global de CustomTkinter
+
 
 ctk.set_default_color_theme("blue")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# DEFINICIÓN DE COLORES
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# Colores definidos
 
 COLOR_BG_LIGHT   = "#f0f4ff"
 COLOR_BG_DARK    = "#1a1a2e"
@@ -55,15 +56,15 @@ COLOR_SUCCESS    = "#4CAF50"
 COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK  = "#e0e0e0"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CLASE PRINCIPAL ACTUALIZADA V.2.0
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# clase principal actualizada  |V.2.0
+
 
 class AppDBPDF:
-    """Aplicación principal v.2.0 con 2FA + Encriptación + UI Moderna"""
+    """v.2.0 con 2FA + Encriptación + UI Moderna"""
 
     def __init__(self, root):
-        """Inicializa la aplicación"""
+        """inicializa la aplicacion"""
         self.root = root
         self.root.title("DatenJäger v.2.0 – Gestión Documental Segura")
         self.root.geometry("1100x760")
@@ -72,7 +73,7 @@ class AppDBPDF:
         window_size = self.config.get("window_size", "1100x760")
         self.root.geometry(window_size)
 
-        # Verifica si los colorees dinámicos están guardados, si no, los genera y guarda
+        # Verifica si los colorees dinamicos estan guardadosa
         theme = self.config.get("theme", "System")
         ctk.set_appearance_mode(theme)
 
@@ -82,8 +83,8 @@ class AppDBPDF:
         self.usuario_nombre = None
         self.usuario_contrasena = None
         self.animating = False
-        self._search_timer = None  # busqueda con debounce
-        self._configure_timer = None  # guarda con debounce
+        self._search_timer = None                   # busqueda con debounce
+        self._configure_timer = None                    # guarda con debounce
 
         self._setup_atajos()
         self._crear_frames()
@@ -100,33 +101,33 @@ class AppDBPDF:
             self.root.after(100, self._maximize_window)
 
     def get_colors(self):
-        """Obtiene colores dinámicos"""
+        """colores dinmicos"""
         return get_dynamic_colors()
 
     def _setup_atajos(self):
-        """Configura atajos de teclado"""
+                #"""Configura atajos de teclado"""
         self.root.bind("<Control-q>", lambda e: self.cerrar_conexion_y_salir())
         self.root.bind("<Control-f>", lambda e: self.entry_busqueda.focus() if hasattr(self, 'entry_busqueda') else None)
         self.root.bind("<Control-n>", lambda e: self.mostrar_agregar_pdf() if self.usuario_actual else None)
         self.root.bind("<Delete>", lambda e: self.eliminar_pdf() if self.usuario_actual else None)
 
     def toggle_fullscreen(self, event=None):
-        """Alterna fullscreen/maximizado (F11) de forma multiplataforma"""
+                        # alterna fullscreen  (F11) de forma multiplataforma
         try:
-            if os.name == 'nt':  # Windows
+            if os.name == 'nt':                 # Windows
                 state = self.root.state()
                 if state == 'zoomed':
                     self.root.state('normal')
                 else:
                     self.root.state('zoomed')
-            else:  # Linux / macOS
+            else:                                # Linux / macOS
                 zoomed = self.root.attributes('-zoomed')
                 self.root.attributes('-zoomed', not zoomed)
         except Exception:
             pass
 
     def _maximize_window(self):
-        """Maximiza la ventana de forma multiplataforma"""
+                                        # maximiza la ventana de forma multiplataforma"""
         try:
             if os.name == 'nt':
                 self.root.state('zoomed')
@@ -136,16 +137,16 @@ class AppDBPDF:
             pass
 
     def _on_window_configure(self, event=None):
-        """Persiste el tamaño/estado de ventana cuando cambia, con debounce"""
+                        # Persiste el tamaño/estado de ventana cuando cambia | con debounce
         if event is None or event.widget is not self.root:
             return
-        # cancela cualquier guardado pendiente para evitar múltiples escrituras rápidas
+                        # cancela cualquier guardado pendiente para evitar múltiples escrituras rápidas
         if self._configure_timer:
             self.root.after_cancel(self._configure_timer)
         self._configure_timer = self.root.after(500, self._save_window_state)
 
     def _save_window_state(self):
-        """Guarda el tamaño y el estado maximizado de la ventana"""
+                        # guarda el tamaño y el estado maximizado de la ventana             
         self._configure_timer = None
         try:
             maximized = False
@@ -163,10 +164,10 @@ class AppDBPDF:
             pass
 
     def _crear_frames(self):
-        """Crea todos los frames de la aplicación"""
+                    # Crea todos los frames de la aplicación
         colors = self.get_colors()
 
-        # ── INTRO ──────────────────────────────────────────────────────────────
+        # ── INTRO ─ # por ajustar
         self.frame_intro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
         self.frame_intro.pack(expand=True, fill="both")
 
@@ -191,7 +192,7 @@ class AppDBPDF:
 
         self.access_text = ctk.CTkLabel(
             intro_card,
-            text="Sistema de Gestión Documental Seguro\nAES-256 · 2FA · PBKDF2",
+            text="Sistema de Gestión Documental Seguro\nAES-256-GCM · 2FA · PBKDF2",
             text_color="#c8d8ff",
             font=("Arial", 14)
         )
@@ -209,7 +210,7 @@ class AppDBPDF:
             width=260, height=46
         ).pack(pady=(10, 40))
 
-        # ── INICIAL ────────────────────────────────────────────────────────────
+        # ─ INICIAL ─
         self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_inicial = GradientBackground(
@@ -265,12 +266,12 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             card_inicial,
-            text="v.2.0 – AES-256 + PBKDF2 + 2FA",
+            text="v.2.0 – AES-256-GCM + PBKDF2 + 2FA",
             font=("Arial", 9),
             text_color=("#9E9E9E", "#666666")
         ).pack(pady=(16, 28))
 
-        # ── LOGIN ──────────────────────────────────────────────────────────────
+        # ── LOGIN ───
         self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_login = GradientBackground(
@@ -351,7 +352,7 @@ class AppDBPDF:
             corner_radius=8, width=320, height=38
         ).pack(pady=(0, 28))
 
-        # ── 2FA ───────────────────────────────────────────────────────────────
+                         # ── 2FA ───
         self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_2fa = GradientBackground(
@@ -388,7 +389,7 @@ class AppDBPDF:
         self.entry_2fa_code.pack(pady=(0, 6))
         self.entry_2fa_code.bind("<Return>", lambda e: self.verificar_2fa())
 
-        # TOTP countdown ring (label showing seconds remaining)
+                     # TOTP countdown ring 
         self._totp_timer_label = ctk.CTkLabel(
             card_2fa, text="⏳ 30s", font=("Arial", 10),
             text_color=colors["text_secondary"]
@@ -426,7 +427,7 @@ class AppDBPDF:
             corner_radius=8, width=280, height=36
         ).pack(pady=(0, 28))
 
-        # ── REGISTRO ───────────────────────────────────────────────────────────
+        # REGISTER --_-
         self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_reg = GradientBackground(
@@ -488,7 +489,7 @@ class AppDBPDF:
                 self.entry_contrasena_registro, "_show_pw_reg")
         ).pack(side="left", padx=(4, 0))
 
-        # Password strength bar
+        # password strength bar
         self._pw_strength_bar = PasswordStrengthBar(card_reg)
         self._pw_strength_bar.pack(fill="x", padx=40, pady=(4, 8))
         self.entry_contrasena_registro.bind(
@@ -513,7 +514,7 @@ class AppDBPDF:
             corner_radius=8, width=340, height=36
         ).pack(pady=(0, 28))
 
-        # ── SETUP 2FA ──────────────────────────────────────────────────────────
+        # ── SETUP 2FA ──
         self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_s2fa = GradientBackground(
@@ -549,7 +550,7 @@ class AppDBPDF:
             text_color=colors["text_primary"], font=("Arial", 11)
         ).pack(pady=2, anchor="w", padx=20)
 
-        # Se muestra el QR con card y espacio reservado, se actualizará con el QR real al generar el secreto TOTP
+        # se muestra el QR con card y espacio reservado | se actualizara con el QR real al generar el secret TOTP
         qr_card = ctk.CTkFrame(
             self._setup2fa_scroll, fg_color="white", corner_radius=12
         )
@@ -608,8 +609,8 @@ class AppDBPDF:
             text_color=COLOR_WARNING, font=("Arial", 10, "bold")
         ).pack(pady=(4, 16))
 
-        # ── PANEL PRINCIPAL ────────────────────────────────────────────────────
-        # un tuple en CTk automaticamente cambia entre el primer color para modo claro y el segundo para modo oscuro
+        # ── PANEL PRINCIPAL | DASHBOARD ──
+        #   tuple en CTk automaticamente cambia entre el primer color para modo claro y el segundo para modo oscuro
         self.frame_principal = ctk.CTkFrame(self.root, fg_color=(COLOR_BG_LIGHT, COLOR_BG_DARK))
 
         # -- Top navbar --
@@ -635,7 +636,7 @@ class AppDBPDF:
         )
         self._user_badge.pack(side="left", padx=8)
 
-        # Right-side navbar buttons
+                    # Right-side navbar buttons
         def _make_nav_btn(text, command, color="#2e3f8a", hover="#3a4faa"):
             return ctk.CTkButton(
                 navbar, text=text, command=command,
@@ -669,30 +670,30 @@ class AppDBPDF:
             lambda: Notification(
                 self.root,
                 "🔐 DatenJäger v.2.0",
-                "Encriptación AES-256 · PBKDF2 · 2FA\nSeguridad Empresarial Moderna",
+                "Encriptación AES-256-GCM · PBKDF2 · 2FA\nSeguridad Empresarial Moderna",
                 notification_type="info", duration=4000
             )
         ).pack(side="right", padx=4, pady=10)
 
-        # -- Progress bar --
+                # -- Progress bar --
         self.progress_bar = ProgressBarModerno(self.frame_principal)
         self.progress_bar.pack(fill="x", pady=0)
 
-        # -- Dashboard --
+                    # -- Dashboard --
         self.dashboard_container = ctk.CTkFrame(
             self.frame_principal, fg_color="transparent"
         )
         self.dashboard_container.pack(fill="x", padx=14)
 
-        # -- Toolbar (search row + action buttons row) --
+            # -- Toolbar (search row + action buttons row) --
         toolbar_container = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
         toolbar_container.pack(fill="x", padx=14, pady=(6, 0))
 
-        # Row 1: Search bar
+                    # Row 1: Search bar
         search_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
         search_row.pack(fill="x", pady=(0, 4))
 
-        # Search
+                        # Search
         search_card = ctk.CTkFrame(search_row, fg_color=("#e8f0fe", "#1e2a4a"), corner_radius=10)
         search_card.pack(side="left")
 
@@ -718,11 +719,11 @@ class AppDBPDF:
             corner_radius=7, width=70, height=30
         ).pack(side="left", padx=(2, 8), pady=6)
 
-        # Row 2: botones de acion
+                    # Row 2: botones de accion
         actions_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
         actions_row.pack(fill="x", pady=(0, 2))
 
-        # botones de accion
+                        # botones de accion
         actions = [
             ("➕ Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
             ("👁 Ver Todos", self.ver_pdfs,               COLOR_SECONDARY, "#1565c0"),
@@ -739,11 +740,11 @@ class AppDBPDF:
                 corner_radius=7, height=36, width=108
             ).pack(side="left", padx=4)
 
-        # -- TreeView + Preview side panel --
+                         # -- TreeView + Preview side panel --
         content_area = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
         content_area.pack(fill="both", expand=True, padx=14, pady=8)
 
-        # Treeview frame
+                              # Treeview frame
         tree_frame = ctk.CTkFrame(content_area, fg_color=("#ffffff", "#1e2a4a"), corner_radius=10)
         tree_frame.pack(side="left", fill="both", expand=True)
 
@@ -768,7 +769,7 @@ class AppDBPDF:
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.tree.bind("<Button-3>", self._show_context_menu)
 
-        # Right-click context menu
+                        # Right-click context menu
         self._ctx_menu = tk.Menu(self.root, tearoff=0)
         self._ctx_menu.add_command(label="📂 Abrir / Desencriptar", command=self.abrir_pdf_doble_click)
         self._ctx_menu.add_command(label="ℹ️  Ver Detalles",         command=self.mostrar_detalles_pdf)
@@ -777,7 +778,7 @@ class AppDBPDF:
         self._ctx_menu.add_separator()
         self._ctx_menu.add_command(label="🗑️  Eliminar",             command=self.eliminar_pdf)
 
-        # Preview / detail sidebar
+                        # Preview / detail sidebar
         self._preview_panel = ctk.CTkFrame(
             content_area, fg_color=("#e8f0fe", "#1a2540"),
             corner_radius=10, width=230
@@ -845,7 +846,7 @@ class AppDBPDF:
             corner_radius=7, width=160, height=34
         ).pack(pady=4)
 
-        # -- Status bar --
+                            # -- Status bar --
         self.status = ctk.CTkLabel(
             self.frame_principal,
             text="✅ Listo",
@@ -856,7 +857,7 @@ class AppDBPDF:
         self.status.pack(side="bottom", fill="x", padx=16, pady=(2, 6))
 
     def actualizar_colores_dinamicos(self):
-        """Actualiza los colores dinámicos cuando cambia el tema"""
+        # actualiza los colores dinasmicos cuando cambia el tema
         colors = self.get_colors()
 
         # frame_principal
@@ -869,12 +870,12 @@ class AppDBPDF:
         if self.usuario_actual:
             self.ver_pdfs()
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
     # HELPERS: NAVIGATION
-    # ═══════════════════════════════════════════════════════════════════════════
+  
 
     def _hide_all_frames(self):
-        """Oculta todos los marcos de nivel superior y restablece el diseño."""
+         #oculta todos los marcos de nivel superior y restablece el diseño
         for f in [self.frame_intro, self.frame_inicial, self.frame_login,
                   self.frame_2fa, self.frame_setup_2fa, self.frame_principal,
                   self.frame_registro]:
@@ -882,12 +883,12 @@ class AppDBPDF:
             f.place_forget()
         self.root.update()
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
     # HELPERS: TREEVIEW Estilismo y clasificacion
-    # ═══════════════════════════════════════════════════════════════════════════
+   
 
     def _apply_treeview_style(self):
-        """Aplica un estilo ttk dinámico al TreeView para que coincida con el tema activo."""
+                    # Aplica un estilo ttk dinamico al TreeView para que coincida con el tema activo
         style = ttk.Style()
         mode = ctk.get_appearance_mode()
 
@@ -932,16 +933,16 @@ class AppDBPDF:
             self.tree.tag_configure('oddrow',  background=odd_bg)
 
     def _setup_treeview_sorting(self):
-        """Permite ordenar haciendo clic en cada encabezado de columna de TreeView."""
+                     # permite ordenar haciendo clic en cada encabezado de columna de TreeView
         for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"):
             self.tree.heading(col, text=col,
                               command=lambda c=col: self._sort_column(c, False))
 
     def _sort_column(self, col, reverse):
-        """Ordena las filas de TreeView por la columna especificada."""
+                        # ordena las filas de TreeView por la columna especificada
         data = [(self.tree.set(k, col), k) for k in self.tree.get_children('')]
         try:
-            # Intente ordenar numéricamente la columna ID; si no, utilice la ordenación por cadena para todo lo demás.
+            # intenta ordenar numericamente si es la columna ID, de lo contrario ordena alfabeticamente ignorando mayusculas
             if col == "ID":
                 data.sort(key=lambda x: int(x[0]), reverse=reverse)
             else:
@@ -953,15 +954,15 @@ class AppDBPDF:
             self.tree.move(k, '', index)
             self.tree.item(k, tags=('evenrow' if index % 2 == 0 else 'oddrow',))
 
-        # Cambiar la dirección de ordenación en el siguiente clic.
+        # cambiar la direccion de ordenacion en el siguiente clic.
         self.tree.heading(col, command=lambda: self._sort_column(col, not reverse))
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
     # HELPERS: Datos TREEVIEW 
-    # ═══════════════════════════════════════════════════════════════════════════
+   
 
     def _format_pdf_row(self, row):
-        """ Formatea una tupla de fila de la base de datos para mostrarla en la vista de árbol."""
+        # formatea una tupla de fila de la base de datos para mostrarla en la vista de arbol
         return (
             row[0],
             row[1],
@@ -973,36 +974,36 @@ class AppDBPDF:
         )
 
     def _populate_treeview(self, rows):
-        """ Borra el TreeView e inserta filas formateadas con colores alternos."""
+        # borra el TreeView e inserta filas formateadas con colores alternos
         for item in self.tree.get_children():
             self.tree.delete(item)
         for i, row in enumerate(rows):
             tag = 'evenrow' if i % 2 == 0 else 'oddrow'
             self.tree.insert('', 'end', values=self._format_pdf_row(row), tags=(tag,))
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
     # HELPERS: BUSCA   DEBOUNCE
-    # ═══════════════════════════════════════════════════════════════════════════
+    
 
     def _debounced_search(self, event=None):
-        """Triggers a search 400 ms after the user stops typing"""
+        #t riggers de busuqeda a 400ms despues de que el usuario deje de escribir, para evitar consultas excesivas a la base de datos mientras se escribe
         if self._search_timer:
             self.root.after_cancel(self._search_timer)
         self._search_timer = self.root.after(400, self.buscar_pdfs)
 
-    # ═══════════════════════════════════════════════════════════════════════════
+    
     # HELPERS: UTILIDADES UI 
-    # ═══════════════════════════════════════════════════════════════════════════
+   
 
     def _toggle_pw(self, entry, attr_name):
-        """Activa o desactiva la visibilidad de la contraseña en un widget de entrada."""
+        # activa o desactiva la visibilidad de la contraseña en un widget de entrada
         current = getattr(self, attr_name, False)
         new_val = not current
         setattr(self, attr_name, new_val)
         entry.configure(show="" if new_val else "●")
 
     def _copy_totp_secret(self):
-        """CCopia el secreto TOTP actual al portapapeles."""
+        #   copia el secret TOTP actual al portapapeles
         secret = self.label_secret.cget("text")
         if secret:
             self.root.clipboard_clear()
@@ -1012,7 +1013,7 @@ class AppDBPDF:
                          notification_type="success", duration=2000)
 
     def _start_totp_timer(self):
-        """Actualiza la etiqueta de cuenta regresiva TOTP cada segundo mientras el marco de 2FA esté visible.."""
+        # atualiza la etiqueta de cuenta regresiva TOTP cada segundo mientras el marco de 2FA esté visible
         import time
 
         def tick():
@@ -1030,7 +1031,7 @@ class AppDBPDF:
         tick()
 
     def _show_context_menu(self, event):
-        """Muestra el menú contextual del clic derecho en la vista de árbol.."""
+         # muestra el menu contextual del clic derecho en la vista de arbol
         row = self.tree.identify_row(event.y)
         if row:
             self.tree.selection_set(row)
@@ -1040,7 +1041,7 @@ class AppDBPDF:
                 self._ctx_menu.grab_release()
 
     def _on_tree_select(self, event=None):
-        """Actualiza el panel de vista previa cuando se selecciona una fila.."""
+        # actualiza el panel de vista previa cuando se selecciona una fila
         selected = self.tree.selection()
         if not selected:
             self._reset_preview_panel()
@@ -1058,25 +1059,25 @@ class AppDBPDF:
             f"📅 {fecha}\n"
             f"🪪 Cédula: {cedula or '—'}\n"
             f"👤 {nombres or '—'}\n\n"
-            f"🔒 AES-256 Encriptado"
+            f"🔒 AES-256-GCM Encriptado"
         )
         self._preview_info.configure(text=info)
 
     def _reset_preview_panel(self):
-        """Restablece el panel de vista previa a su estado predeterminado.."""
+        # restablece el panel de vista previa a su estado predeterminado
         colors = self.get_colors()
         self._preview_name.configure(text="—")
         self._preview_info.configure(
             text="Selecciona un PDF\npara ver sus detalles"
         )
 
-    # ═══════════════════════════════════════════════════════════════════════════
+   
     # HELPERS: OPERACIONES PDF (devoluciones de llamada de subprocesos + limpieza de archivos temporales)
-    # ═══════════════════════════════════════════════════════════════════════════
+    
 
     def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
                         cedula, nombres, usuario_actual, window):
-        """Guarda el blob PDF ya cifrado en la base de datos (se ejecuta en el hilo principal)."""
+        # guarda el blob PDF ya cifrado en la base de datos 
         try:
             self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
             result = self.cursor.fetchone()
@@ -1103,7 +1104,7 @@ class AppDBPDF:
 
             self.cursor.execute(
                 "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Agregar PDF (Encriptado AES-256)", pdf_id, usuario_actual,
+                ("Agregar PDF (Encriptado AES-256-GCM)", pdf_id, usuario_actual,
                  datetime.now().isoformat())
             )
             self.conn.commit()
@@ -1115,75 +1116,166 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def _on_pdf_added(self, nombre, window):
-        """Se llama al hilo principal después de que se guarda correctamente un PDF."""
+        # se llama al hilo principal despues de que se guarda correctamente un PDF
         colors = self.get_colors()
         self.status.configure(
             text=f"✅ PDF {nombre} agregado y encriptado",
             text_color=colors["text_primary"]
         )
         Notification(self.root, "✅ Éxito",
-                     f"PDF {nombre} agregado\nEncriptado con AES-256",
+                     f"PDF {nombre} agregado\nEncriptado con AES-256-GCM",
                      notification_type="success")
         window.destroy()
         self.cargar_dashboard()
         self.ver_pdfs()
 
     def _on_pdf_add_error(self, error):
-        """Se llama al hilo principal cuando falla la adición de un PDF."""
+        # se llama al hilo principal cuando falla la adición de un PDF
         Notification(self.root, "❌ Error", str(error), notification_type="error")
         colors = self.get_colors()
         self.status.configure(text="❌ Error al agregar PDF",
                               text_color=colors["text_primary"])
 
     def _on_pdf_opened(self, nombre, temp_file, window):
-        """Se llama en el hilo principal después de que un PDF se descifra y se escribe en el directorio temporal."""
-        if os.name == 'nt':
-            os.startfile(temp_file)
-        else:
-            webbrowser.open(temp_file)
+        # descifrado completo: muestra diálogo 'Abrir con' para que el usuario elija la aplicación
+
+        if not os.path.exists(temp_file) or os.path.getsize(temp_file) == 0:
+            Notification(self.root, "❌ Error",
+                         "El archivo descifrado está vacío o no se pudo escribir",
+                         notification_type="error")
+            return
+
+        if window:
+            window.destroy()
 
         colors = self.get_colors()
         self.status.configure(
-            text=f"✅ Abriendo PDF {nombre} (Desencriptado)",
+            text=f"✅ PDF descifrado: {nombre} — elige cómo abrirlo",
             text_color=colors["text_primary"]
         )
-        Notification(self.root, "✅ PDF abierto",
-                     f"Abriendo {nombre}...\n(Desencriptado con AES-256)",
-                     notification_type="success", duration=2000)
-        if window:
-            window.destroy()
-        # Programar la limpieza de archivos temporales (para darle tiempo al lector de PDF a abrir el archivo).
-        self.root.after(30000, lambda: self._cleanup_temp_file(temp_file))
+
+        #  Dialogo "Abrir con" 
+        dialog = ctk.CTkToplevel(self.root)
+        dialog.title("Abrir PDF con...")
+        dialog.geometry("420x300")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.configure(fg_color=colors["bg_secondary"])
+        dialog.withdraw()
+
+        def _lanzar(app_cmd):
+            # lanza la aplicacion con el archivo y cierra el dialogo
+            try:
+                if isinstance(app_cmd, list):
+                    cmd = app_cmd + [temp_file]
+                else:
+                    cmd = [app_cmd, temp_file]
+                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                dialog.destroy()
+                Notification(self.root, "✅ PDF abierto",
+                             f"{nombre} abierto con éxito",
+                             notification_type="success", duration=3000)
+            except Exception as e:
+                Notification(dialog, "❌ Error", f"No se pudo abrir: {e}",
+                             notification_type="error")
+
+        def _abrir_predeterminado():
+            if os.name == 'nt':
+                os.startfile(temp_file)
+                dialog.destroy()
+            else:
+                _lanzar(['xdg-open'])
+
+        def _elegir_aplicacion():
+            from tkinter import filedialog
+            exe = filedialog.askopenfilename(
+                parent=dialog,
+                title="Seleccionar aplicación",
+                initialdir="/usr/bin",
+            )
+            if exe:
+                _lanzar([exe])
+
+        def _build():
+            ctk.CTkLabel(
+                dialog, text="📄 PDF Descifrado — AES-256-GCM",
+                font=("Arial", 14, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(pady=(22, 4))
+
+            ctk.CTkLabel(
+                dialog, text=nombre,
+                font=("Arial", 11),
+                text_color=COLOR_SECONDARY,
+                wraplength=360
+            ).pack(pady=(0, 18))
+
+            ctk.CTkButton(
+                dialog,
+                text="🌐  Abrir con aplicación predeterminada",
+                command=_abrir_predeterminado,
+                fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=8, width=320, height=42
+            ).pack(pady=6)
+
+            ctk.CTkButton(
+                dialog,
+                text="🔍  Elegir aplicación...",
+                command=_elegir_aplicacion,
+                fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=8, width=320, height=42
+            ).pack(pady=6)
+
+            ctk.CTkButton(
+                dialog,
+                text="Cancelar",
+                command=dialog.destroy,
+                fg_color="#9E9E9E", hover_color="#757575",
+                text_color="white", font=("Arial", 11),
+                corner_radius=8, width=320, height=34
+            ).pack(pady=(6, 20))
+
+            dialog.update_idletasks()
+            dialog.deiconify()
+            dialog.lift()
+            dialog.focus_force()
+            dialog.grab_set()
+
+        dialog.after(250, _build)
+        # limpiar el archivo temporal a los 5 minutos 
+        self.root.after(300000, lambda: self._cleanup_temp_file(temp_file))
 
     def _cleanup_temp_file(self, filepath):
-        """Elimina silenciosamente un archivo temporal si aún existe."""
+        # elimina silenciosamente un archivo temporal si aún existe
         try:
             if os.path.exists(filepath):
                 os.unlink(filepath)
         except Exception:
-            pass  # Es posible que el archivo aún esté abierto en el lector de PDF.
+            pass  # es posible que el archivo aun este abierto en el lector de PDF.
 
     def mostrar_inicial(self):
-        """Muestra la pantalla inicial"""
+        # muestra la pantalla inicial
         self._hide_all_frames()
         self.frame_inicial.pack(expand=True, fill="both")
 
     def mostrar_login(self):
-        """Muestra la pantalla de login"""
+        # muestra la pantalla de login
         self._hide_all_frames()
         self.entry_usuario_login.delete(0, tk.END)
         self.entry_contrasena_login.delete(0, tk.END)
         self.frame_login.pack(expand=True, fill="both")
 
     def mostrar_registro(self):
-        """Muestra la pantalla de registro"""
+        # muestra la pantalla de registro
         self._hide_all_frames()
         self.entry_usuario_registro.delete(0, tk.END)
         self.entry_contrasena_registro.delete(0, tk.END)
         self.frame_registro.pack(expand=True, fill="both")
 
     def registrarse(self):
-        """Registra un nuevo usuario"""
+        # registra un nuevo usuario
         nombre = self.entry_usuario_registro.get().strip()
         contrasena = self.entry_contrasena_registro.get().strip()
 
@@ -1249,7 +1341,7 @@ class AppDBPDF:
                 Notification(self.root, "❌ Error", str(e), notification_type="error")
 
     def login(self):
-        """Inicia sesión (paso 1: validar usuario/contraseña)"""
+        # inicia sesion (paso 1: validar usuario/contraseña)
         nombre = self.entry_usuario_login.get().strip()
         contrasena = self.entry_contrasena_login.get().strip()
 
@@ -1261,7 +1353,7 @@ class AppDBPDF:
             )
             return
 
-        # Consultar bloqueo de cuenta
+        # consultar bloqueo de cuenta
         locked, secs = check_account_locked(self.cursor, nombre)
         if locked:
             mins = secs // 60 + 1
@@ -1284,7 +1376,7 @@ class AppDBPDF:
                 ok, needs_rehash = verify_contrasena(contrasena, hash_stored)
 
                 if ok:
-                    # Recalcular la contraseña SHA-256 heredada en el primer inicio de sesión exitoso.
+                    # recalcular la contraseña SHA-256 heredada en el primer inicio de sesión exitoso.
                     if needs_rehash:
                         new_hash = hash_contrasena(contrasena)
                         self.cursor.execute(
@@ -1338,7 +1430,7 @@ class AppDBPDF:
             Notification(self.root, "❌ Error", str(e), notification_type="error")
 
     def mostrar_setup_2fa(self):
-        """Muestra pantalla para configurar 2FA"""
+        # muestra pantalla para configurar 2FA
         self.totp_secret = pyotp.random_base32()
         totp = pyotp.totp.TOTP(self.totp_secret)
         totp_uri = totp.provisioning_uri(
@@ -1350,12 +1442,12 @@ class AppDBPDF:
         qr.add_data(totp_uri)
         qr.make(fit=True)
 
-        img = qr.make_image(fill_color="black", back_color="white")
+        img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
         img = img.resize((220, 220), Image.LANCZOS)
 
-        photo = ImageTk.PhotoImage(img)
-        self.label_qr.configure(image=photo, text="")
-        self.label_qr.image = photo
+        ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(220, 220))
+        self.label_qr.configure(image=ctk_img, text="")
+        self.label_qr.image = ctk_img
 
         self.label_secret.configure(text=self.totp_secret)
 
@@ -1364,7 +1456,7 @@ class AppDBPDF:
         self.entry_confirm_2fa.focus()
 
     def confirmar_setup_2fa(self):
-        """Confirma y guarda la configuración 2FA"""
+        # confirma y guarda la configuracion
         codigo = self.entry_confirm_2fa.get().strip()
 
         if not codigo or len(codigo) != 6:
@@ -1388,9 +1480,10 @@ class AppDBPDF:
                 )
                 self.conn.commit()
 
-                # Mostrar códigos de respaldo en un cuadro de diálogo moderno
+                # mostrar coSdigos de respaldo y esperar a que el usuario cierre la ventana
                 self._mostrar_codigos_respaldo(backup_codes)
 
+                # La notificacion y la navegación ocurren despues de que el usuario cierra el diálogo
                 Notification(
                     self.root, "✅ 2FA Configurado",
                     "Autenticación 2FA activada correctamente",
@@ -1408,65 +1501,75 @@ class AppDBPDF:
             Notification(self.root, "❌ Error", str(e), notification_type="error")
 
     def _mostrar_codigos_respaldo(self, backup_codes):
-        """Muestra los códigos de respaldo en una ventana moderna."""
+            # muestra los códigos de respaldo en una ventana modal, con opción para copiar al portapapeles
         colors = self.get_colors()
         win = ctk.CTkToplevel(self.root)
         win.title("⚠️ Códigos de Respaldo")
-        win.geometry("440x400")
+        win.geometry("440x420")
         win.resizable(False, False)
-        win.grab_set()
         win.transient(self.root)
         win.configure(fg_color=colors["bg_secondary"])
+        win.withdraw()  # ocultar hasta que el contenido esté listo
 
-        ctk.CTkLabel(
-            win, text="⚠️ Guarda tus Códigos de Respaldo",
-            font=("Arial", 16, "bold"),
-            text_color=COLOR_WARNING
-        ).pack(pady=(20, 8))
-
-        ctk.CTkLabel(
-            win,
-            text="Usa estos códigos si pierdes acceso a tu\naplicación autenticadora. Guárdalos en un lugar seguro.",
-            font=("Arial", 11),
-            text_color=colors["text_secondary"],
-            justify="center"
-        ).pack(padx=20)
-
-        codes_frame = ctk.CTkFrame(win, fg_color=("#f5f5f5", "#1e1e1e"), corner_radius=10)
-        codes_frame.pack(padx=30, pady=12, fill="x")
-
-        for code in backup_codes:
+        def _build():
             ctk.CTkLabel(
-                codes_frame, text=f"  🔑  {code}",
-                font=("Arial", 15, "bold"),
+                win, text="⚠️ Guarda tus Códigos de Respaldo",
+                font=("Arial", 16, "bold"),
                 text_color=COLOR_WARNING
-            ).pack(pady=4)
+            ).pack(pady=(20, 8))
 
-        def copiar_todos():
-            texto = "\n".join(backup_codes)
-            win.clipboard_clear()
-            win.clipboard_append(texto)
-            Notification(win, "📋 Copiado", "Códigos copiados al portapapeles",
-                         notification_type="success", duration=2000)
+            ctk.CTkLabel(
+                win,
+                text="Usa estos códigos si pierdes acceso a tu\naplicación autenticadora. Guárdalos en un lugar seguro.",
+                font=("Arial", 11),
+                text_color=colors["text_secondary"],
+                justify="center"
+            ).pack(padx=20)
 
-        ctk.CTkButton(
-            win, text="📋 Copiar todos",
-            command=copiar_todos,
-            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=200, height=36
-        ).pack(pady=8)
+            codes_frame = ctk.CTkFrame(win, fg_color=("#f5f5f5", "#1e1e1e"), corner_radius=10)
+            codes_frame.pack(padx=30, pady=12, fill="x")
 
-        ctk.CTkButton(
-            win, text="✅ Entendido",
-            command=win.destroy,
-            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
-            text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=200, height=40
-        ).pack(pady=(0, 20))
+            for code in backup_codes:
+                ctk.CTkLabel(
+                    codes_frame, text=f"  🔑  {code}",
+                    font=("Arial", 15, "bold"),
+                    text_color=COLOR_WARNING
+                ).pack(pady=4)
+
+            def copiar_todos():
+                texto = "\n".join(backup_codes)
+                win.clipboard_clear()
+                win.clipboard_append(texto)
+                Notification(win, "📋 Copiado", "Códigos copiados al portapapeles",
+                             notification_type="success", duration=2000)
+
+            ctk.CTkButton(
+                win, text="📋 Copiar todos",
+                command=copiar_todos,
+                fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                text_color="white", font=("Arial", 11, "bold"),
+                corner_radius=8, width=200, height=36
+            ).pack(pady=8)
+
+            ctk.CTkButton(
+                win, text="✅ Entendido",
+                command=win.destroy,
+                fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=8, width=200, height=40
+            ).pack(pady=(0, 20))
+
+            win.update_idletasks()
+            win.deiconify()   # mostrar con todo el contenido ya renderizado
+            win.lift()
+            win.focus_force()
+            win.grab_set()
+
+        win.after(250, _build)  # esperar a que CTkToplevel termine su init interno
+        win.wait_window()
 
     def verificar_2fa(self):
-        """Verifica código 2FA en login"""
+        # verifica codigo 2FA en login
         codigo = self.entry_2fa_code.get().strip()
 
         if not codigo or len(codigo) != 6:
@@ -1514,7 +1617,7 @@ class AppDBPDF:
             )
 
     def usar_codigo_respaldo(self):
-        """Usa un código de respaldo"""
+        # usa un codigo de respaldo
         from tkinter.simpledialog import askstring
         codigo = askstring(
             "Código de Respaldo",
@@ -1569,19 +1672,19 @@ class AppDBPDF:
             )
 
     def completar_login(self):
-        """Completa el proceso de login"""
+         # completa el proceso de login
         self._hide_all_frames()
         self.frame_principal.pack(expand=True, fill="both")
         colors = self.get_colors()
         self.status.configure(text=f"✅ Sesión activa: {self.usuario_nombre}",
                               text_color=colors["text_primary"])
-        # Update user badge in navbar
+        # update user badge in navbar
         if hasattr(self, '_user_badge'):
             self._user_badge.configure(text=f" 👤 {self.usuario_nombre} ")
         Notification(
             self.root,
             "✅ Sesión Iniciada",
-            f"Bienvenido, {self.usuario_nombre}!\n2FA verificado – AES-256 activo",
+            f"Bienvenido, {self.usuario_nombre}!\n2FA verificado – AES-256-GCM activo",
             notification_type="success",
             duration=3000
         )
@@ -1589,7 +1692,7 @@ class AppDBPDF:
         self.ver_pdfs()
 
     def _logout(self):
-        """Cierra la sesión del usuario actual"""
+            # cierra la sesion del usuario actual
         dlg = ConfirmDialog(
             self.root,
             "🚪 Cerrar Sesión",
@@ -1614,7 +1717,7 @@ class AppDBPDF:
             )
 
     def cargar_dashboard(self):
-        """Carga el dashboard"""
+         # carga el dashboard
         for widget in self.dashboard_container.winfo_children():
             widget.destroy()
 
@@ -1636,9 +1739,9 @@ class AppDBPDF:
         add_window.title("➕ Agregar PDF")
         add_window.geometry("500x580")
         add_window.resizable(False, False)
-        add_window.grab_set()
         add_window.transient(self.root)
         add_window.configure(fg_color=colors["bg_secondary"])
+        add_window.withdraw()
 
         ctk.CTkLabel(
             add_window,
@@ -1649,7 +1752,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             add_window,
-            text="El archivo se encriptará con AES-256 antes de guardarse",
+            text="El archivo se encriptará con AES-256-GCM antes de guardarse",
             font=("Arial", 10),
             text_color=COLOR_SECONDARY
         ).pack(pady=(0, 12))
@@ -1696,7 +1799,7 @@ class AppDBPDF:
 
         ctk.CTkButton(
             add_window,
-            text="✅  Agregar y Encriptar (AES-256)",
+            text="✅  Agregar y Encriptar (AES-256-GCM)",
             command=lambda: self.procesar_agregar_pdf(add_window),
             fg_color=COLOR_SECONDARY,
             hover_color="#1565c0",
@@ -1714,8 +1817,12 @@ class AppDBPDF:
             corner_radius=8, width=180, height=34
         ).pack(pady=(0, 16))
 
+        add_window.after(250, lambda w=add_window: (
+            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
+        ) if w.winfo_exists() else None)
+
     def seleccionar_archivo(self):
-        """Selecciona un archivo PDF"""
+         # selecciona un archivo PDF
         self.selected_file = filedialog.askopenfilename(
             filetypes=[("PDF files", "*.pdf")]
         )
@@ -1723,7 +1830,7 @@ class AppDBPDF:
             self.label_file.configure(text=f"📄 {os.path.basename(self.selected_file)}")
 
     def procesar_agregar_pdf(self, window):
-        """Procesa la adición de un PDF: encripta en segundo plano, guarda en BD en hilo principal"""
+        # procesa la adicion de un PDF: encripta en segundo plano, guarda en BD en hilo principal
         if not self.selected_file:
             Notification(self.root, "❌ Error", "Selecciona un archivo PDF",
                          notification_type="error")
@@ -1740,9 +1847,9 @@ class AppDBPDF:
 
         self.progress_bar.start("Encriptando y agregando PDF...")
 
-        # Capturar el estado para el hilo en segundo plano para evitar el cierre de atributos.
+        # capturar el estado para el hilo en segundo plano para evitar el cierre de atributos
 
-        # Esto podría cambiar mientras el hilo se ejecuta.      
+        # esto podría cambiar mientras el hilo se ejecuta 
         selected_file  = self.selected_file
         usuario_nombre = self.usuario_nombre
         usuario_actual = self.usuario_actual
@@ -1754,7 +1861,7 @@ class AppDBPDF:
                 datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
                 tamano    = len(datos_originales)
                 nombre    = os.path.basename(selected_file)
-                # Transferir la escritura de la base de datos al hilo principal.
+                # transferir la escritura de la base de datos al hilo principal
                 self.root.after(0, lambda: self._save_pdf_to_db(
                     datos_enc, tamano, nombre, descripcion,
                     cedula, nombres, usuario_actual, window
@@ -1766,7 +1873,7 @@ class AppDBPDF:
         threading.Thread(target=encrypt_task, daemon=True).start()
 
     def ver_pdfs(self):
-        """Muestra todos los PDFs"""
+        # muestra todos los PDFs
         if not self.usuario_actual:
             return
 
@@ -1796,7 +1903,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def buscar_pdfs(self):
-        """Busca PDFs según término"""
+        # busca PDFs según termino
         term = self.entry_busqueda.get().strip()
 
         if not term:
@@ -1839,7 +1946,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def mostrar_detalles_pdf(self):
-        """Muestra detalles de un PDF"""
+        # muestra detalles de un PDF
         selected = self.tree.selection()
 
         if not selected:
@@ -1858,9 +1965,9 @@ class AppDBPDF:
         details_window.title("ℹ️ Detalles del PDF")
         details_window.geometry("460x440")
         details_window.resizable(False, False)
-        details_window.grab_set()
         details_window.transient(self.root)
         details_window.configure(fg_color=colors["bg_secondary"])
+        details_window.withdraw()
 
         ctk.CTkLabel(
             details_window, text="📋 Detalles del Documento",
@@ -1898,7 +2005,7 @@ class AppDBPDF:
         info_row("📅  Fecha:", fecha)
         info_row("🪪  Cédula:", cedula)
         info_row("👤  Nombres:", nombres)
-        info_row("🔒  Encriptación:", "AES-256 (Fernet)")
+        info_row("🔒  Encriptación:", "AES-256-GCM")
 
         btn_row = ctk.CTkFrame(details_window, fg_color="transparent")
         btn_row.pack(pady=14)
@@ -1927,8 +2034,12 @@ class AppDBPDF:
             corner_radius=8, width=200, height=36
         ).pack(pady=(0, 16))
 
+        details_window.after(250, lambda w=details_window: (
+            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
+        ) if w.winfo_exists() else None)
+
     def abrir_pdf_doble_click(self):
-        """Abre un PDF con doble click"""
+        # abre un PDF con doble click
         selected = self.tree.selection()
 
         if not selected:
@@ -1939,7 +2050,7 @@ class AppDBPDF:
         self.abrir_pdf_id(pdf_id)
 
     def abrir_pdf_id(self, pdf_id, window=None):
-        """Abre un PDF: consulta BD en hilo principal, desencripta en segundo plano"""
+        # abre un PDF: consulta BD en hilo principal, desencripta en segundo plano
         self.progress_bar.start("Desencriptando PDF...")
 
         try:
@@ -1963,9 +2074,6 @@ class AppDBPDF:
 
         def decrypt_task():
             try:
-                # bytes() garantiza que tengamos un objeto bytes real independientemente de
-
-                # si SQLite devolvió bytes o un búfer memoryview.
                 datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
                          if encriptado else bytes(datos_enc))
                 temp_file = os.path.join(tempfile.gettempdir(), nombre)
@@ -1987,7 +2095,7 @@ class AppDBPDF:
         threading.Thread(target=decrypt_task, daemon=True).start()
 
     def eliminar_pdf(self):
-        """Elimina un PDF seleccionado usando el diálogo moderno"""
+         # Elimina un PDF seleccionado usando el dialogo 
         selected = self.tree.selection()
 
         if not selected:
@@ -2044,7 +2152,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def editar_pdf(self):
-        """Abre diálogo para editar los metadatos de un PDF"""
+        # abre dialogo para editar los metadatos de un PDF
         selected = self.tree.selection()
 
         if not selected:
@@ -2063,9 +2171,9 @@ class AppDBPDF:
         edit_win.title("✏️ Editar Metadatos del PDF")
         edit_win.geometry("480x460")
         edit_win.resizable(False, False)
-        edit_win.grab_set()
         edit_win.transient(self.root)
         edit_win.configure(fg_color=colors["bg_secondary"])
+        edit_win.withdraw()
 
         ctk.CTkLabel(
             edit_win, text="✏️ Editar Metadatos",
@@ -2152,8 +2260,12 @@ class AppDBPDF:
             corner_radius=8, width=260, height=36
         ).pack(pady=(0, 20))
 
+        edit_win.after(250, lambda w=edit_win: (
+            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
+        ) if w.winfo_exists() else None)
+
     def exportar_pdf(self):
-        """Exporta (guarda) el PDF desencriptado a una ruta elegida por el usuario"""
+         # exporta (guarda) el PDF desencriptado a una ruta elegida por el usuario
         selected = self.tree.selection()
 
         if not selected:
@@ -2225,7 +2337,7 @@ class AppDBPDF:
         threading.Thread(target=export_task, daemon=True).start()
 
     def slide_in_frame(self, frame, start_relx=1.0, end_relx=0.0, steps=20, callback=None):
-        """Anima el deslizamiento de un frame"""
+         # anima el deslizamiento de un frame
         frame.place(relx=start_relx, rely=0.0, relwidth=1.0, relheight=1.0)
 
         def animate(step=0):
@@ -2242,23 +2354,23 @@ class AppDBPDF:
         animate()
 
     def cerrar_conexion_y_salir(self):
-        """Cierra la conexión y sale"""
+         # c ierra la conexion y sale
         self.cerrar_conexion()
         self.root.destroy()
 
     def cerrar_conexion(self):
-        """Cierra la conexión a la BD"""
+        # cierra la conexion a la BD
         if hasattr(self, 'conn') and self.conn:
             self.conn.close()
 
     def on_intro_click(self, event=None):
-        """Evento al hacer clic en intro"""
+        # evento al hacer clic en intro
         self.frame_intro.pack_forget()
         self.mostrar_inicial()
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # PUNTO DE ENTRADA
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
