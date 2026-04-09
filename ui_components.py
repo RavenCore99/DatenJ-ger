@@ -1,25 +1,25 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-ui_components.py - Módulo de Componentes UI
-Contiene widgets reutilizables para la interfaz
-Colores adaptados dinámicamente a modo oscuro/claro
-"""
+
+
+
+# Modulo de Componentes UI
+# Contiene widgets reutilizables para la interfaz
+# Colores adaptados dinamicamente a modo oscuro/claro
+
 
 import customtkinter as ctk
 import tkinter as tk
 import os
 import math
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# FUNCIÓN PARA OBTENER COLORES DINÁMICOS SEGÚN EL TEMA
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# FUNCIon PARA OBTENER COLORES DINAMICOS SEGuN EL TEMA
+
 
 def get_dynamic_colors():
-    """Retorna colores dinámicos según el tema actual"""
+    # retorna colores dinamicos según el tema actual
     mode = ctk.get_appearance_mode()
     
-    if mode == "Dark":
+    if mode == "Dark": # Dark mode
         return {
             "bg_primary": "#1a1a2e",
             "bg_secondary": "#16213e",
@@ -50,7 +50,7 @@ def get_dynamic_colors():
             "gradient_end": "#bbdefb",
         }
 
-# Colores estáticos (no cambian)
+# colores estaticos (no cambian)
 COLOR_BG_LIGHT = "#f0f4ff"
 COLOR_BG_DARK = "#1a1a2e"
 COLOR_PRIMARY = "#4CAF50"
@@ -61,16 +61,16 @@ COLOR_SUCCESS = "#4CAF50"
 COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK = "#e0e0e0"
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # CLASE DE NOTIFICACIÓN APILABLE
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 # Registro global de notificaciones activas para apilarlas
 _active_notifications = []
 
 
 class Notification(ctk.CTkToplevel):
-    """Notificaciones emergentes tipo toast con apilamiento automático"""
+    # notificaciones emergentes tipo toast con apilamiento automatico
 
     COLORS = {
         "success": ("#2e7d32", "#43a047"),
@@ -150,7 +150,7 @@ class Notification(ctk.CTkToplevel):
             justify="left"
         ).pack(anchor="w", pady=(4, 0))
 
-        # Thin progress bar at bottom to indicate duration
+        # barra de progreso de duracion
         self._progress = ctk.CTkProgressBar(
             content, height=3,
             fg_color=colors[0],
@@ -169,7 +169,7 @@ class Notification(ctk.CTkToplevel):
 
     @staticmethod
     def _reposition_all():
-        """Repositions all active notifications in a stack at the bottom-right."""
+        # repossciona todas las notificaciones activas en una pila en la esquina inferior derecha
         screen_w = _active_notifications[0].winfo_screenwidth() if _active_notifications else 1920
         screen_h = _active_notifications[0].winfo_screenheight() if _active_notifications else 1080
         notif_w = 380
@@ -200,12 +200,12 @@ class Notification(ctk.CTkToplevel):
             Notification._reposition_all()
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # WIDGET INDICADOR DE FORTALEZA DE CONTRASEÑA
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 class PasswordStrengthBar:
-    """Indicador visual de fortaleza de contraseña"""
+    # indicador visual de fortaleza de contraseña
 
     def __init__(self, parent):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -242,12 +242,12 @@ class PasswordStrengthBar:
         self.frame.grid(**kwargs)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # FONDO CON GRADIENTE ANIMADO
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 class GradientBackground(tk.Canvas):
-    """Canvas que pinta un gradiente vertical animado que oscila suavemente."""
+    # canvas que pinta un gradiente vertical animado que oscila suavemente
 
     def __init__(self, parent, colors_dark=None, colors_light=None, **kwargs):
         super().__init__(parent, highlightthickness=0, **kwargs)
@@ -259,7 +259,7 @@ class GradientBackground(tk.Canvas):
         self._animate()
 
     def _lerp_color(self, c1, c2, t):
-        """Interpola entre dos colores hex"""
+        # interpola entre dos colores hex
         r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
         r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
         r = int(r1 + (r2 - r1) * t)
@@ -276,7 +276,7 @@ class GradientBackground(tk.Canvas):
         mode = ctk.get_appearance_mode()
         palette = self._colors_dark if mode == "Dark" else self._colors_light
 
-        # Pick the two gradient pairs to blend between
+        # agarra los dos pares de colores de gradiente para mezclar entre ellos
         t_cycle = (math.sin(self._phase) + 1) / 2  # 0..1
         c1a, c1b = palette[0]
         c2a, c2b = palette[1]
@@ -300,12 +300,12 @@ class GradientBackground(tk.Canvas):
         self._draw()
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # CLASE DE BARRA DE PROGRESO MEJORADA
-# ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ProgressBarModerno:
-    """Barra de progreso moderna con porcentaje"""
+    # barra de progreso moderna con porcentaje
 
     def __init__(self, parent, width=600, height=20):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -345,7 +345,7 @@ class ProgressBarModerno:
         self.animating = False
 
     def start(self, text="Procesando..."):
-        """Inicia animación"""
+        # inicia animacion
         if not self.animating:
             colors = get_dynamic_colors()
             self.label_text.configure(text=text, text_color=colors["text_primary"])
@@ -354,7 +354,7 @@ class ProgressBarModerno:
             self.frame.pack(fill="x", pady=5)
 
     def stop(self):
-        """Detiene animación"""
+        # detiene animacion
         if self.animating:
             self.progress.stop()
             self.animating = False
@@ -364,12 +364,12 @@ class ProgressBarModerno:
         self.frame.pack(**kwargs)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+#                    #
 # CLASE DASHBOARD
-# ═══════════════════════════════════════════════════════════════════════════════
+#                    #
 
 class DashboardWidget:
-    """Widget de dashboard con estadísticas"""
+    # widget de dashboard con estadisticas
 
     def __init__(self, parent, cursor, usuario_id):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -378,7 +378,7 @@ class DashboardWidget:
         self.construir_dashboard()
 
     def construir_dashboard(self):
-        """Construye el dashboard"""
+        # construye el dashboard
         from database import format_size
         
         colors = get_dynamic_colors()
@@ -412,14 +412,14 @@ class DashboardWidget:
             ("📄", f"{total_pdfs}", "PDFs Totales",  COLOR_SECONDARY),
             ("💾", format_size(total_size), "Espacio Usado", "#7B1FA2"),
             ("👥", f"{total_personas}", "Personas",    "#00897B"),
-            ("🔒", "AES-256", "Encriptación",           COLOR_PRIMARY),
+            ("🔒", "AES-256-GCM", "Encriptación",        COLOR_PRIMARY),
         ]
 
         for icono, valor, label, color in tarjetas:
             self.crear_tarjeta(stats_frame, icono, valor, label, color)
 
     def crear_tarjeta(self, parent, icono, valor, label, color):
-        """Crea una tarjeta de estadística"""
+        # crea una tarjeta de estadística
         card = ctk.CTkFrame(parent, fg_color=color, corner_radius=12)
         card.pack(side="left", padx=6, pady=6, expand=True, fill="both")
 
@@ -448,12 +448,12 @@ class DashboardWidget:
         self.frame.pack(**kwargs)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# DIALOG DE CONFIRMACIÓN MODERNO
-# ═══════════════════════════════════════════════════════════════════════════════
+
+# DIALOG DE CONFIRMACION ACTUALIZADO
+
 
 class ConfirmDialog(ctk.CTkToplevel):
-    """Diálogo de confirmación moderno que sustituye a messagebox.askyesno"""
+    # dialogo de confirmacion moderno que sustituye a messagebox.askyesno
 
     def __init__(self, parent, title, message, confirm_text="Sí, confirmar",
                  cancel_text="Cancelar", danger=True):
@@ -462,51 +462,55 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.title(title)
         self.geometry("420x220")
         self.resizable(False, False)
-        self.grab_set()
         self.transient(parent)
-
-        if os.name != 'nt':
-            self.attributes('-topmost', True)
-
         colors = get_dynamic_colors()
         self.configure(fg_color=colors["bg_secondary"])
+        self.withdraw()
 
-        ctk.CTkLabel(
-            self, text=title, font=("Arial", 16, "bold"),
-            text_color=colors["text_primary"]
-        ).pack(pady=(20, 6))
+        def _build():
+            ctk.CTkLabel(
+                self, text=title, font=("Arial", 16, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(pady=(20, 6))
 
-        ctk.CTkLabel(
-            self, text=message, font=("Arial", 11),
-            text_color=colors["text_secondary"],
-            wraplength=360, justify="center"
-        ).pack(padx=20, pady=6)
+            ctk.CTkLabel(
+                self, text=message, font=("Arial", 11),
+                text_color=colors["text_secondary"],
+                wraplength=360, justify="center"
+            ).pack(padx=20, pady=6)
 
-        btn_row = ctk.CTkFrame(self, fg_color="transparent")
-        btn_row.pack(pady=20)
+            btn_row = ctk.CTkFrame(self, fg_color="transparent")
+            btn_row.pack(pady=20)
 
-        ctk.CTkButton(
-            btn_row,
-            text=cancel_text,
-            command=self._cancel,
-            fg_color="#9E9E9E",
-            hover_color="#757575",
-            width=160, height=38,
-            font=("Arial", 11, "bold"),
-            corner_radius=8
-        ).pack(side="left", padx=8)
+            ctk.CTkButton(
+                btn_row,
+                text=cancel_text,
+                command=self._cancel,
+                fg_color="#9E9E9E",
+                hover_color="#757575",
+                width=160, height=38,
+                font=("Arial", 11, "bold"),
+                corner_radius=8
+            ).pack(side="left", padx=8)
 
-        ctk.CTkButton(
-            btn_row,
-            text=confirm_text,
-            command=self._confirm,
-            fg_color=COLOR_ERROR if danger else COLOR_PRIMARY,
-            hover_color="#C62828" if danger else "#388E3C",
-            width=160, height=38,
-            font=("Arial", 11, "bold"),
-            corner_radius=8
-        ).pack(side="left", padx=8)
+            ctk.CTkButton(
+                btn_row,
+                text=confirm_text,
+                command=self._confirm,
+                fg_color=COLOR_ERROR if danger else COLOR_PRIMARY,
+                hover_color="#C62828" if danger else "#388E3C",
+                width=160, height=38,
+                font=("Arial", 11, "bold"),
+                corner_radius=8
+            ).pack(side="left", padx=8)
 
+            self.update_idletasks()
+            self.deiconify()
+            self.lift()
+            self.focus_force()
+            self.grab_set()
+
+        self.after(250, _build)
         self.wait_window()
 
     def _confirm(self):
@@ -517,3 +521,4 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.result = False
         self.destroy()
 
+# Copyright (c) 2024 DatenJäger. All rights reserved.
