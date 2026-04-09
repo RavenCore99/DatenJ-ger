@@ -81,7 +81,7 @@ class AppDBPDF:
         self._db_lock = threading.Lock()  
         self.usuario_actual = None
         self.usuario_nombre = None
-        self.usuario_contrasena = None
+        self._session_key   = None   # clave AES-256 derivada en login; nunca la contraseña plana
         self.animating = False
         self._search_timer = None                   # busqueda con debounce
         self._configure_timer = None                    # guarda con debounce
@@ -1321,8 +1321,12 @@ class AppDBPDF:
             )
             self.conn.commit()
 
+            # derivar session key desde el salt del hash recién creado (nunca guardar la contraseña plana)
+            parts = hash_pass.split(":")
+            user_salt = parts[1] if len(parts) == 3 else nombre
+            self._session_key = EncryptionManager.derive_session_key(contrasena, user_salt)
+
             self.usuario_nombre = nombre
-            self.usuario_contrasena = contrasena
             self.mostrar_setup_2fa()
 
             Notification(
@@ -1377,6 +1381,7 @@ class AppDBPDF:
 
                 if ok:
                     # recalcular la contraseña SHA-256 heredada en el primer inicio de sesión exitoso.
+                    new_hash = None
                     if needs_rehash:
                         new_hash = hash_contrasena(contrasena)
                         self.cursor.execute(
@@ -1393,9 +1398,43 @@ class AppDBPDF:
 
                     reset_failed_attempts(self.cursor, self.conn, nombre)
 
+                    # derivar session key AES-256 desde el salt del hash almacenado.
+                    # si el hash acaba de migrarse usamos new_hash (ya tiene formato pbkdf2:).
+                    ref_hash = new_hash if new_hash else hash_stored
+                    ref_parts = ref_hash.split(":") if ref_hash.startswith("pbkdf2:") else []
+                    user_salt = ref_parts[1] if len(ref_parts) == 3 else nombre
+                    session_key = EncryptionManager.derive_session_key(contrasena, user_salt)
+
+                    # migración automática ENC: → ENCK: (datos cifrados con contraseña plana en #1).
+                    # se hace aquí porque es el único momento donde contraseña y session key coexisten.
+                    if totp_enabled:
+                        self.cursor.execute(
+                            "SELECT totp_secret, backup_codes FROM Usuarios WHERE id = ?",
+                            (usuario_id,)
+                        )
+                        totp_row = self.cursor.fetchone()
+                        if totp_row:
+                            totp_enc, backup_enc = totp_row
+                            migrated = False
+                            if totp_enc and totp_enc.startswith("ENC:"):
+                                plain    = EncryptionManager.decrypt_str(totp_enc, contrasena)
+                                totp_enc = EncryptionManager.encrypt_str_with_key(plain, session_key)
+                                migrated = True
+                            if backup_enc and backup_enc.startswith("ENC:"):
+                                plain      = EncryptionManager.decrypt_str(backup_enc, contrasena)
+                                backup_enc = EncryptionManager.encrypt_str_with_key(plain, session_key)
+                                migrated   = True
+                            if migrated:
+                                self.cursor.execute(
+                                    "UPDATE Usuarios SET totp_secret = ?, backup_codes = ? WHERE id = ?",
+                                    (totp_enc, backup_enc, usuario_id)
+                                )
+                                self.conn.commit()
+
+                    # guardar solo la clave derivada; la contraseña original no se retiene
+                    self._session_key   = session_key
                     self.usuario_actual = usuario_id
                     self.usuario_nombre = nombre
-                    self.usuario_contrasena = contrasena
 
                     if totp_enabled:
                         self._hide_all_frames()
@@ -1474,9 +1513,9 @@ class AppDBPDF:
                 backup_codes = [f"{random.randint(100000, 999999)}" for _ in range(5)]
                 backup_codes_str = ",".join(backup_codes)
 
-                # cifrar totp_secret y backup_codes antes de guardar en la DB
-                secret_enc   = EncryptionManager.encrypt_str(self.totp_secret,  self.usuario_contrasena)
-                backups_enc  = EncryptionManager.encrypt_str(backup_codes_str, self.usuario_contrasena)
+                # cifrar totp_secret y backup_codes con la session key (nunca con la contraseña plana)
+                secret_enc   = EncryptionManager.encrypt_str_with_key(self.totp_secret,  self._session_key)
+                backups_enc  = EncryptionManager.encrypt_str_with_key(backup_codes_str, self._session_key)
 
                 self.cursor.execute(
                     "UPDATE Usuarios SET totp_secret = ?, totp_enabled = 1, backup_codes = ? WHERE nombre = ?",
@@ -1593,8 +1632,8 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result:
-                # descifrar el secret (soporta legacy en texto plano si el usuario no ha re-configurado 2FA)
-                totp_secret = EncryptionManager.decrypt_str(result[0], self.usuario_contrasena)
+                # descifrar el secret con la session key (ENCK:) o devolver tal cual si es legacy plaintext
+                totp_secret = EncryptionManager.decrypt_str_with_key(result[0], self._session_key)
                 totp = pyotp.TOTP(totp_secret)
 
                 if totp.verify(codigo):
@@ -1641,16 +1680,16 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result and result[0]:
-                # descifrar backup_codes (soporta legacy en texto plano)
-                codes_raw    = EncryptionManager.decrypt_str(result[0], self.usuario_contrasena)
+                # descifrar backup_codes con la session key (ENCK:) o plaintext legacy
+                codes_raw    = EncryptionManager.decrypt_str_with_key(result[0], self._session_key)
                 backup_codes = codes_raw.split(",")
 
                 if codigo in backup_codes:
                     backup_codes.remove(codigo)
                     backup_codes_str = ",".join(backup_codes)
 
-                    # recifrar la lista actualizada antes de guardar
-                    backups_enc = EncryptionManager.encrypt_str(backup_codes_str, self.usuario_contrasena)
+                    # recifrar la lista actualizada con la session key
+                    backups_enc = EncryptionManager.encrypt_str_with_key(backup_codes_str, self._session_key)
                     self.cursor.execute(
                         "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
                         (backups_enc, self.usuario_actual)
@@ -1711,9 +1750,9 @@ class AppDBPDF:
             danger=False
         )
         if dlg.result:
-            self.usuario_actual = None
-            self.usuario_nombre = None
-            self.usuario_contrasena = None
+            self.usuario_actual  = None
+            self.usuario_nombre  = None
+            self._session_key    = None
             # Clear treeview
             for item in self.tree.get_children():
                 self.tree.delete(item)
