@@ -521,4 +521,202 @@ class ConfirmDialog(ctk.CTkToplevel):
         self.result = False
         self.destroy()
 
+
+
+# VISOR DE PDF INLINE
+
+
+class PDFViewerWindow(ctk.CTkToplevel):
+    """Visor de PDF inline con PyMuPDF.
+    Renderiza páginas como imágenes directamente desde bytes en memoria —
+    el documento descifrado nunca se escribe al disco.
+    """
+
+    _ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+    _ZOOM_DEFAULT = 2  # índice inicial → 1.0x
+
+    def __init__(self, parent, pdf_bytes: bytes, nombre: str):
+        import fitz  # PyMuPDF — importado localmente para detectar error temprano
+        super().__init__(parent)
+
+        self.title(f"📄 {nombre}")
+        self.geometry("940x740")
+        self.minsize(640, 500)
+        self.transient(parent)
+
+        # documento abierto desde bytes, sin archivo temporal
+        self._doc      = fitz.open(stream=pdf_bytes, filetype="pdf")
+        self._page_idx = 0
+        self._zoom_idx = self._ZOOM_DEFAULT
+        self._tk_img   = None  # referencia retenida para evitar GC de Tkinter
+
+        colors = get_dynamic_colors()
+        self.configure(fg_color=colors["bg_primary"])
+
+        self._build_ui(nombre, colors)
+        self.update_idletasks()
+        self._render_page()
+
+        # atajos de teclado
+        self.bind("<Left>",  lambda e: self._prev_page())
+        self.bind("<Right>", lambda e: self._next_page())
+        self.bind("<Prior>", lambda e: self._prev_page())   # Re Pág
+        self.bind("<Next>",  lambda e: self._next_page())   # Av Pág
+        self.bind("<equal>", lambda e: self._zoom_in())
+        self.bind("<plus>",  lambda e: self._zoom_in())
+        self.bind("<minus>", lambda e: self._zoom_out())
+
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.focus_force()
+
+    # ── construcción de UI ────────────────────────────────────────────────
+
+    def _build_ui(self, nombre, colors):
+        # barra superior: nombre del archivo y contador de páginas
+        top = ctk.CTkFrame(self, fg_color=colors["bg_card"], corner_radius=0, height=50)
+        top.pack(fill="x")
+        top.pack_propagate(False)
+
+        ctk.CTkLabel(
+            top,
+            text=f"📄  {nombre}",
+            font=("Arial", 13, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(side="left", padx=18, pady=10)
+
+        self._page_label = ctk.CTkLabel(
+            top,
+            text=f"Página 1 / {len(self._doc)}",
+            font=("Arial", 11),
+            text_color=colors["text_secondary"]
+        )
+        self._page_label.pack(side="right", padx=18)
+
+        # barra de controles: navegación y zoom
+        ctrl = ctk.CTkFrame(self, fg_color=colors["bg_secondary"], corner_radius=0, height=48)
+        ctrl.pack(fill="x")
+        ctrl.pack_propagate(False)
+
+        _btn = dict(width=38, height=34, corner_radius=7, font=("Arial", 14, "bold"),
+                    text_color="white")
+
+        ctk.CTkButton(ctrl, text="◀", command=self._prev_page,
+                      fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                      **_btn).pack(side="left", padx=(14, 4), pady=7)
+
+        ctk.CTkButton(ctrl, text="▶", command=self._next_page,
+                      fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                      **_btn).pack(side="left", padx=(4, 14), pady=7)
+
+        # divisor visual
+        ctk.CTkFrame(ctrl, width=2, height=26,
+                     fg_color=colors["text_secondary"]).pack(side="left", padx=4)
+
+        ctk.CTkLabel(ctrl, text="Zoom:", font=("Arial", 11),
+                     text_color=colors["text_secondary"]).pack(side="left", padx=(8, 4))
+
+        ctk.CTkButton(ctrl, text="−", command=self._zoom_out,
+                      fg_color="#7B1FA2", hover_color="#6A1B9A",
+                      **_btn).pack(side="left", padx=4, pady=7)
+
+        self._zoom_label = ctk.CTkLabel(
+            ctrl, text="100%",
+            font=("Arial", 11, "bold"),
+            text_color=COLOR_PRIMARY, width=52
+        )
+        self._zoom_label.pack(side="left", padx=2)
+
+        ctk.CTkButton(ctrl, text="+", command=self._zoom_in,
+                      fg_color="#7B1FA2", hover_color="#6A1B9A",
+                      **_btn).pack(side="left", padx=4, pady=7)
+
+        # área del canvas con barras de desplazamiento
+        canvas_outer = ctk.CTkFrame(self, fg_color=colors["bg_primary"], corner_radius=0)
+        canvas_outer.pack(fill="both", expand=True)
+
+        bg_canvas = "#2a2a2a" if ctk.get_appearance_mode() == "Dark" else "#d8d8d8"
+        self._canvas = tk.Canvas(
+            canvas_outer,
+            bg=bg_canvas,
+            highlightthickness=0,
+            cursor="hand2"
+        )
+
+        v_sb = ctk.CTkScrollbar(canvas_outer, command=self._canvas.yview)
+        h_sb = ctk.CTkScrollbar(canvas_outer, orientation="horizontal",
+                                 command=self._canvas.xview)
+
+        self._canvas.configure(yscrollcommand=v_sb.set, xscrollcommand=h_sb.set)
+
+        v_sb.pack(side="right",  fill="y")
+        h_sb.pack(side="bottom", fill="x")
+        self._canvas.pack(fill="both", expand=True)
+
+        # scroll con rueda del ratón (Linux y Windows/Mac)
+        self._canvas.bind("<MouseWheel>", self._on_scroll)
+        self._canvas.bind("<Button-4>",   self._on_scroll)
+        self._canvas.bind("<Button-5>",   self._on_scroll)
+
+    # ── renderizado ───────────────────────────────────────────────────────
+
+    def _render_page(self):
+        import fitz
+        from PIL import Image, ImageTk
+
+        zoom = self._ZOOM_LEVELS[self._zoom_idx]
+        page = self._doc[self._page_idx]
+        pix  = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+
+        img          = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        self._tk_img = ImageTk.PhotoImage(img)
+
+        self._canvas.delete("all")
+
+        # centrar página horizontalmente en el canvas
+        cw = max(self._canvas.winfo_width(), pix.width + 40)
+        cx = cw // 2
+        self._canvas.create_image(cx, 20, anchor="n", image=self._tk_img)
+        self._canvas.configure(scrollregion=(0, 0, cw, pix.height + 40))
+        self._canvas.yview_moveto(0)
+
+        self._page_label.configure(
+            text=f"Página {self._page_idx + 1} / {len(self._doc)}"
+        )
+        self._zoom_label.configure(text=f"{int(zoom * 100)}%")
+
+    # ── controles ─────────────────────────────────────────────────────────
+
+    def _prev_page(self):
+        if self._page_idx > 0:
+            self._page_idx -= 1
+            self._render_page()
+
+    def _next_page(self):
+        if self._page_idx < len(self._doc) - 1:
+            self._page_idx += 1
+            self._render_page()
+
+    def _zoom_in(self):
+        if self._zoom_idx < len(self._ZOOM_LEVELS) - 1:
+            self._zoom_idx += 1
+            self._render_page()
+
+    def _zoom_out(self):
+        if self._zoom_idx > 0:
+            self._zoom_idx -= 1
+            self._render_page()
+
+    def _on_scroll(self, event):
+        # compatibilidad Linux (Button-4/5) y Windows/Mac (delta)
+        if event.num == 4 or getattr(event, 'delta', 0) > 0:
+            self._canvas.yview_scroll(-1, "units")
+        else:
+            self._canvas.yview_scroll(1, "units")
+
+    def _on_close(self):
+        # liberar el documento de memoria al cerrar
+        self._doc.close()
+        self.destroy()
+
+
 # Copyright (c) 2024 DatenJäger. All rights reserved.
