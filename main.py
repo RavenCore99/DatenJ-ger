@@ -1445,6 +1445,7 @@ class AppDBPDF:
                         self.completar_login()
                 else:
                     record_failed_attempt(self.cursor, self.conn, nombre)
+                    self._audit("Login fallido: contraseña incorrecta", usuario_id=usuario_id)
                     locked2, secs2 = check_account_locked(self.cursor, nombre)
                     if locked2:
                         Notification(
@@ -1525,6 +1526,7 @@ class AppDBPDF:
 
                 # mostrar coSdigos de respaldo y esperar a que el usuario cierre la ventana
                 self._mostrar_codigos_respaldo(backup_codes)
+                self._audit("Configuración 2FA completada")
 
                 # La notificacion y la navegación ocurren despues de que el usuario cierra el diálogo
                 Notification(
@@ -1637,8 +1639,10 @@ class AppDBPDF:
                 totp = pyotp.TOTP(totp_secret)
 
                 if totp.verify(codigo):
+                    self._audit("2FA verificado exitosamente")
                     self.completar_login()
                 else:
+                    self._audit("2FA fallido: código incorrecto o expirado")
                     Notification(
                         self.root,
                         "❌ Error",
@@ -1695,6 +1699,7 @@ class AppDBPDF:
                         (backups_enc, self.usuario_actual)
                     )
                     self.conn.commit()
+                    self._audit("Login con código de respaldo")
 
                     Notification(
                         self.root,
@@ -1705,6 +1710,7 @@ class AppDBPDF:
 
                     self.completar_login()
                 else:
+                    self._audit("Código de respaldo inválido")
                     Notification(
                         self.root,
                         "❌ Error",
@@ -1718,6 +1724,20 @@ class AppDBPDF:
                 str(e),
                 notification_type="error"
             )
+
+    def _audit(self, accion: str, pdf_id=None, usuario_id=None):
+        # registra una acción en la tabla Auditoria.
+        # usa self.usuario_actual por defecto; acepta usuario_id explícito para eventos pre-login.
+        # silencia errores para no interrumpir flujos críticos de UI.
+        try:
+            uid = usuario_id if usuario_id is not None else self.usuario_actual
+            self.cursor.execute(
+                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
+                (accion, pdf_id, uid, datetime.now().isoformat())
+            )
+            self.conn.commit()
+        except Exception:
+            pass
 
     def completar_login(self):
          # completa el proceso de login
@@ -1736,6 +1756,7 @@ class AppDBPDF:
             notification_type="success",
             duration=3000
         )
+        self._audit("Login exitoso")
         self.cargar_dashboard()
         self.ver_pdfs()
 
@@ -1750,6 +1771,7 @@ class AppDBPDF:
             danger=False
         )
         if dlg.result:
+            self._audit("Logout")
             self.usuario_actual  = None
             self.usuario_nombre  = None
             self._session_key    = None
@@ -2118,6 +2140,7 @@ class AppDBPDF:
             return
 
         datos_enc, nombre, encriptado = result
+        self._audit("Abrir / Descifrar PDF", pdf_id=pdf_id)
         usuario_nombre = self.usuario_nombre
 
         def decrypt_task():
