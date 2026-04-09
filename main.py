@@ -1474,9 +1474,13 @@ class AppDBPDF:
                 backup_codes = [f"{random.randint(100000, 999999)}" for _ in range(5)]
                 backup_codes_str = ",".join(backup_codes)
 
+                # cifrar totp_secret y backup_codes antes de guardar en la DB
+                secret_enc   = EncryptionManager.encrypt_str(self.totp_secret,  self.usuario_contrasena)
+                backups_enc  = EncryptionManager.encrypt_str(backup_codes_str, self.usuario_contrasena)
+
                 self.cursor.execute(
                     "UPDATE Usuarios SET totp_secret = ?, totp_enabled = 1, backup_codes = ? WHERE nombre = ?",
-                    (self.totp_secret, backup_codes_str, self.usuario_nombre)
+                    (secret_enc, backups_enc, self.usuario_nombre)
                 )
                 self.conn.commit()
 
@@ -1589,7 +1593,8 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result:
-                totp_secret = result[0]
+                # descifrar el secret (soporta legacy en texto plano si el usuario no ha re-configurado 2FA)
+                totp_secret = EncryptionManager.decrypt_str(result[0], self.usuario_contrasena)
                 totp = pyotp.TOTP(totp_secret)
 
                 if totp.verify(codigo):
@@ -1636,15 +1641,19 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result and result[0]:
-                backup_codes = result[0].split(",")
+                # descifrar backup_codes (soporta legacy en texto plano)
+                codes_raw    = EncryptionManager.decrypt_str(result[0], self.usuario_contrasena)
+                backup_codes = codes_raw.split(",")
 
                 if codigo in backup_codes:
                     backup_codes.remove(codigo)
                     backup_codes_str = ",".join(backup_codes)
 
+                    # recifrar la lista actualizada antes de guardar
+                    backups_enc = EncryptionManager.encrypt_str(backup_codes_str, self.usuario_contrasena)
                     self.cursor.execute(
                         "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
-                        (backup_codes_str, self.usuario_actual)
+                        (backups_enc, self.usuario_actual)
                     )
                     self.conn.commit()
 
