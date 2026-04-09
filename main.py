@@ -13,7 +13,8 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 import hashlib
 import random
 import threading
@@ -28,7 +29,8 @@ from encryption import EncryptionManager
 from database import (conectar_db, hash_contrasena, verify_contrasena,
                       format_size, format_date_friendly, ease_in_out,
                       check_account_locked, record_failed_attempt,
-                      reset_failed_attempts, password_strength)
+                      reset_failed_attempts, password_strength,
+                      set_trust_token, check_trust_token, clear_trust_token)
 from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            GradientBackground, PasswordStrengthBar, ConfirmDialog,
                            PDFViewerWindow, get_dynamic_colors)
@@ -661,6 +663,12 @@ class AppDBPDF:
             toggle_theme
         )
         btn_theme.pack(side="right", padx=4, pady=10)
+
+        _make_nav_btn(
+            "👤  Mi Cuenta",
+            self.abrir_configuracion_cuenta,
+            color="#1565c0", hover="#0d47a1"
+        ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
             "ℹ️  Acerca de",
@@ -1326,6 +1334,19 @@ class AppDBPDF:
                     self.usuario_nombre = nombre
 
                     if totp_enabled:
+                        # verificar si el dispositivo tiene un token de confianza vigente
+                        trust_hours = self.config.get("2fa_trust_hours", 0)
+                        if trust_hours > 0:
+                            local_tokens = self.config.get("trust_tokens", {})
+                            local_token  = local_tokens.get(nombre)
+                            if local_token and check_trust_token(
+                                self.cursor, usuario_id, local_token
+                            ):
+                                # dispositivo de confianza → omitir pantalla 2FA
+                                self._audit("Login con token de confianza (2FA omitido)")
+                                self.completar_login()
+                                return
+
                         self._hide_all_frames()
                         self.entry_2fa_code.delete(0, tk.END)
                         self.frame_2fa.pack(expand=True, fill="both")
@@ -1529,6 +1550,7 @@ class AppDBPDF:
 
                 if totp.verify(codigo):
                     self._audit("2FA verificado exitosamente")
+                    self._save_trust_token()
                     self.completar_login()
                 else:
                     self._audit("2FA fallido: código incorrecto o expirado")
@@ -1589,6 +1611,7 @@ class AppDBPDF:
                     )
                     self.conn.commit()
                     self._audit("Login con código de respaldo")
+                    self._save_trust_token()
 
                     Notification(
                         self.root,
@@ -1613,6 +1636,394 @@ class AppDBPDF:
                 str(e),
                 notification_type="error"
             )
+
+    # ══════════════════════════════════════════════════════════════
+    # PANEL DE CONFIGURACIÓN DE CUENTA
+    # ══════════════════════════════════════════════════════════════
+
+    def abrir_configuracion_cuenta(self):
+        """Abre el panel de configuración de cuenta con tres secciones."""
+        if not self.usuario_actual:
+            return
+
+        colors = self.get_colors()
+        win = ctk.CTkToplevel(self.root)
+        win.title("👤 Configuración de Cuenta")
+        win.geometry("520x560")
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.configure(fg_color=colors["bg_secondary"])
+        win.withdraw()
+
+        def _build():
+            ctk.CTkLabel(
+                win, text=f"👤  {self.usuario_nombre}",
+                font=("Arial", 17, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(pady=(20, 4))
+
+            ctk.CTkLabel(
+                win, text="Configuración de Cuenta",
+                font=("Arial", 11), text_color=colors["text_secondary"]
+            ).pack(pady=(0, 14))
+
+            tabs = ctk.CTkTabview(win, width=480, height=440, corner_radius=12)
+            tabs.pack(padx=18, pady=(0, 18), fill="both", expand=True)
+
+            tabs.add("🔑 Contraseña")
+            tabs.add("🔐 Códigos 2FA")
+            tabs.add("🛡️ Confianza")
+
+            self._build_tab_contrasena(tabs.tab("🔑 Contraseña"), win, colors)
+            self._build_tab_codigos(tabs.tab("🔐 Códigos 2FA"), colors)
+            self._build_tab_confianza(tabs.tab("🛡️ Confianza"), colors)
+
+            win.update_idletasks()
+            win.deiconify()
+            win.lift()
+            win.focus_force()
+
+        win.after(200, _build)
+
+    def _build_tab_contrasena(self, parent, win, colors):
+        """Tab: cambio de contraseña con verificación TOTP."""
+        ctk.CTkLabel(
+            parent, text="Cambiar Contraseña",
+            font=("Arial", 13, "bold"), text_color=colors["text_primary"]
+        ).pack(pady=(14, 10))
+
+        # Contraseña actual
+        ctk.CTkLabel(parent, text="Contraseña actual",
+                     font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
+                     ).pack(anchor="w", padx=24)
+        entry_actual = ctk.CTkEntry(
+            parent, placeholder_text="Tu contraseña actual",
+            width=360, height=38, show="●", font=("Arial", 11), corner_radius=8
+        )
+        entry_actual.pack(pady=(2, 8))
+
+        # Nueva contraseña
+        ctk.CTkLabel(parent, text="Nueva contraseña",
+                     font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
+                     ).pack(anchor="w", padx=24)
+        entry_nueva = ctk.CTkEntry(
+            parent, placeholder_text="Mínimo 8 caracteres",
+            width=360, height=38, show="●", font=("Arial", 11), corner_radius=8
+        )
+        entry_nueva.pack(pady=(2, 2))
+
+        from ui_components import PasswordStrengthBar
+        pw_bar = PasswordStrengthBar(parent)
+        pw_bar.pack(fill="x", padx=24, pady=(2, 6))
+        entry_nueva.bind("<KeyRelease>", lambda e: pw_bar.update(entry_nueva.get()))
+
+        # Confirmar nueva
+        ctk.CTkLabel(parent, text="Confirmar nueva contraseña",
+                     font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
+                     ).pack(anchor="w", padx=24)
+        entry_confirm = ctk.CTkEntry(
+            parent, placeholder_text="Repite la nueva contraseña",
+            width=360, height=38, show="●", font=("Arial", 11), corner_radius=8
+        )
+        entry_confirm.pack(pady=(2, 8))
+
+        # Código TOTP del autenticador
+        ctk.CTkLabel(parent, text="Código 2FA del autenticador",
+                     font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
+                     ).pack(anchor="w", padx=24)
+        entry_totp = ctk.CTkEntry(
+            parent, placeholder_text="Código de 6 dígitos",
+            width=360, height=38, font=("Arial", 14, "bold"),
+            justify="center", corner_radius=8
+        )
+        entry_totp.pack(pady=(2, 12))
+
+        def aplicar():
+            pw_actual  = entry_actual.get()
+            pw_nueva   = entry_nueva.get()
+            pw_confirm = entry_confirm.get()
+            totp_code  = entry_totp.get().strip()
+
+            # validaciones básicas
+            if not all([pw_actual, pw_nueva, pw_confirm, totp_code]):
+                Notification(win, "⚠️ Campos incompletos",
+                             "Completa todos los campos", notification_type="warning")
+                return
+            if pw_nueva != pw_confirm:
+                Notification(win, "❌ Error", "Las nuevas contraseñas no coinciden",
+                             notification_type="error")
+                return
+            score, label, _ = password_strength(pw_nueva)
+            if score < 2:
+                Notification(win, "⚠️ Contraseña débil",
+                             f"Fortaleza: {label}. Usa mayúsculas, números y símbolos.",
+                             notification_type="warning")
+                return
+
+            try:
+                # 1. verificar contraseña actual
+                self.cursor.execute(
+                    "SELECT contrasena, totp_enabled, totp_secret FROM Usuarios WHERE id = ?",
+                    (self.usuario_actual,)
+                )
+                row = self.cursor.fetchone()
+                if not row:
+                    return
+                hash_stored, totp_enabled, totp_enc = row
+                ok, _ = verify_contrasena(pw_actual, hash_stored)
+                if not ok:
+                    Notification(win, "❌ Error", "Contraseña actual incorrecta",
+                                 notification_type="error")
+                    return
+
+                # 2. verificar código TOTP del autenticador
+                if not totp_enabled or not totp_enc:
+                    Notification(win, "❌ Error",
+                                 "El 2FA no está configurado. Configúralo primero.",
+                                 notification_type="error")
+                    return
+                totp_secret = EncryptionManager.decrypt_str_with_key(
+                    totp_enc, self._session_key
+                )
+                if not pyotp.TOTP(totp_secret).verify(totp_code):
+                    Notification(win, "❌ Código inválido",
+                                 "El código del autenticador es incorrecto o expiró",
+                                 notification_type="error")
+                    return
+
+                # 3. re-hashear contraseña y derivar nueva session key
+                new_hash  = hash_contrasena(pw_nueva)
+                parts     = new_hash.split(":")
+                new_salt  = parts[1] if len(parts) == 3 else self.usuario_nombre
+                new_key   = EncryptionManager.derive_session_key(pw_nueva, new_salt)
+
+                # 4. re-cifrar TOTP secret y backup codes con la nueva clave
+                self.cursor.execute(
+                    "SELECT backup_codes FROM Usuarios WHERE id = ?",
+                    (self.usuario_actual,)
+                )
+                backup_enc_old = self.cursor.fetchone()[0]
+                new_totp_enc   = EncryptionManager.encrypt_str_with_key(totp_secret, new_key)
+                new_backup_enc = backup_enc_old
+                if backup_enc_old:
+                    backup_plain   = EncryptionManager.decrypt_str_with_key(
+                        backup_enc_old, self._session_key
+                    )
+                    new_backup_enc = EncryptionManager.encrypt_str_with_key(
+                        backup_plain, new_key
+                    )
+
+                # 5. guardar todo en DB e invalidar token de confianza
+                self.cursor.execute(
+                    "UPDATE Usuarios SET contrasena = ?, totp_secret = ?, backup_codes = ? "
+                    "WHERE id = ?",
+                    (new_hash, new_totp_enc, new_backup_enc, self.usuario_actual)
+                )
+                clear_trust_token(self.cursor, self.conn, self.usuario_actual)
+                self.conn.commit()
+
+                # limpiar token local del config
+                tokens = self.config.get("trust_tokens", {})
+                tokens.pop(self.usuario_nombre, None)
+                self.config.set("trust_tokens", tokens)
+
+                # 6. actualizar session key en memoria
+                self._session_key = new_key
+                self._audit("Cambio de contraseña")
+
+                Notification(self.root, "✅ Contraseña cambiada",
+                             "Tu contraseña fue actualizada correctamente.\n"
+                             "El token de confianza fue invalidado.",
+                             notification_type="success", duration=4000)
+                win.destroy()
+
+            except Exception as e:
+                Notification(win, "❌ Error", str(e), notification_type="error")
+
+        ctk.CTkButton(
+            parent, text="✅  Cambiar Contraseña",
+            command=aplicar,
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            width=360, height=42, corner_radius=8
+        ).pack(pady=4)
+
+    def _build_tab_codigos(self, parent, colors):
+        """Tab: visualización y regeneración de códigos de respaldo 2FA."""
+        ctk.CTkLabel(
+            parent, text="Códigos de Respaldo 2FA",
+            font=("Arial", 13, "bold"), text_color=colors["text_primary"]
+        ).pack(pady=(14, 4))
+        ctk.CTkLabel(
+            parent,
+            text="Úsalos si no tienes acceso a tu autenticador.\nCada código es de un solo uso.",
+            font=("Arial", 10), text_color=colors["text_secondary"], justify="center"
+        ).pack(pady=(0, 10))
+
+        codes_frame = ctk.CTkFrame(parent, fg_color=colors["bg_card"], corner_radius=10)
+        codes_frame.pack(padx=24, fill="x")
+
+        self._refresh_backup_codes_display(codes_frame, colors)
+
+        def copiar():
+            try:
+                self.cursor.execute(
+                    "SELECT backup_codes FROM Usuarios WHERE id = ?", (self.usuario_actual,)
+                )
+                row = self.cursor.fetchone()
+                if row and row[0]:
+                    plain = EncryptionManager.decrypt_str_with_key(row[0], self._session_key)
+                    self.root.clipboard_clear()
+                    self.root.clipboard_append(plain.replace(",", "\n"))
+                    Notification(parent, "📋 Copiado", "Códigos copiados al portapapeles",
+                                 notification_type="success", duration=2000)
+            except Exception as e:
+                Notification(parent, "❌ Error", str(e), notification_type="error")
+
+        def regenerar():
+            dlg = ConfirmDialog(
+                parent, "🔄 Regenerar Códigos",
+                "¿Generar nuevos códigos de respaldo?\nLos actuales quedarán inválidos.",
+                confirm_text="Regenerar", danger=True
+            )
+            if not dlg.result:
+                return
+            try:
+                nuevos = [f"{random.randint(100000, 999999)}" for _ in range(5)]
+                enc    = EncryptionManager.encrypt_str_with_key(
+                    ",".join(nuevos), self._session_key
+                )
+                self.cursor.execute(
+                    "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
+                    (enc, self.usuario_actual)
+                )
+                self.conn.commit()
+                self._audit("Regeneración de códigos de respaldo")
+                self._refresh_backup_codes_display(codes_frame, colors)
+                Notification(parent, "✅ Códigos regenerados",
+                             "Guarda los nuevos códigos en un lugar seguro.",
+                             notification_type="success")
+            except Exception as e:
+                Notification(parent, "❌ Error", str(e), notification_type="error")
+
+        btn_row = ctk.CTkFrame(parent, fg_color="transparent")
+        btn_row.pack(pady=14)
+        ctk.CTkButton(btn_row, text="📋 Copiar todos", command=copiar,
+                      fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                      text_color="white", font=("Arial", 11, "bold"),
+                      width=166, height=36, corner_radius=8).pack(side="left", padx=6)
+        ctk.CTkButton(btn_row, text="🔄 Regenerar", command=regenerar,
+                      fg_color=COLOR_WARNING, hover_color="#F57C00",
+                      text_color="white", font=("Arial", 11, "bold"),
+                      width=166, height=36, corner_radius=8).pack(side="left", padx=6)
+
+    def _refresh_backup_codes_display(self, codes_frame, colors):
+        """Refresca la lista de códigos de respaldo en el frame dado."""
+        for w in codes_frame.winfo_children():
+            w.destroy()
+        try:
+            self.cursor.execute(
+                "SELECT backup_codes FROM Usuarios WHERE id = ?", (self.usuario_actual,)
+            )
+            row = self.cursor.fetchone()
+            if row and row[0]:
+                plain  = EncryptionManager.decrypt_str_with_key(row[0], self._session_key)
+                codigos = [c for c in plain.split(",") if c.strip()]
+                for c in codigos:
+                    ctk.CTkLabel(
+                        codes_frame, text=f"  🔑  {c}",
+                        font=("Arial", 13, "bold"), text_color=COLOR_WARNING
+                    ).pack(pady=3)
+                ctk.CTkLabel(
+                    codes_frame,
+                    text=f"{len(codigos)} código(s) disponible(s)",
+                    font=("Arial", 9), text_color=colors["text_secondary"]
+                ).pack(pady=(0, 6))
+            else:
+                ctk.CTkLabel(
+                    codes_frame, text="Sin códigos de respaldo registrados",
+                    font=("Arial", 10), text_color=colors["text_secondary"]
+                ).pack(pady=14)
+        except Exception:
+            pass
+
+    def _build_tab_confianza(self, parent, colors):
+        """Tab: configuración del período de confianza de dispositivo 2FA."""
+        ctk.CTkLabel(
+            parent, text="Confianza de Dispositivo",
+            font=("Arial", 13, "bold"), text_color=colors["text_primary"]
+        ).pack(pady=(14, 6))
+        ctk.CTkLabel(
+            parent,
+            text="Tras verificar el 2FA, este dispositivo\n"
+                 "no solicitará el código durante el período elegido.",
+            font=("Arial", 10), text_color=colors["text_secondary"], justify="center"
+        ).pack(pady=(0, 18))
+
+        opciones  = ["Siempre solicitar", "24 horas", "48 horas", "7 días"]
+        horas_map = {"Siempre solicitar": 0, "24 horas": 24, "48 horas": 48, "7 días": 168}
+        horas_inv = {v: k for k, v in horas_map.items()}
+
+        actual_horas = self.config.get("2fa_trust_hours", 0)
+        actual_texto = horas_inv.get(actual_horas, "Siempre solicitar")
+
+        selector = ctk.CTkOptionMenu(
+            parent, values=opciones,
+            width=280, height=40, corner_radius=8,
+            font=("Arial", 12), fg_color=COLOR_SECONDARY,
+            button_color="#1565c0", button_hover_color="#0d47a1"
+        )
+        selector.set(actual_texto)
+        selector.pack(pady=6)
+
+        info_label = ctk.CTkLabel(
+            parent, text="",
+            font=("Arial", 10), text_color=colors["text_secondary"], wraplength=340
+        )
+        info_label.pack(pady=8)
+
+        def guardar_trust():
+            elegido = selector.get()
+            horas   = horas_map.get(elegido, 0)
+            self.config.set("2fa_trust_hours", horas)
+            if horas == 0:
+                # invalidar token activo si se desactiva la confianza
+                clear_trust_token(self.cursor, self.conn, self.usuario_actual)
+                tokens = self.config.get("trust_tokens", {})
+                tokens.pop(self.usuario_nombre, None)
+                self.config.set("trust_tokens", tokens)
+                info_label.configure(text="✅ Siempre se solicitará el código 2FA.")
+            else:
+                info_label.configure(
+                    text=f"✅ Guardado. El código 2FA no se pedirá durante {elegido} "
+                         "tras la próxima verificación exitosa."
+                )
+
+        ctk.CTkButton(
+            parent, text="💾  Guardar preferencia",
+            command=guardar_trust,
+            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+            text_color="white", font=("Arial", 12, "bold"),
+            width=280, height=42, corner_radius=8
+        ).pack(pady=6)
+
+        ctk.CTkLabel(
+            parent,
+            text="⚠️ Cambiar la contraseña invalida\nautomáticamente el token de confianza.",
+            font=("Arial", 9), text_color=COLOR_WARNING, justify="center"
+        ).pack(pady=(14, 0))
+
+    def _save_trust_token(self):
+        """Genera y guarda un token de confianza si el usuario configuró un período."""
+        trust_hours = self.config.get("2fa_trust_hours", 0)
+        if trust_hours <= 0 or not self.usuario_actual:
+            return
+        token   = secrets.token_hex(32)
+        expires = (datetime.now() + timedelta(hours=trust_hours)).isoformat()
+        set_trust_token(self.cursor, self.conn, self.usuario_actual, token, expires)
+        tokens  = self.config.get("trust_tokens", {})
+        tokens[self.usuario_nombre] = token
+        self.config.set("trust_tokens", tokens)
 
     def _audit(self, accion: str, pdf_id=None, usuario_id=None):
         # registra una acción en la tabla Auditoria.
