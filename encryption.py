@@ -95,4 +95,20 @@ class EncryptionManager:
         except Exception as e:
             raise Exception(f"Error desencriptando datos: {e}")
 
+    @staticmethod
+    def encrypt_str(data: str, password: str) -> str:
+        # cifra un string y retorna 'ENC:<base64>' para almacenamiento seguro en DB.
+        # el prefijo 'ENC:' permite detectar valores ya cifrados vs. legacy en texto plano.
+        encrypted = EncryptionManager.encrypt_data(data.encode('utf-8'), password)
+        return "ENC:" + base64.urlsafe_b64encode(encrypted).decode('ascii')
+
+    @staticmethod
+    def decrypt_str(stored: str, password: str) -> str:
+        # descifra un string cifrado con encrypt_str.
+        # si no tiene el prefijo 'ENC:' lo retorna tal cual (compatibilidad con datos legacy).
+        if stored and stored.startswith("ENC:"):
+            encrypted = base64.urlsafe_b64decode(stored[4:])
+            return EncryptionManager.decrypt_data(encrypted, password).decode('utf-8')
+        return stored  # valor legacy en texto plano — sin cambios
+
 # Copyright (c) 2024 DatenJäger. All rights reserved.
