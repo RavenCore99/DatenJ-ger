@@ -57,6 +57,10 @@ def conectar_db():
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN failed_attempts INTEGER DEFAULT 0")
     if 'locked_until' not in columns:
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN locked_until TEXT")
+    if 'trust_token' not in columns:
+        cursor.execute("ALTER TABLE Usuarios ADD COLUMN trust_token TEXT")
+    if 'trust_expires' not in columns:
+        cursor.execute("ALTER TABLE Usuarios ADD COLUMN trust_expires TEXT")
 
     #  tabla de Personas
     cursor.execute('''
@@ -269,6 +273,48 @@ def reset_failed_attempts(cursor, conn, nombre):
     cursor.execute(
         "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
         (nombre,)
+    )
+    conn.commit()
+
+
+# Trust token helpers para confianza de dispositivo 2FA
+
+
+def set_trust_token(cursor, conn, usuario_id: int, token: str, expires_iso: str):
+    # guarda un token de confianza de dispositivo en la DB con su fecha de expiración
+    cursor.execute(
+        "UPDATE Usuarios SET trust_token = ?, trust_expires = ? WHERE id = ?",
+        (token, expires_iso, usuario_id)
+    )
+    conn.commit()
+
+
+def check_trust_token(cursor, usuario_id: int, local_token: str) -> bool:
+    # verifica si el token local coincide con el almacenado en DB y no ha expirado.
+    # retorna True solo si el token es válido y vigente.
+    if not local_token:
+        return False
+    cursor.execute(
+        "SELECT trust_token, trust_expires FROM Usuarios WHERE id = ?",
+        (usuario_id,)
+    )
+    row = cursor.fetchone()
+    if not row or not row[0]:
+        return False
+    db_token, expires_iso = row
+    if db_token != local_token:
+        return False
+    try:
+        return datetime.now() < datetime.fromisoformat(expires_iso)
+    except Exception:
+        return False
+
+
+def clear_trust_token(cursor, conn, usuario_id: int):
+    # invalida el token de confianza del usuario (cambio de contraseña, etc.)
+    cursor.execute(
+        "UPDATE Usuarios SET trust_token = NULL, trust_expires = NULL WHERE id = ?",
+        (usuario_id,)
     )
     conn.commit()
 
