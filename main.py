@@ -13,13 +13,10 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
-import tempfile
-import webbrowser
 from datetime import datetime
 import hashlib
 import random
 import threading
-import subprocess
 import pyotp
 import qrcode
 from PIL import ImageTk, Image
@@ -34,7 +31,7 @@ from database import (conectar_db, hash_contrasena, verify_contrasena,
                       reset_failed_attempts, password_strength)
 from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            GradientBackground, PasswordStrengthBar, ConfirmDialog,
-                           get_dynamic_colors)
+                           PDFViewerWindow, get_dynamic_colors)
 
 
 
@@ -1136,124 +1133,16 @@ class AppDBPDF:
         self.status.configure(text="❌ Error al agregar PDF",
                               text_color=colors["text_primary"])
 
-    def _on_pdf_opened(self, nombre, temp_file, window):
-        # descifrado completo: muestra diálogo 'Abrir con' para que el usuario elija la aplicación
-
-        if not os.path.exists(temp_file) or os.path.getsize(temp_file) == 0:
-            Notification(self.root, "❌ Error",
-                         "El archivo descifrado está vacío o no se pudo escribir",
-                         notification_type="error")
-            return
-
+    def _abrir_visor_pdf(self, pdf_bytes: bytes, nombre: str, window=None):
+        # abre el visor PDF inline con los bytes descifrados — sin escribir al disco
         if window:
             window.destroy()
-
         colors = self.get_colors()
         self.status.configure(
-            text=f"✅ PDF descifrado: {nombre} — elige cómo abrirlo",
+            text=f"✅ PDF cargado: {nombre}",
             text_color=colors["text_primary"]
         )
-
-        #  Dialogo "Abrir con" 
-        dialog = ctk.CTkToplevel(self.root)
-        dialog.title("Abrir PDF con...")
-        dialog.geometry("420x300")
-        dialog.resizable(False, False)
-        dialog.transient(self.root)
-        dialog.configure(fg_color=colors["bg_secondary"])
-        dialog.withdraw()
-
-        def _lanzar(app_cmd):
-            # lanza la aplicacion con el archivo y cierra el dialogo
-            try:
-                if isinstance(app_cmd, list):
-                    cmd = app_cmd + [temp_file]
-                else:
-                    cmd = [app_cmd, temp_file]
-                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                dialog.destroy()
-                Notification(self.root, "✅ PDF abierto",
-                             f"{nombre} abierto con éxito",
-                             notification_type="success", duration=3000)
-            except Exception as e:
-                Notification(dialog, "❌ Error", f"No se pudo abrir: {e}",
-                             notification_type="error")
-
-        def _abrir_predeterminado():
-            if os.name == 'nt':
-                os.startfile(temp_file)
-                dialog.destroy()
-            else:
-                _lanzar(['xdg-open'])
-
-        def _elegir_aplicacion():
-            from tkinter import filedialog
-            exe = filedialog.askopenfilename(
-                parent=dialog,
-                title="Seleccionar aplicación",
-                initialdir="/usr/bin",
-            )
-            if exe:
-                _lanzar([exe])
-
-        def _build():
-            ctk.CTkLabel(
-                dialog, text="📄 PDF Descifrado — AES-256-GCM",
-                font=("Arial", 14, "bold"),
-                text_color=colors["text_primary"]
-            ).pack(pady=(22, 4))
-
-            ctk.CTkLabel(
-                dialog, text=nombre,
-                font=("Arial", 11),
-                text_color=COLOR_SECONDARY,
-                wraplength=360
-            ).pack(pady=(0, 18))
-
-            ctk.CTkButton(
-                dialog,
-                text="🌐  Abrir con aplicación predeterminada",
-                command=_abrir_predeterminado,
-                fg_color=COLOR_PRIMARY, hover_color="#388E3C",
-                text_color="white", font=("Arial", 12, "bold"),
-                corner_radius=8, width=320, height=42
-            ).pack(pady=6)
-
-            ctk.CTkButton(
-                dialog,
-                text="🔍  Elegir aplicación...",
-                command=_elegir_aplicacion,
-                fg_color=COLOR_SECONDARY, hover_color="#1565c0",
-                text_color="white", font=("Arial", 12, "bold"),
-                corner_radius=8, width=320, height=42
-            ).pack(pady=6)
-
-            ctk.CTkButton(
-                dialog,
-                text="Cancelar",
-                command=dialog.destroy,
-                fg_color="#9E9E9E", hover_color="#757575",
-                text_color="white", font=("Arial", 11),
-                corner_radius=8, width=320, height=34
-            ).pack(pady=(6, 20))
-
-            dialog.update_idletasks()
-            dialog.deiconify()
-            dialog.lift()
-            dialog.focus_force()
-            dialog.grab_set()
-
-        dialog.after(250, _build)
-        # limpiar el archivo temporal a los 5 minutos 
-        self.root.after(300000, lambda: self._cleanup_temp_file(temp_file))
-
-    def _cleanup_temp_file(self, filepath):
-        # elimina silenciosamente un archivo temporal si aún existe
-        try:
-            if os.path.exists(filepath):
-                os.unlink(filepath)
-        except Exception:
-            pass  # es posible que el archivo aun este abierto en el lector de PDF.
+        PDFViewerWindow(self.root, pdf_bytes, nombre)
 
     def mostrar_inicial(self):
         # muestra la pantalla inicial
@@ -2147,10 +2036,8 @@ class AppDBPDF:
             try:
                 datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
                          if encriptado else bytes(datos_enc))
-                temp_file = os.path.join(tempfile.gettempdir(), nombre)
-                with open(temp_file, 'wb') as f:
-                    f.write(datos)
-                self.root.after(0, lambda: self._on_pdf_opened(nombre, temp_file, window))
+                # pasar bytes directamente al visor — el PDF descifrado nunca toca el disco
+                self.root.after(0, lambda d=datos: self._abrir_visor_pdf(d, nombre, window))
             except Exception as e:
                 self.root.after(
                     0,
