@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 *.pyo
 config.json
+config.json
 base_datos_pdfs.db
 *.db-wal
 *.db-shm
