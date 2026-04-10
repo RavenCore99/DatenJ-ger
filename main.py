@@ -84,6 +84,9 @@ class AppDBPDF:
         self.animating = False
         self._search_timer = None                   # busqueda con debounce
         self._configure_timer = None                    # guarda con debounce
+        self._idle_timer = None                     # logout automático por inactividad
+        self._idle_warning_timer = None             # advertencia previa al logout
+        self._idle_bind_ids = []                    # IDs de bindings de actividad
 
         self._setup_atajos()
         self._crear_frames()
@@ -668,6 +671,12 @@ class AppDBPDF:
             "👤  Mi Cuenta",
             self.abrir_configuracion_cuenta,
             color="#1565c0", hover="#0d47a1"
+        ).pack(side="right", padx=4, pady=10)
+
+        _make_nav_btn(
+            "📋 Auditoría",
+            self.mostrar_auditoria,
+            color="#37474f", hover="#455a64"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
@@ -2039,6 +2048,88 @@ class AppDBPDF:
         except Exception:
             pass
 
+    # ──────────────────────────────────────────────────────────────
+    # TIMEOUT de sesion por inactividad (#7) improvement 
+    #     # ──────────────────────────────────────────────────────────────
+
+    def _start_idle_tracking(self):
+        """Inicia el seguimiento de inactividad; reinicia si ya estaba activo."""
+        self._stop_idle_tracking()
+        timeout_s = self.config.get("session_timeout_minutes", 10) * 60
+        self._idle_timeout_ms  = int(timeout_s * 1000)
+        self._idle_warning_ms  = int(max(timeout_s - 30, 5) * 1000)
+        # bind con add="+" para no pisar otros bindings existentes
+        for event in ("<Motion>", "<KeyPress>", "<ButtonPress>"):
+            bid = self.root.bind(event, self._reset_idle_timer, add="+")
+            self._idle_bind_ids.append((event, bid))
+        self._schedule_idle_timers()
+
+    def _stop_idle_tracking(self):
+        """Cancela timers y desvincula eventos de actividad."""
+        if self._idle_timer:
+            self.root.after_cancel(self._idle_timer)
+            self._idle_timer = None
+        if self._idle_warning_timer:
+            self.root.after_cancel(self._idle_warning_timer)
+            self._idle_warning_timer = None
+        for event, bid in self._idle_bind_ids:
+            try:
+                self.root.unbind(event, bid)
+            except Exception:
+                pass
+        self._idle_bind_ids = []
+
+    def _schedule_idle_timers(self):
+        """(Re)programa advertencia y logout automático."""
+        if self._idle_warning_timer:
+            self.root.after_cancel(self._idle_warning_timer)
+        if self._idle_timer:
+            self.root.after_cancel(self._idle_timer)
+        self._idle_warning_timer = self.root.after(
+            self._idle_warning_ms, self._idle_warning
+        )
+        self._idle_timer = self.root.after(
+            self._idle_timeout_ms, self._idle_logout
+        )
+
+    def _reset_idle_timer(self, event=None):
+        """Reinicia el contador de inactividad ante cualquier actividad."""
+        if not self.usuario_actual:
+            return
+        self._schedule_idle_timers()
+
+    def _idle_warning(self):
+        """Muestra advertencia de cierre de sesión inminente (30 s antes)."""
+        if not self.usuario_actual:
+            return
+        Notification(
+            self.root,
+            "⚠️ Sesión por expirar",
+            "Sin actividad detectada.\nLa sesión se cerrará en 30 segundos.",
+            notification_type="warning",
+            duration=28000
+        )
+
+    def _idle_logout(self):
+        """Cierra la sesión automáticamente por inactividad (sin diálogo de confirmación)."""
+        if not self.usuario_actual:
+            return
+        self._stop_idle_tracking()
+        self._audit("Logout automático por inactividad")
+        nombre = self.usuario_nombre
+        self.usuario_actual = None
+        self.usuario_nombre = None
+        self._session_key   = None
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        self._reset_preview_panel()
+        self.mostrar_inicial()
+        Notification(
+            self.root, "🔒 Sesión expirada",
+            f"La sesión de {nombre} se cerró automáticamente\npor inactividad.",
+            notification_type="warning", duration=5000
+        )
+
     def completar_login(self):
          # completa el proceso de login
         self._hide_all_frames()
@@ -2059,6 +2150,7 @@ class AppDBPDF:
         self._audit("Login exitoso")
         self.cargar_dashboard()
         self.ver_pdfs()
+        self._start_idle_tracking()
 
     def _logout(self):
             # cierra la sesion del usuario actual
@@ -2071,6 +2163,7 @@ class AppDBPDF:
             danger=False
         )
         if dlg.result:
+            self._stop_idle_tracking()
             self._audit("Logout")
             self.usuario_actual  = None
             self.usuario_nombre  = None
@@ -2093,6 +2186,179 @@ class AppDBPDF:
 
         dashboard = DashboardWidget(self.dashboard_container, self.cursor, self.usuario_actual)
         dashboard.pack(fill="both", padx=20)
+
+    # ──────────────────────────────────────────────────────────────
+    # LOG para auditoria — UI (#8) imrpovement
+    # ──────────────────────────────────────────────────────────────
+
+    def mostrar_auditoria(self):
+        """Abre ventana con el visor de log de auditoría con filtros."""
+        if not self.usuario_actual:
+            Notification(self.root, "❌ Error", "No hay sesión activa.",
+                         notification_type="error")
+            return
+
+        win = ctk.CTkToplevel(self.root)
+        win.title("📋 Log de Auditoría — DatenJäger")
+        win.geometry("960x600")
+        win.minsize(760, 460)
+        win.grab_set()
+        win.focus_force()
+        colors = self.get_colors()
+
+        # ── Header ──────────────────────────────────────────────
+        header = ctk.CTkFrame(win, fg_color=("#1a237e", "#0d1b3e"),
+                               height=52, corner_radius=0)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        ctk.CTkLabel(
+            header, text="📋 Log de Auditoría",
+            font=("Arial", 16, "bold"), text_color="white"
+        ).pack(side="left", padx=16, pady=14)
+        ctk.CTkLabel(
+            header, text="Historial de acciones del sistema",
+            font=("Arial", 10), text_color="#90caf9"
+        ).pack(side="left", padx=4)
+
+        # ── Filtros ──────────────────────────────────────────────
+        filter_card = ctk.CTkFrame(win, fg_color=("#e8f0fe", "#1e2a4a"),
+                                    corner_radius=10)
+        filter_card.pack(fill="x", padx=14, pady=(10, 4))
+
+        ctk.CTkLabel(filter_card, text="Desde:",
+                     font=("Arial", 11), text_color=colors["text_secondary"]
+                     ).pack(side="left", padx=(14, 2), pady=8)
+        entry_desde = ctk.CTkEntry(filter_card, placeholder_text="YYYY-MM-DD",
+                                    width=110, height=30, corner_radius=6)
+        entry_desde.pack(side="left", padx=(0, 10), pady=8)
+
+        ctk.CTkLabel(filter_card, text="Hasta:",
+                     font=("Arial", 11), text_color=colors["text_secondary"]
+                     ).pack(side="left", padx=(0, 2))
+        entry_hasta = ctk.CTkEntry(filter_card, placeholder_text="YYYY-MM-DD",
+                                    width=110, height=30, corner_radius=6)
+        entry_hasta.pack(side="left", padx=(0, 10), pady=8)
+
+        ctk.CTkLabel(filter_card, text="Acción:",
+                     font=("Arial", 11), text_color=colors["text_secondary"]
+                     ).pack(side="left", padx=(0, 2))
+        entry_accion = ctk.CTkEntry(filter_card, placeholder_text="Buscar acción…",
+                                     width=200, height=30, corner_radius=6)
+        entry_accion.pack(side="left", padx=(0, 10), pady=8)
+
+        # contador de registros (se actualiza al cargar)
+        lbl_count = ctk.CTkLabel(filter_card, text="",
+                                  font=("Arial", 10), text_color=colors["text_secondary"])
+        lbl_count.pack(side="right", padx=14)
+
+        # ── Treeview ─────────────────────────────────────────────
+        tree_wrapper = ctk.CTkFrame(win, fg_color=("#ffffff", "#1e2a4a"),
+                                     corner_radius=10)
+        tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
+
+        style = ttk.Style()
+        style.configure("Audit.Treeview",
+                         rowheight=26, font=("Arial", 10),
+                         background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff",
+                         foreground="#e0e0e0" if ctk.get_appearance_mode() == "Dark" else "#1a237e",
+                         fieldbackground="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+        style.configure("Audit.Treeview.Heading",
+                         font=("Arial", 10, "bold"),
+                         background="#1a237e", foreground="white")
+        style.map("Audit.Treeview", background=[("selected", "#2196F3")])
+
+        cols = ("Fecha", "Acción", "PDF_ID", "Usuario")
+        tree = ttk.Treeview(tree_wrapper, columns=cols, show="headings",
+                             style="Audit.Treeview")
+
+        col_widths = {"Fecha": 150, "Acción": 380, "PDF_ID": 80, "Usuario": 160}
+        for col in cols:
+            tree.heading(col, text=col)
+            tree.column(col, width=col_widths[col], anchor="w")
+
+        vsb = ttk.Scrollbar(tree_wrapper, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+        tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        vsb.pack(side="right", fill="y", pady=4)
+
+        # filas alternas de color
+        tree.tag_configure("odd",  background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#f5f7ff")
+        tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+
+        # ── Carga de datos ────────────────────────────────────────
+        def _cargar(desde="", hasta="", accion_txt=""):
+            for row in tree.get_children():
+                tree.delete(row)
+            try:
+                query = (
+                    "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
+                    "       COALESCE(u.nombre,'—') "
+                    "FROM Auditoria a "
+                    "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
+                    "WHERE 1=1 "
+                )
+                params = []
+                if desde.strip():
+                    query += "AND a.fecha >= ? "
+                    params.append(desde.strip())
+                if hasta.strip():
+                    query += "AND a.fecha <= ? "
+                    params.append(hasta.strip() + "T23:59:59")
+                if accion_txt.strip():
+                    query += "AND a.accion LIKE ? "
+                    params.append(f"%{accion_txt.strip()}%")
+                query += "ORDER BY a.fecha DESC LIMIT 1000"
+
+                with self._db_lock:
+                    self.cursor.execute(query, params)
+                    rows = self.cursor.fetchall()
+
+                for i, (fecha, accion, pdf_id, usuario) in enumerate(rows):
+                    # recortar fecha a formato legible
+                    fecha_fmt = fecha[:19].replace("T", "  ") if fecha else "—"
+                    tag = "odd" if i % 2 == 0 else "even"
+                    tree.insert("", "end",
+                                values=(fecha_fmt, accion, pdf_id, usuario),
+                                tags=(tag,))
+                lbl_count.configure(
+                    text=f"{len(rows)} registro{'s' if len(rows) != 1 else ''}"
+                )
+            except Exception as e:
+                Notification(self.root, "❌ Error al cargar auditoría",
+                             str(e), notification_type="error")
+
+        def _aplicar_filtros():
+            _cargar(entry_desde.get(), entry_hasta.get(), entry_accion.get())
+
+        def _limpiar_filtros():
+            entry_desde.delete(0, tk.END)
+            entry_hasta.delete(0, tk.END)
+            entry_accion.delete(0, tk.END)
+            _cargar()
+
+        # botones de acción en filter_card (se agregan después de definir _cargar)
+        ctk.CTkButton(
+            filter_card, text="🔍 Filtrar",
+            command=_aplicar_filtros,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            font=("Arial", 10, "bold"), corner_radius=7,
+            width=86, height=30
+        ).pack(side="left", padx=(0, 4), pady=8)
+
+        ctk.CTkButton(
+            filter_card, text="✖ Limpiar",
+            command=_limpiar_filtros,
+            fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
+            font=("Arial", 10, "bold"), corner_radius=7,
+            width=80, height=30
+        ).pack(side="left", pady=8)
+
+        # Enter en cualquier filtro aplica búsqueda
+        for e in (entry_desde, entry_hasta, entry_accion):
+            e.bind("<Return>", lambda _ev: _aplicar_filtros())
+
+        # carga inicial completa
+        _cargar()
 
     def mostrar_agregar_pdf(self):
         """Muestra ventana para agregar PDF"""
