@@ -167,11 +167,12 @@ A continuación podrás ver un vistazo rapido de la versión actual del sistema
 | **Python** | 3.10+ | Lenguaje principal |
 | **CustomTkinter** | Latest | Interfaz gráfica moderna |
 | **SQLite** | Built-in | Base de datos local |
-| **cryptography (Fernet)** | Latest | Encriptación AES-256 de PDFs |
+| **cryptography (Fernet)** | Latest | Encriptación AES-256 de PDFs y session key |
 | **pyotp** | Latest | Generación/validación de tokens TOTP (2FA) |
 | **qrcode** | Latest | Generación de códigos QR para 2FA |
 | **Pillow (PIL)** | Latest | Procesamiento de imágenes |
-| **hashlib / secrets** | Built-in | Hashing PBKDF2 y generación de sales |
+| **PyMuPDF (fitz)** | Latest | Visor PDF inline (renderizado por páginas, zoom, scroll) |
+| **hashlib / hmac / secrets** | Built-in | Hashing PBKDF2, HMAC-SHA256 en config y generación de sales |
 
 ---
 
