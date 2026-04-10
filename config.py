@@ -63,8 +63,9 @@ class Config:
             "theme": "System",
             "window_size": "1100x760",
             "window_maximized": False,
-            "2fa_trust_hours": 0,   # 0 = siempre pedir; 24, 48 o 168 horas
-            "trust_tokens": {},     # {nombre_usuario: token_hex} — token del dispositivo actual
+            "2fa_trust_hours": 0,         # 0 = siempre pedir; 24, 48 o 168 horas
+            "trust_tokens": {},           # {nombre_usuario: token_hex} — token del dispositivo actual
+            "session_timeout_minutes": 10, # minutos de inactividad antes de cerrar sesión automáticamente
         }
 
     def save(self):
