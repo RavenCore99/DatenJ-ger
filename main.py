@@ -34,6 +34,7 @@ from database import (conectar_db, hash_contrasena, verify_contrasena,
 from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            GradientBackground, PasswordStrengthBar, ConfirmDialog,
                            PDFViewerWindow, get_dynamic_colors)
+from reporter import ReporteInventario
 
 
 
@@ -105,6 +106,24 @@ class AppDBPDF:
     def get_colors(self):
         """colores dinmicos"""
         return get_dynamic_colors()
+
+    def _show_modal_window(self, window, delay_ms=0):
+        """Muestra una ventana y aplica grab de forma segura sin lanzar TclError."""
+        def _activate():
+            if not window.winfo_exists():
+                return
+            try:
+                window.deiconify()
+                window.lift()
+                window.focus_force()
+                window.update_idletasks()
+                if window.winfo_viewable():
+                    window.grab_set()
+            except tk.TclError:
+                # Si el gestor de ventanas aún no la muestra, se abre sin modal.
+                pass
+
+        window.after(delay_ms, _activate)
 
     def _setup_atajos(self):
                 #"""Configura atajos de teclado"""
@@ -677,6 +696,12 @@ class AppDBPDF:
             "📋 Auditoría",
             self.mostrar_auditoria,
             color="#37474f", hover="#455a64"
+        ).pack(side="right", padx=4, pady=10)
+
+        _make_nav_btn(
+            "📑 Reporte",
+            lambda: self.exportar_reporte_dashboard("pdf"),
+            color="#00695c", hover="#004d40"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
@@ -1526,10 +1551,7 @@ class AppDBPDF:
             ).pack(pady=(0, 20))
 
             win.update_idletasks()
-            win.deiconify()   # mostrar con todo el contenido ya renderizado
-            win.lift()
-            win.focus_force()
-            win.grab_set()
+            self._show_modal_window(win)
 
         win.after(250, _build)  # esperar a que CTkToplevel termine su init interno
         win.wait_window()
@@ -2189,12 +2211,110 @@ class AppDBPDF:
         dashboard = DashboardWidget(self.dashboard_container, self.cursor, self.usuario_actual)
         dashboard.pack(fill="both", padx=20)
 
-    # ──────────────────────────────────────────────────────────────
-    # LOG para auditoria — UI (#8) imrpovement
-    # ──────────────────────────────────────────────────────────────
+    def _obtener_datos_reporte_dashboard(self):
+        """obtiene filas y estadisticas del inventario para reporter.py."""
+        from database import format_size
+
+        with self._db_lock:
+            self.cursor.execute(
+                """
+                SELECT p.id, p.nombre, p.descripcion, p.tamano,
+                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
+                FROM PDFs p
+                LEFT JOIN Personas pe ON p.persona_id = pe.id
+                WHERE p.usuario_id = ?
+                ORDER BY p.fecha_subida DESC
+                """,
+                (self.usuario_actual,)
+            )
+            rows = self.cursor.fetchall()
+
+            self.cursor.execute(
+                "SELECT COUNT(*), COALESCE(SUM(tamano), 0) FROM PDFs WHERE usuario_id = ?",
+                (self.usuario_actual,)
+            )
+            total_pdfs, total_size = self.cursor.fetchone()
+            total_pdfs = total_pdfs or 0
+            total_size = total_size or 0
+
+            self.cursor.execute(
+                "SELECT COUNT(DISTINCT persona_id) FROM PDFs WHERE usuario_id = ?",
+                (self.usuario_actual,)
+            )
+            total_personas = self.cursor.fetchone()[0] or 0
+
+            self.cursor.execute(
+                """
+                SELECT COALESCE(pe.empresa, 'Sin empresa') AS empresa, COUNT(*) AS total
+                FROM PDFs p
+                LEFT JOIN Personas pe ON p.persona_id = pe.id
+                WHERE p.usuario_id = ?
+                GROUP BY COALESCE(pe.empresa, 'Sin empresa')
+                ORDER BY total DESC, empresa ASC
+                """,
+                (self.usuario_actual,)
+            )
+            empresas_data = self.cursor.fetchall()
+
+        stats = {
+            "total_pdfs": total_pdfs,
+            "total_size_str": format_size(total_size),
+            "total_personas": total_personas,
+            "total_empresas": len(empresas_data),
+            "empresas_data": empresas_data,
+        }
+        return rows, stats
+
+    def exportar_reporte_dashboard(self, formato="pdf"):
+        """Exporta reporte del dashboard usando reporter.py."""
+        if not self.usuario_actual:
+            Notification(self.root, "❌ Error", "No hay sesión activa.",
+                         notification_type="error")
+            return
+
+        formato = (formato or "pdf").lower().strip()
+        if formato not in ("pdf", "csv"):
+            formato = "pdf"
+
+        ext = f".{formato}"
+        destino = filedialog.asksaveasfilename(
+            defaultextension=ext,
+            initialfile=f"reporte_dashboard_{datetime.now().strftime('%Y%m%d_%H%M')}{ext}",
+            filetypes=[(f"Archivo {formato.upper()}", f"*{ext}"), ("Todos", "*.*")]
+        )
+        if not destino:
+            return
+
+        self.progress_bar.start(f"Generando reporte {formato.upper()}...")
+        try:
+            rows, stats = self._obtener_datos_reporte_dashboard()
+            if formato == "csv":
+                ReporteInventario.generar_csv(rows, destino, self.usuario_nombre or "")
+                accion = "Generar reporte dashboard CSV"
+            else:
+                ReporteInventario.generar_pdf(rows, stats, destino, self.usuario_nombre or "")
+                accion = "Generar reporte dashboard PDF"
+
+            self._audit(accion)
+            Notification(
+                self.root,
+                "✅ Reporte generado",
+                f"Se exportó correctamente en:\n{destino}",
+                notification_type="success",
+                duration=3000
+            )
+        except Exception as e:
+            Notification(self.root, "❌ Error de reporte", str(e),
+                         notification_type="error")
+        finally:
+            self.progress_bar.stop()
+
+    
+    # LOG para auditoria — UI imrpovement
+ 
 
     def mostrar_auditoria(self):
-        """Abre ventana con el visor de log de auditoría con filtros."""
+        """abre ventana con el visor de log de auditoria con filtros."""
         if not self.usuario_actual:
             Notification(self.root, "❌ Error", "No hay sesión activa.",
                          notification_type="error")
@@ -2204,11 +2324,21 @@ class AppDBPDF:
         win.title("📋 Log de Auditoría — DatenJäger")
         win.geometry("960x600")
         win.minsize(760, 460)
-        win.grab_set()
-        win.focus_force()
+        win.transient(self.root)
+        win.withdraw()
+
+        def _close_audit_win():
+            try:
+                win.grab_release()
+            except tk.TclError:
+                pass
+            win.destroy()
+
+        win.protocol("WM_DELETE_WINDOW", _close_audit_win)
+        self._show_modal_window(win)
         colors = self.get_colors()
 
-        # ── Header ──────────────────────────────────────────────
+        # ── Header 
         header = ctk.CTkFrame(win, fg_color=("#1a237e", "#0d1b3e"),
                                height=52, corner_radius=0)
         header.pack(fill="x")
@@ -2222,7 +2352,7 @@ class AppDBPDF:
             font=("Arial", 10), text_color="#90caf9"
         ).pack(side="left", padx=4)
 
-        # ── Filtros ──────────────────────────────────────────────
+        # ── Filtros 
         filter_card = ctk.CTkFrame(win, fg_color=("#e8f0fe", "#1e2a4a"),
                                     corner_radius=10)
         filter_card.pack(fill="x", padx=14, pady=(10, 4))
@@ -2253,7 +2383,7 @@ class AppDBPDF:
                                   font=("Arial", 10), text_color=colors["text_secondary"])
         lbl_count.pack(side="right", padx=14)
 
-        # ── Treeview ─────────────────────────────────────────────
+        # ── Treeview 
         tree_wrapper = ctk.CTkFrame(win, fg_color=("#ffffff", "#1e2a4a"),
                                      corner_radius=10)
         tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
@@ -2456,9 +2586,7 @@ class AppDBPDF:
             corner_radius=8, width=180, height=34
         ).pack(pady=(0, 16))
 
-        add_window.after(250, lambda w=add_window: (
-            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
-        ) if w.winfo_exists() else None)
+        self._show_modal_window(add_window, delay_ms=250)
 
     def seleccionar_archivo(self):
          # selecciona un archivo PDF
@@ -2676,9 +2804,7 @@ class AppDBPDF:
             corner_radius=8, width=200, height=36
         ).pack(pady=(0, 16))
 
-        details_window.after(250, lambda w=details_window: (
-            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
-        ) if w.winfo_exists() else None)
+        self._show_modal_window(details_window, delay_ms=250)
 
     def abrir_pdf_doble_click(self):
         # abre un PDF con doble click
@@ -2903,9 +3029,7 @@ class AppDBPDF:
             corner_radius=8, width=260, height=36
         ).pack(pady=(0, 20))
 
-        edit_win.after(250, lambda w=edit_win: (
-            w.deiconify(), w.lift(), w.focus_force(), w.grab_set()
-        ) if w.winfo_exists() else None)
+        self._show_modal_window(edit_win, delay_ms=250)
 
     def exportar_pdf(self):
          # exporta (guarda) el PDF desencriptado a una ruta elegida por el usuario
