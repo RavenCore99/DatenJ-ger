@@ -2604,7 +2604,7 @@ class AppDBPDF:
         colors = self.get_colors()
         details_window = ctk.CTkToplevel(self.root)
         details_window.title("ℹ️ Detalles del PDF")
-        details_window.geometry("460x480")
+        details_window.geometry("460x680")
         details_window.resizable(False, False)
         details_window.transient(self.root)
         details_window.configure(fg_color=colors["bg_secondary"])
