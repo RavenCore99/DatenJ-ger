@@ -67,9 +67,15 @@ def conectar_db():
         CREATE TABLE IF NOT EXISTS Personas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             cedula TEXT NOT NULL UNIQUE,
-            nombres TEXT NOT NULL
+            nombres TEXT NOT NULL,
+            empresa TEXT
         )
     ''')
+
+    cursor.execute("PRAGMA table_info(Personas)")
+    personas_columns = [col[1] for col in cursor.fetchall()]
+    if 'empresa' not in personas_columns:
+        cursor.execute("ALTER TABLE Personas ADD COLUMN empresa TEXT")
 
     #  tabla de PDFs con encriptación
     cursor.execute('''
