@@ -7,3 +7,5 @@ config.json
 base_datos_pdfs.db
 *.db-wal
 *.db-shm
+.claude
+.directory
