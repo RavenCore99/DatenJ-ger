@@ -764,13 +764,13 @@ class AppDBPDF:
 
         self.tree = ttk.Treeview(
             tree_frame,
-            columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"),
+            columns=("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres", "Empresa"),
             show="headings",
             height=14
         )
 
-        for col, width in [("ID", 46), ("Nombre", 160), ("Descripción", 200),
-                           ("Tamaño", 90), ("Fecha", 120), ("Cédula", 100), ("Nombres", 160)]:
+        for col, width in [("ID", 46), ("Nombre", 150), ("Descripción", 180),
+                           ("Tamaño", 80), ("Fecha", 110), ("Cédula", 90), ("Nombres", 140), ("Empresa", 130)]:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width)
 
@@ -948,7 +948,7 @@ class AppDBPDF:
 
     def _setup_treeview_sorting(self):
                      # permite ordenar haciendo clic en cada encabezado de columna de TreeView
-        for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres"):
+        for col in ("ID", "Nombre", "Descripción", "Tamaño", "Fecha", "Cédula", "Nombres", "Empresa"):
             self.tree.heading(col, text=col,
                               command=lambda c=col: self._sort_column(c, False))
 
@@ -984,7 +984,8 @@ class AppDBPDF:
             format_size(row[3]),
             format_date_friendly(row[4]),
             row[5] or "",
-            row[6] or ""
+            row[6] or "",
+            row[7] or ""
         )
 
     def _populate_treeview(self, rows):
@@ -1063,7 +1064,7 @@ class AppDBPDF:
         values = self.tree.item(selected[0])['values']
         if not values:
             return
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres, empresa = values
         colors = self.get_colors()
         self._preview_name.configure(text=pdf_nombre)
         info = (
@@ -1072,7 +1073,8 @@ class AppDBPDF:
             f"💾 {tamano}\n"
             f"📅 {fecha}\n"
             f"🪪 Cédula: {cedula or '—'}\n"
-            f"👤 {nombres or '—'}\n\n"
+            f"👤 {nombres or '—'}\n"
+            f"🏢 {empresa or '—'}\n\n"
             f"🔒 AES-256-GCM Encriptado"
         )
         self._preview_info.configure(text=info)
@@ -1090,21 +1092,21 @@ class AppDBPDF:
     
 
     def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
-                        cedula, nombres, usuario_actual, window):
-        # guarda el blob PDF ya cifrado en la base de datos 
+                        cedula, nombres, empresa, usuario_actual, window):
+        # guarda el blob PDF ya cifrado en la base de datos
         try:
             self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
             result = self.cursor.fetchone()
             if result:
                 persona_id = result[0]
                 self.cursor.execute(
-                    "UPDATE Personas SET nombres = ? WHERE id = ?",
-                    (nombres, persona_id)
+                    "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
+                    (nombres, empresa, persona_id)
                 )
             else:
                 self.cursor.execute(
-                    "INSERT INTO Personas (cedula, nombres) VALUES (?, ?)",
-                    (cedula, nombres)
+                    "INSERT INTO Personas (cedula, nombres, empresa) VALUES (?, ?, ?)",
+                    (cedula, nombres, empresa)
                 )
                 persona_id = self.cursor.lastrowid
 
@@ -2373,7 +2375,7 @@ class AppDBPDF:
         colors = self.get_colors()
         add_window = ctk.CTkToplevel(self.root)
         add_window.title("➕ Agregar PDF")
-        add_window.geometry("500x580")
+        add_window.geometry("500x640")
         add_window.resizable(False, False)
         add_window.transient(self.root)
         add_window.configure(fg_color=colors["bg_secondary"])
@@ -2432,6 +2434,7 @@ class AppDBPDF:
         self.entry_descripcion = add_labeled_entry(add_window, "Descripción:", "Descripción del documento")
         self.entry_cedula       = add_labeled_entry(add_window, "Cédula:", "Número de cédula")
         self.entry_nombres      = add_labeled_entry(add_window, "Nombres completos:", "Nombres del titular")
+        self.entry_empresa      = add_labeled_entry(add_window, "Empresa:", "Nombre de la empresa")
 
         ctk.CTkButton(
             add_window,
@@ -2475,6 +2478,7 @@ class AppDBPDF:
         descripcion = self.entry_descripcion.get().strip()
         cedula      = self.entry_cedula.get().strip()
         nombres     = self.entry_nombres.get().strip()
+        empresa     = self.entry_empresa.get().strip()
 
         if not cedula or not nombres:
             Notification(self.root, "❌ Error", "Cédula y nombres son requeridos",
@@ -2500,7 +2504,7 @@ class AppDBPDF:
                 # transferir la escritura de la base de datos al hilo principal
                 self.root.after(0, lambda: self._save_pdf_to_db(
                     datos_enc, tamano, nombre, descripcion,
-                    cedula, nombres, usuario_actual, window
+                    cedula, nombres, empresa, usuario_actual, window
                 ))
             except Exception as e:
                 self.root.after(0, lambda err=e: self._on_pdf_add_error(err))
@@ -2518,7 +2522,7 @@ class AppDBPDF:
         try:
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres
+                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
                 FROM PDFs p
                 LEFT JOIN Personas pe ON p.persona_id = pe.id
                 WHERE p.usuario_id = ?
@@ -2551,15 +2555,16 @@ class AppDBPDF:
         try:
             self.cursor.execute("""
                 SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres
+                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
                 FROM PDFs p
                 LEFT JOIN Personas pe ON p.persona_id = pe.id
                 WHERE p.usuario_id = ? AND (
                     p.nombre LIKE ? OR p.descripcion LIKE ?
                     OR pe.cedula LIKE ? OR pe.nombres LIKE ?
+                    OR pe.empresa LIKE ?
                 )
             """, (self.usuario_actual,
-                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
+                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
 
             rows = self.cursor.fetchall()
             self._populate_treeview(rows)
@@ -2594,12 +2599,12 @@ class AppDBPDF:
             return
 
         values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres, empresa = values
 
         colors = self.get_colors()
         details_window = ctk.CTkToplevel(self.root)
         details_window.title("ℹ️ Detalles del PDF")
-        details_window.geometry("460x440")
+        details_window.geometry("460x480")
         details_window.resizable(False, False)
         details_window.transient(self.root)
         details_window.configure(fg_color=colors["bg_secondary"])
@@ -2641,6 +2646,7 @@ class AppDBPDF:
         info_row("📅  Fecha:", fecha)
         info_row("🪪  Cédula:", cedula)
         info_row("👤  Nombres:", nombres)
+        info_row("🏢  Empresa:", empresa)
         info_row("🔒  Encriptación:", "AES-256-GCM")
 
         btn_row = ctk.CTkFrame(details_window, fg_color="transparent")
@@ -2799,12 +2805,12 @@ class AppDBPDF:
             return
 
         values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres = values
+        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres, empresa = values
 
         colors = self.get_colors()
         edit_win = ctk.CTkToplevel(self.root)
         edit_win.title("✏️ Editar Metadatos del PDF")
-        edit_win.geometry("480x460")
+        edit_win.geometry("480x520")
         edit_win.resizable(False, False)
         edit_win.transient(self.root)
         edit_win.configure(fg_color=colors["bg_secondary"])
@@ -2837,16 +2843,18 @@ class AppDBPDF:
             e.pack(pady=(4, 10))
             return e
 
-        e_nombre = add_field("Nombre del archivo:", pdf_nombre)
-        e_desc   = add_field("Descripción:", descripcion or "", "Sin descripción")
-        e_cedula = add_field("Cédula:", cedula or "")
+        e_nombre  = add_field("Nombre del archivo:", pdf_nombre)
+        e_desc    = add_field("Descripción:", descripcion or "", "Sin descripción")
+        e_cedula  = add_field("Cédula:", cedula or "")
         e_nombres = add_field("Nombres:", nombres or "")
+        e_empresa = add_field("Empresa:", empresa or "", "Nombre de la empresa")
 
         def guardar():
-            nuevo_nombre = e_nombre.get().strip()
-            nueva_desc   = e_desc.get().strip()
-            nueva_cedula = e_cedula.get().strip()
+            nuevo_nombre   = e_nombre.get().strip()
+            nueva_desc     = e_desc.get().strip()
+            nueva_cedula   = e_cedula.get().strip()
             nuevos_nombres = e_nombres.get().strip()
+            nueva_empresa  = e_empresa.get().strip()
 
             if not nuevo_nombre:
                 Notification(edit_win, "❌ Error", "El nombre no puede estar vacío",
@@ -2860,9 +2868,9 @@ class AppDBPDF:
                 )
                 if nueva_cedula:
                     self.cursor.execute(
-                        """UPDATE Personas SET nombres = ? 
+                        """UPDATE Personas SET nombres = ?, empresa = ?
                            WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",
-                        (nuevos_nombres, pdf_id)
+                        (nuevos_nombres, nueva_empresa, pdf_id)
                     )
                 self.cursor.execute(
                     "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
