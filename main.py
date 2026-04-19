@@ -699,6 +699,12 @@ class AppDBPDF:
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
+            "👥 Personas",
+            self.mostrar_gestion_personas,
+            color="#6A1B9A", hover="#4A148C"
+        ).pack(side="right", padx=4, pady=10)
+
+        _make_nav_btn(
             "📑 Reporte",
             lambda: self.exportar_reporte_dashboard("pdf"),
             color="#00695c", hover="#004d40"
@@ -2309,7 +2315,373 @@ class AppDBPDF:
         finally:
             self.progress_bar.stop()
 
-    
+    # ──────────────────────────────────────────────────────────────
+    # GESTION DE PERSONAS  — improvement #10
+    # ──────────────────────────────────────────────────────────────
+
+    def mostrar_gestion_personas(self):
+        """Panel independiente para CRUD de personas (cédula, nombres, empresa)."""
+        if not self.usuario_actual:
+            Notification(self.root, "❌ Error", "No hay sesión activa.",
+                         notification_type="error")
+            return
+
+        win = ctk.CTkToplevel(self.root)
+        win.title("👥 Gestión de Personas — DatenJäger")
+        win.geometry("960x620")
+        win.minsize(760, 480)
+        win.transient(self.root)
+        win.withdraw()
+
+        def _close_win():
+            try:
+                win.grab_release()
+            except tk.TclError:
+                pass
+            win.destroy()
+
+        win.protocol("WM_DELETE_WINDOW", _close_win)
+        self._show_modal_window(win)
+        colors = self.get_colors()
+
+        # ── Header ────────────────────────────────────────────────
+        header = ctk.CTkFrame(win, fg_color=("#6A1B9A", "#311B92"),
+                               height=52, corner_radius=0)
+        header.pack(fill="x")
+        header.pack_propagate(False)
+        ctk.CTkLabel(
+            header, text="👥 Gestión de Personas",
+            font=("Arial", 16, "bold"), text_color="white"
+        ).pack(side="left", padx=16, pady=14)
+        ctk.CTkLabel(
+            header, text="Administración de titulares de documentos",
+            font=("Arial", 10), text_color="#ce93d8"
+        ).pack(side="left", padx=4)
+
+        # ── Barra de búsqueda + botones de acción ─────────────────
+        action_bar = ctk.CTkFrame(win, fg_color=("#f3e5f5", "#1e1533"),
+                                   corner_radius=10)
+        action_bar.pack(fill="x", padx=14, pady=(10, 4))
+
+        ctk.CTkLabel(action_bar, text="🔍",
+                     font=("Arial", 14)).pack(side="left", padx=(14, 4), pady=8)
+        entry_buscar = ctk.CTkEntry(action_bar,
+                                     placeholder_text="Buscar por cédula, nombre o empresa…",
+                                     width=300, height=30, corner_radius=6)
+        entry_buscar.pack(side="left", padx=(0, 10), pady=8)
+
+        lbl_count = ctk.CTkLabel(action_bar, text="",
+                                  font=("Arial", 10),
+                                  text_color=colors["text_secondary"])
+        lbl_count.pack(side="right", padx=14)
+
+        # ── Treeview con personas ─────────────────────────────────
+        tree_wrapper = ctk.CTkFrame(win, fg_color=("#ffffff", "#1e2a4a"),
+                                     corner_radius=10)
+        tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
+
+        style = ttk.Style()
+        style.configure("Persona.Treeview",
+                         rowheight=28, font=("Arial", 10),
+                         background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff",
+                         foreground="#e0e0e0" if ctk.get_appearance_mode() == "Dark" else "#1a237e",
+                         fieldbackground="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+        style.configure("Persona.Treeview.Heading",
+                         font=("Arial", 10, "bold"),
+                         background="#6A1B9A", foreground="white")
+        style.map("Persona.Treeview", background=[("selected", "#9C27B0")])
+
+        cols = ("ID", "Cédula", "Nombres", "Empresa", "Documentos")
+        tree = ttk.Treeview(tree_wrapper, columns=cols, show="headings",
+                             style="Persona.Treeview")
+
+        col_widths = {"ID": 50, "Cédula": 130, "Nombres": 260,
+                      "Empresa": 220, "Documentos": 100}
+        for col in cols:
+            tree.heading(col, text=col)
+            tree.column(col, width=col_widths[col], anchor="w" if col != "Documentos" else "center")
+
+        vsb = ttk.Scrollbar(tree_wrapper, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+        tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        vsb.pack(side="right", fill="y", pady=4)
+
+        tree.tag_configure("odd",  background="#1e1533" if ctk.get_appearance_mode() == "Dark" else "#f3e5f5")
+        tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+
+        # ── Carga de datos ────────────────────────────────────────
+        def _cargar(filtro=""):
+            for row in tree.get_children():
+                tree.delete(row)
+            try:
+                query = (
+                    "SELECT pe.id, pe.cedula, pe.nombres, "
+                    "       COALESCE(pe.empresa, '—'), "
+                    "       COUNT(p.id) AS total_docs "
+                    "FROM Personas pe "
+                    "LEFT JOIN PDFs p ON p.persona_id = pe.id "
+                    "WHERE 1=1 "
+                )
+                params = []
+                if filtro.strip():
+                    query += (
+                        "AND (pe.cedula LIKE ? OR pe.nombres LIKE ? "
+                        "     OR pe.empresa LIKE ?) "
+                    )
+                    like = f"%{filtro.strip()}%"
+                    params.extend([like, like, like])
+                query += "GROUP BY pe.id ORDER BY pe.nombres ASC"
+
+                with self._db_lock:
+                    self.cursor.execute(query, params)
+                    rows = self.cursor.fetchall()
+
+                for i, (pid, cedula, nombres, empresa, docs) in enumerate(rows):
+                    tag = "odd" if i % 2 == 0 else "even"
+                    tree.insert("", "end",
+                                values=(pid, cedula, nombres, empresa, docs),
+                                tags=(tag,))
+                lbl_count.configure(
+                    text=f"{len(rows)} persona{'s' if len(rows) != 1 else ''}"
+                )
+            except Exception as e:
+                Notification(self.root, "❌ Error al cargar personas",
+                             str(e), notification_type="error")
+
+        def _filtrar(*_args):
+            _cargar(entry_buscar.get())
+
+        entry_buscar.bind("<KeyRelease>", _filtrar)
+
+        # ── Formulario flotante para Agregar / Editar ─────────────
+        def _abrir_formulario(modo="agregar", datos=None):
+            """Abre sub-ventana para agregar o editar una persona.
+            modo: 'agregar' | 'editar'
+            datos: (id, cedula, nombres, empresa) cuando modo='editar'
+            """
+            form = ctk.CTkToplevel(win)
+            titulo = "➕ Agregar Persona" if modo == "agregar" else "✏️ Editar Persona"
+            form.title(titulo)
+            form.geometry("440x380")
+            form.resizable(False, False)
+            form.transient(win)
+            form.configure(fg_color=colors["bg_secondary"])
+            form.withdraw()
+
+            ctk.CTkLabel(
+                form, text=titulo,
+                font=("Arial", 16, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(pady=(18, 4))
+
+            sep = ctk.CTkFrame(form, height=1, fg_color="#9C27B0")
+            sep.pack(fill="x", padx=40, pady=(0, 12))
+
+            def _add_field(parent, label, placeholder, value="", state="normal"):
+                ctk.CTkLabel(parent, text=label,
+                             text_color=colors["text_primary"],
+                             font=("Arial", 11, "bold")).pack(anchor="w", padx=50)
+                e = ctk.CTkEntry(parent, placeholder_text=placeholder,
+                                 width=340, height=36, corner_radius=8,
+                                 border_width=2, font=("Arial", 11),
+                                 state=state)
+                e.pack(pady=(2, 8))
+                if value:
+                    if state == "disabled":
+                        e.configure(state="normal")
+                    e.insert(0, value)
+                    if state == "disabled":
+                        e.configure(state="disabled")
+                return e
+
+            if modo == "editar" and datos:
+                e_cedula  = _add_field(form, "Cédula:", "Número de cédula",
+                                        value=str(datos[1]), state="disabled")
+                e_nombres = _add_field(form, "Nombres:", "Nombres completos",
+                                        value=str(datos[2]))
+                e_empresa = _add_field(form, "Empresa:", "Nombre de la empresa",
+                                        value=str(datos[3]) if datos[3] and datos[3] != "—" else "")
+            else:
+                e_cedula  = _add_field(form, "Cédula:", "Número de cédula")
+                e_nombres = _add_field(form, "Nombres:", "Nombres completos")
+                e_empresa = _add_field(form, "Empresa:", "Nombre de la empresa")
+
+            def _guardar():
+                cedula  = e_cedula.get().strip()
+                nombres = e_nombres.get().strip()
+                empresa = e_empresa.get().strip() or None
+
+                if not cedula or not nombres:
+                    Notification(form, "❌ Error",
+                                 "Cédula y nombres son obligatorios.",
+                                 notification_type="error")
+                    return
+
+                try:
+                    with self._db_lock:
+                        if modo == "agregar":
+                            self.cursor.execute(
+                                "SELECT id FROM Personas WHERE cedula = ?",
+                                (cedula,)
+                            )
+                            if self.cursor.fetchone():
+                                Notification(form, "⚠️ Duplicado",
+                                             f"Ya existe una persona con cédula {cedula}.",
+                                             notification_type="warning")
+                                return
+                            self.cursor.execute(
+                                "INSERT INTO Personas (cedula, nombres, empresa) "
+                                "VALUES (?, ?, ?)",
+                                (cedula, nombres, empresa)
+                            )
+                            self._audit("Agregar persona (Panel Personas)")
+                            msg = f"Persona '{nombres}' registrada."
+                        else:
+                            self.cursor.execute(
+                                "UPDATE Personas SET nombres = ?, empresa = ? "
+                                "WHERE id = ?",
+                                (nombres, empresa, datos[0])
+                            )
+                            self._audit("Editar persona (Panel Personas)")
+                            msg = f"Persona '{nombres}' actualizada."
+                        self.conn.commit()
+
+                    Notification(self.root, "✅ Guardado", msg,
+                                 notification_type="success", duration=2500)
+                    form.destroy()
+                    _cargar(entry_buscar.get())
+                except Exception as exc:
+                    self.conn.rollback()
+                    Notification(form, "❌ Error", str(exc),
+                                 notification_type="error")
+
+            btn_row = ctk.CTkFrame(form, fg_color="transparent")
+            btn_row.pack(pady=14)
+
+            ctk.CTkButton(
+                btn_row, text="Cancelar",
+                command=form.destroy,
+                fg_color="#9E9E9E", hover_color="#757575",
+                text_color="white", font=("Arial", 11, "bold"),
+                corner_radius=8, width=150, height=38
+            ).pack(side="left", padx=6)
+
+            ctk.CTkButton(
+                btn_row,
+                text="💾 Guardar" if modo == "editar" else "➕ Agregar",
+                command=_guardar,
+                fg_color="#6A1B9A" if modo == "agregar" else COLOR_PRIMARY,
+                hover_color="#4A148C" if modo == "agregar" else "#388E3C",
+                text_color="white", font=("Arial", 11, "bold"),
+                corner_radius=8, width=150, height=38
+            ).pack(side="left", padx=6)
+
+            # mostrar la ventana del formulario
+            form.after(200, lambda: (
+                form.update_idletasks(),
+                form.deiconify(),
+                form.lift(),
+                form.focus_force(),
+                form.grab_set()
+            ))
+            form.wait_window()
+
+        # ── Acciones: Agregar / Editar / Eliminar ─────────────────
+        def _agregar():
+            _abrir_formulario("agregar")
+
+        def _editar():
+            sel = tree.selection()
+            if not sel:
+                Notification(win, "⚠️ Selecciona una persona",
+                             "Haz clic en una persona de la lista para editarla.",
+                             notification_type="warning")
+                return
+            vals = tree.item(sel[0])["values"]
+            # vals: (id, cédula, nombres, empresa, docs)
+            _abrir_formulario("editar", datos=(vals[0], vals[1], vals[2], vals[3]))
+
+        def _eliminar():
+            sel = tree.selection()
+            if not sel:
+                Notification(win, "⚠️ Selecciona una persona",
+                             "Haz clic en una persona de la lista para eliminarla.",
+                             notification_type="warning")
+                return
+            vals = tree.item(sel[0])["values"]
+            pid, cedula, nombres, empresa, docs = vals
+
+            if int(docs) > 0:
+                msg = (f"'{nombres}' tiene {docs} documento(s) vinculado(s).\n"
+                       "Si la eliminas, los documentos quedarán sin titular.\n"
+                       "¿Continuar?")
+            else:
+                msg = f"¿Eliminar a '{nombres}' (cédula {cedula})?"
+
+            dlg = ConfirmDialog(
+                win, "🗑️ Eliminar Persona", msg,
+                confirm_text="Eliminar", danger=True
+            )
+            if not dlg.result:
+                return
+            try:
+                with self._db_lock:
+                    self.cursor.execute(
+                        "DELETE FROM Personas WHERE id = ?", (pid,)
+                    )
+                    self._audit("Eliminar persona (Panel Personas)")
+                    self.conn.commit()
+                Notification(self.root, "✅ Eliminada",
+                             f"Persona '{nombres}' eliminada correctamente.",
+                             notification_type="success", duration=2500)
+                _cargar(entry_buscar.get())
+            except Exception as exc:
+                self.conn.rollback()
+                Notification(win, "❌ Error", str(exc),
+                             notification_type="error")
+
+        # ── Barra inferior de botones ─────────────────────────────
+        bottom_bar = ctk.CTkFrame(win, fg_color="transparent")
+        bottom_bar.pack(fill="x", padx=14, pady=(0, 10))
+
+        ctk.CTkButton(
+            bottom_bar, text="➕ Agregar Persona",
+            command=_agregar,
+            fg_color="#6A1B9A", hover_color="#4A148C",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=160, height=38
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            bottom_bar, text="✏️ Editar",
+            command=_editar,
+            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=120, height=38
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            bottom_bar, text="🗑️ Eliminar",
+            command=_eliminar,
+            fg_color=COLOR_ERROR, hover_color="#C62828",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=120, height=38
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            bottom_bar, text="🔄 Refrescar",
+            command=lambda: _cargar(entry_buscar.get()),
+            fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
+            text_color="white", font=("Arial", 11, "bold"),
+            corner_radius=8, width=120, height=38
+        ).pack(side="right", padx=6)
+
+        # doble clic para editar
+        tree.bind("<Double-1>", lambda _e: _editar())
+
+        # carga inicial
+        _cargar()
+
     # LOG para auditoria — UI imrpovement
  
 
