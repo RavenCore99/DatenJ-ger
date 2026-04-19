@@ -10,6 +10,7 @@ import customtkinter as ctk
 import tkinter as tk
 import os
 import math
+from datetime import datetime, timedelta
 
 
 # FUNCIon PARA OBTENER COLORES DINAMICOS SEGuN EL TEMA
@@ -365,37 +366,28 @@ class ProgressBarModerno:
 
 
 #                    #
-# CLASE DASHBOARD
+# CLASE DASHBOARD  — improvement #11
+# Gráficos visuales con matplotlib + regresión lineal (ML)
 #                    #
 
 class DashboardWidget:
-    # widget de dashboard con estadisticas
+    """Dashboard con tarjetas KPI, gráfico donut por empresa y línea de
+    tendencia temporal con regresión lineal (numpy).
+    Se integra con Tkinter via matplotlib FigureCanvasTkAgg."""
 
     def __init__(self, parent, cursor, usuario_id):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
         self.cursor = cursor
         self.usuario_id = usuario_id
+        self._chart_canvases = []  # referencias para cleanup
         self.construir_dashboard()
 
-    def construir_dashboard(self):
-        # construye el dashboard
+    def _query_stats(self):
+        """Consulta las estadísticas globales del usuario."""
         from database import format_size
-        
-        colors = get_dynamic_colors()
-        
-        title = ctk.CTkLabel(
-            self.frame,
-            text="📊 ESTADÍSTICAS DEL REPOSITORIO",
-            font=("Arial", 13, "bold"),
-            text_color=colors["text_secondary"]
-        )
-        title.pack(pady=(8, 4))
-
-        stats_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
-        stats_frame.pack(fill="both", padx=10)
 
         self.cursor.execute(
-            "SELECT COUNT(*), SUM(tamano) FROM PDFs WHERE usuario_id = ?",
+            "SELECT COUNT(*), COALESCE(SUM(tamano),0) FROM PDFs WHERE usuario_id = ?",
             (self.usuario_id,)
         )
         total_pdfs, total_size = self.cursor.fetchone()
@@ -408,41 +400,313 @@ class DashboardWidget:
         )
         total_personas = self.cursor.fetchone()[0] or 0
 
-        tarjetas = [
-            ("📄", f"{total_pdfs}", "PDFs Totales",  COLOR_SECONDARY),
-            ("💾", format_size(total_size), "Espacio Usado", "#7B1FA2"),
-            ("👥", f"{total_personas}", "Personas",    "#00897B"),
-            ("🔒", "AES-256-GCM", "Encriptación",        COLOR_PRIMARY),
+        self.cursor.execute(
+            "SELECT COUNT(DISTINCT COALESCE(pe.empresa,'')) "
+            "FROM PDFs p LEFT JOIN Personas pe ON p.persona_id = pe.id "
+            "WHERE p.usuario_id = ?",
+            (self.usuario_id,)
+        )
+        total_empresas = self.cursor.fetchone()[0] or 0
+
+        return {
+            "total_pdfs": total_pdfs,
+            "total_size_str": format_size(total_size),
+            "total_personas": total_personas,
+            "total_empresas": total_empresas,
+        }
+
+    def _query_empresas(self):
+        """Distribución de documentos por empresa."""
+        self.cursor.execute(
+            "SELECT COALESCE(pe.empresa, 'Sin empresa'), COUNT(*) "
+            "FROM PDFs p LEFT JOIN Personas pe ON p.persona_id = pe.id "
+            "WHERE p.usuario_id = ? "
+            "GROUP BY COALESCE(pe.empresa, 'Sin empresa') "
+            "ORDER BY COUNT(*) DESC",
+            (self.usuario_id,)
+        )
+        return self.cursor.fetchall()
+
+    def _query_timeline(self):
+        """Subidas por día (para gráfico temporal y regresión)."""
+        self.cursor.execute(
+            "SELECT DATE(fecha_subida) AS dia, COUNT(*) "
+            "FROM PDFs WHERE usuario_id = ? "
+            "GROUP BY DATE(fecha_subida) ORDER BY dia ASC",
+            (self.usuario_id,)
+        )
+        return self.cursor.fetchall()
+
+    # ── Construcción ──────────────────────────────────────────────
+
+    def construir_dashboard(self):
+        import matplotlib
+        matplotlib.use("Agg")  # backend sin ventana
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        import numpy as np
+
+        colors = get_dynamic_colors()
+        is_dark = ctk.get_appearance_mode() == "Dark"
+        stats = self._query_stats()
+        empresas = self._query_empresas()
+        timeline = self._query_timeline()
+
+        # Colores matplotlib según tema
+        fig_bg   = "#1a1a2e" if is_dark else "#f0f4ff"
+        ax_bg    = "#16213e" if is_dark else "#f0f4ff"
+        txt_col  = "#e0e0e0" if is_dark else "#1a237e"
+        grid_col = "#2a3a5e" if is_dark else "#d0d8e8"
+        ring_bg  = "#2a3a5e" if is_dark else "#d0d8e8"
+
+        # ── Título ─────────────────────────────────────────
+        ctk.CTkLabel(
+            self.frame,
+            text="📊 ESTADÍSTICAS DEL REPOSITORIO",
+            font=("Arial", 13, "bold"),
+            text_color=colors["text_secondary"]
+        ).pack(pady=(8, 4))
+
+        # ── Fila 1: 4 Mini-gauges + card AES ──────────────
+        row1 = ctk.CTkFrame(self.frame, fg_color="transparent")
+        row1.pack(fill="x", padx=10, pady=(2, 0))
+
+        # --- 4 gauges como una sola figura matplotlib ---
+        gauge_data = [
+            (stats["total_pdfs"],     "PDFs Totales",  "#2196F3", 50),
+            (stats["total_size_str"], "Espacio Usado",  "#7B1FA2", None),
+            (stats["total_personas"], "Personas",       "#00897B", 30),
+            (stats["total_empresas"], "Empresas",       "#E65100", 15),
         ]
 
-        for icono, valor, label, color in tarjetas:
-            self.crear_tarjeta(stats_frame, icono, valor, label, color)
+        fig_g, axes_g = plt.subplots(1, 4, figsize=(7.8, 1.8), dpi=90)
+        fig_g.patch.set_facecolor(fig_bg)
 
-    def crear_tarjeta(self, parent, icono, valor, label, color):
-        # crea una tarjeta de estadística
-        card = ctk.CTkFrame(parent, fg_color=color, corner_radius=12)
-        card.pack(side="left", padx=6, pady=6, expand=True, fill="both")
+        for i, (valor, label, color, max_val) in enumerate(gauge_data):
+            ax = axes_g[i]
+            ax.set_facecolor(fig_bg)
+            ax.set_aspect("equal")
+            ax.axis("off")
+
+            if max_val is not None and isinstance(valor, (int, float)):
+                # gauge numérico: semicírculo de progreso
+                ratio = min(valor / max(max_val, 1), 1.0)
+                theta_bg = np.linspace(0, np.pi, 60)
+                theta_fg = np.linspace(0, np.pi * ratio, max(2, int(60 * ratio)))
+
+                r_outer = 1.0
+                r_inner = 0.65
+
+                # fondo del semicírculo
+                x_bg = np.concatenate([r_outer * np.cos(theta_bg),
+                                        r_inner * np.cos(theta_bg[::-1])])
+                y_bg = np.concatenate([r_outer * np.sin(theta_bg),
+                                        r_inner * np.sin(theta_bg[::-1])])
+                ax.fill(x_bg, y_bg, color=ring_bg, alpha=0.4)
+
+                # progreso del semicírculo
+                x_fg = np.concatenate([r_outer * np.cos(theta_fg),
+                                        r_inner * np.cos(theta_fg[::-1])])
+                y_fg = np.concatenate([r_outer * np.sin(theta_fg),
+                                        r_inner * np.sin(theta_fg[::-1])])
+                ax.fill(x_fg, y_fg, color=color, alpha=0.9)
+
+                # valor centrado
+                ax.text(0, 0.35, str(valor),
+                        ha="center", va="center",
+                        fontsize=16, fontweight="bold", color=color)
+            else:
+                # gauge de texto (para espacio) — anillo completo decorativo
+                theta_full = np.linspace(0, np.pi, 60)
+                r_outer = 1.0
+                r_inner = 0.65
+                x_ring = np.concatenate([r_outer * np.cos(theta_full),
+                                          r_inner * np.cos(theta_full[::-1])])
+                y_ring = np.concatenate([r_outer * np.sin(theta_full),
+                                          r_inner * np.sin(theta_full[::-1])])
+                ax.fill(x_ring, y_ring, color=color, alpha=0.85)
+
+                display_val = str(valor) if valor else "0 B"
+                ax.text(0, 0.38, display_val,
+                        ha="center", va="center",
+                        fontsize=10, fontweight="bold", color="white" if is_dark else color)
+
+            # label debajo
+            ax.text(0, -0.15, label,
+                    ha="center", va="center",
+                    fontsize=7.5, color=txt_col, fontweight="bold")
+            ax.set_xlim(-1.3, 1.3)
+            ax.set_ylim(-0.4, 1.2)
+
+        fig_g.tight_layout(pad=0.5)
+        canvas_g = FigureCanvasTkAgg(fig_g, master=row1)
+        canvas_g.draw()
+        canvas_g.get_tk_widget().pack(side="left", fill="both",
+                                       expand=True, padx=(0, 5))
+        self._chart_canvases.append((fig_g, canvas_g))
+
+        # --- Card AES-256-GCM (se mantiene como CTk widget) ---
+        aes_card = ctk.CTkFrame(row1, fg_color=COLOR_PRIMARY,
+                                 corner_radius=12, width=120)
+        aes_card.pack(side="right", fill="y", padx=(5, 0), pady=4)
+        aes_card.pack_propagate(False)
 
         ctk.CTkLabel(
-            card,
-            text=icono,
-            font=("Arial", 22),
-            text_color="white"
-        ).pack(pady=(8, 2))
-
+            aes_card, text="🔒", font=("Arial", 20), text_color="white"
+        ).pack(pady=(16, 2))
         ctk.CTkLabel(
-            card,
-            text=valor,
-            font=("Arial", 16, "bold"),
-            text_color="white"
-        ).pack(pady=2)
-
+            aes_card, text="AES-256",
+            font=("Arial", 13, "bold"), text_color="white"
+        ).pack(pady=0)
         ctk.CTkLabel(
-            card,
-            text=label,
-            font=("Arial", 9),
-            text_color="#dddddd"
+            aes_card, text="GCM",
+            font=("Arial", 11, "bold"), text_color="#c8e6c9"
+        ).pack(pady=0)
+        ctk.CTkLabel(
+            aes_card, text="Encriptación",
+            font=("Arial", 8), text_color="#dddddd"
         ).pack(pady=(2, 8))
+
+        plt.close(fig_g)
+
+        # ── Fila 2: Gráficos analíticos ──────────────────
+        charts_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
+        charts_frame.pack(fill="x", padx=10, pady=(4, 4))
+
+        # ── Gráfico 1: Donut chart por empresa ────────────
+        fig1, ax1 = plt.subplots(figsize=(3.2, 2.4), dpi=90)
+        fig1.patch.set_facecolor(fig_bg)
+        ax1.set_facecolor(ax_bg)
+
+        if empresas and stats["total_pdfs"] > 0:
+            labels  = [e[0][:18] for e in empresas[:6]]
+            valores = [e[1] for e in empresas[:6]]
+            palette = ["#4CAF50", "#2196F3", "#9C27B0",
+                       "#00897B", "#FF9800", "#E53935"]
+            wedges, texts, autotexts = ax1.pie(
+                valores, labels=None, autopct="%1.0f%%",
+                colors=palette[:len(valores)],
+                startangle=90, pctdistance=0.78,
+                wedgeprops=dict(width=0.42, edgecolor=fig_bg, linewidth=1.5)
+            )
+            for t in autotexts:
+                t.set_fontsize(7)
+                t.set_color("white")
+                t.set_fontweight("bold")
+            ax1.legend(
+                wedges, labels, loc="center left",
+                bbox_to_anchor=(0.92, 0.5), fontsize=6.5,
+                frameon=False, labelcolor=txt_col
+            )
+            ax1.set_title("Documentos por Empresa",
+                          fontsize=9, fontweight="bold", color=txt_col, pad=8)
+        else:
+            ax1.text(0.5, 0.5, "Sin datos\naún",
+                     ha="center", va="center", fontsize=10,
+                     color=txt_col, alpha=0.5,
+                     transform=ax1.transAxes)
+            ax1.set_title("Documentos por Empresa",
+                          fontsize=9, fontweight="bold", color=txt_col, pad=8)
+            ax1.axis("off")
+
+        fig1.tight_layout(pad=1.0)
+        canvas1 = FigureCanvasTkAgg(fig1, master=charts_frame)
+        canvas1.draw()
+        canvas1.get_tk_widget().pack(side="left", padx=(0, 5), pady=2,
+                                      expand=True, fill="both")
+        self._chart_canvases.append((fig1, canvas1))
+
+        # ── Gráfico 2: Línea temporal + Regresión lineal ──
+        fig2, ax2 = plt.subplots(figsize=(4.4, 2.4), dpi=90)
+        fig2.patch.set_facecolor(fig_bg)
+        ax2.set_facecolor(ax_bg)
+
+        if timeline and len(timeline) >= 1:
+            dias    = [t[0] for t in timeline]
+            counts  = [t[1] for t in timeline]
+
+            x_vals = np.arange(len(dias))
+
+            bar_colors = "#4CAF50" if is_dark else "#2196F3"
+            ax2.bar(x_vals, counts, color=bar_colors, alpha=0.7,
+                    width=0.6, zorder=2, label="Subidas/día")
+
+            if len(timeline) >= 2:
+                coeffs = np.polyfit(x_vals, counts, 1)
+                trend_line = np.polyval(coeffs, x_vals)
+                ax2.plot(x_vals, trend_line, color="#FF9800",
+                         linewidth=2, linestyle="--", zorder=3,
+                         label=f"Tendencia (m={coeffs[0]:+.2f})")
+
+                next_x = len(dias)
+                pred_y = max(0, np.polyval(coeffs, next_x))
+                ax2.scatter([next_x], [pred_y], color="#E53935",
+                            s=40, zorder=4, marker="D",
+                            label=f"Predicción: {pred_y:.0f}")
+
+            if len(dias) <= 10:
+                ax2.set_xticks(x_vals)
+                ax2.set_xticklabels(
+                    [d[5:] for d in dias],
+                    fontsize=6, rotation=35, color=txt_col
+                )
+            else:
+                step = max(1, len(dias) // 8)
+                ticks = x_vals[::step]
+                ax2.set_xticks(ticks)
+                ax2.set_xticklabels(
+                    [dias[i][5:] for i in ticks],
+                    fontsize=6, rotation=35, color=txt_col
+                )
+
+            ax2.set_ylabel("Documentos", fontsize=7, color=txt_col)
+            ax2.tick_params(axis="y", labelsize=7, colors=txt_col)
+            ax2.grid(axis="y", color=grid_col, linewidth=0.4, alpha=0.5)
+            ax2.legend(fontsize=6, frameon=False, labelcolor=txt_col,
+                       loc="upper left")
+            ax2.set_title("Actividad Temporal + Regresión Lineal",
+                          fontsize=9, fontweight="bold", color=txt_col, pad=8)
+
+            if len(timeline) >= 3:
+                y_mean = np.mean(counts)
+                ss_tot = np.sum((np.array(counts) - y_mean) ** 2)
+                ss_res = np.sum((np.array(counts) - trend_line) ** 2)
+                r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+                ax2.text(0.98, 0.02, f"R²={r2:.3f}",
+                         transform=ax2.transAxes, fontsize=6.5,
+                         ha="right", va="bottom", color="#FF9800",
+                         fontweight="bold", alpha=0.8)
+        else:
+            ax2.text(0.5, 0.5,
+                     "Sin datos temporales\nSube documentos para ver tendencias",
+                     ha="center", va="center", fontsize=9,
+                     color=txt_col, alpha=0.5,
+                     transform=ax2.transAxes)
+            ax2.set_title("Actividad Temporal + Regresión Lineal",
+                          fontsize=9, fontweight="bold", color=txt_col, pad=8)
+            ax2.axis("off")
+
+        fig2.tight_layout(pad=1.0)
+        canvas2 = FigureCanvasTkAgg(fig2, master=charts_frame)
+        canvas2.draw()
+        canvas2.get_tk_widget().pack(side="left", padx=(5, 0), pady=2,
+                                      expand=True, fill="both")
+        self._chart_canvases.append((fig2, canvas2))
+
+        plt.close(fig1)
+        plt.close(fig2)
+
+    # ── Cleanup ───────────────────────────────────────────
+
+    def destroy(self):
+        """Libera recursos de matplotlib al destruir el widget."""
+        for fig, canvas in self._chart_canvases:
+            try:
+                canvas.get_tk_widget().destroy()
+            except Exception:
+                pass
+        self._chart_canvases.clear()
+        self.frame.destroy()
 
     def pack(self, **kwargs):
         self.frame.pack(**kwargs)
