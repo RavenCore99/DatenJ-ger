@@ -664,7 +664,7 @@ class DashboardWidget:
             ax2.grid(axis="y", color=grid_col, linewidth=0.4, alpha=0.5)
             ax2.legend(fontsize=6, frameon=False, labelcolor=txt_col,
                        loc="upper left")
-            ax2.set_title("Actividad Temporal + Regresión Lineal",
+            ax2.set_title("Actividad Temporal ", 
                           fontsize=9, fontweight="bold", color=txt_col, pad=8)
 
             if len(timeline) >= 3:
