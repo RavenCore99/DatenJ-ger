@@ -785,13 +785,26 @@ class AppDBPDF:
                 corner_radius=7, height=36, width=108
             ).pack(side="left", padx=4)
 
+        # -- Toggle vista lista / mosaico --
+        self._view_mode = "list"  # "list" | "mosaic"
+        self._btn_toggle_view = ctk.CTkButton(
+            actions_row, text="🔲 Mosaico",
+            command=self._toggle_view_mode,
+            fg_color=("#546e7a", "#37474f"), hover_color="#455a64",
+            text_color="white", font=("Arial", 10, "bold"),
+            corner_radius=7, height=36, width=108
+        )
+        self._btn_toggle_view.pack(side="right", padx=4)
+
                          # -- TreeView + Preview side panel --
         content_area = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
         content_area.pack(fill="both", expand=True, padx=14, pady=8)
+        self._content_area = content_area  # referencia para toggle
 
                               # Treeview frame
         tree_frame = ctk.CTkFrame(content_area, fg_color=("#ffffff", "#1e2a4a"), corner_radius=10)
         tree_frame.pack(side="left", fill="both", expand=True)
+        self._tree_frame = tree_frame  # referencia para toggle
 
         self.tree = ttk.Treeview(
             tree_frame,
@@ -822,6 +835,15 @@ class AppDBPDF:
         self._ctx_menu.add_command(label="⬇️  Exportar PDF",         command=self.exportar_pdf)
         self._ctx_menu.add_separator()
         self._ctx_menu.add_command(label="🗑️  Eliminar",             command=self.eliminar_pdf)
+
+                        # -- Mosaic frame (hidden by default) --
+        self._mosaic_frame = ctk.CTkScrollableFrame(
+            content_area, fg_color=("#f0f4ff", "#16213e"),
+            corner_radius=10
+        )
+        # No pack yet — starts hidden
+        self._mosaic_rows_cache = []  # cached data for mosaic
+        self._mosaic_selected_id = None
 
                         # Preview / detail sidebar
         self._preview_panel = ctk.CTkFrame(
@@ -1021,11 +1043,220 @@ class AppDBPDF:
 
     def _populate_treeview(self, rows):
         # borra el TreeView e inserta filas formateadas con colores alternos
+        self._mosaic_rows_cache = rows  # cache for mosaic
         for item in self.tree.get_children():
             self.tree.delete(item)
         for i, row in enumerate(rows):
             tag = 'evenrow' if i % 2 == 0 else 'oddrow'
             self.tree.insert('', 'end', values=self._format_pdf_row(row), tags=(tag,))
+        # si estamos en modo mosaico, también pintar el mosaic
+        if self._view_mode == "mosaic":
+            self._populate_mosaic(rows)
+
+    # ──────────────────────────────────────────────────────────────
+    # VISTA MOSAICO  — improvement #12
+    # ──────────────────────────────────────────────────────────────
+
+    def _toggle_view_mode(self):
+        """Alterna entre vista lista (Treeview) y vista mosaico (grid cards)."""
+        if self._view_mode == "list":
+            # Cambiar a mosaico
+            self._view_mode = "mosaic"
+            self._btn_toggle_view.configure(text="📋 Lista")
+
+            self._tree_frame.pack_forget()
+            self._preview_panel.pack_forget()
+
+            self._mosaic_frame.pack(side="left", fill="both", expand=True)
+            self._preview_panel.pack(side="right", fill="y", padx=(8, 0))
+
+            self._populate_mosaic(self._mosaic_rows_cache)
+        else:
+            # Cambiar a lista
+            self._view_mode = "list"
+            self._btn_toggle_view.configure(text="🔲 Mosaico")
+
+            self._mosaic_frame.pack_forget()
+            self._preview_panel.pack_forget()
+
+            self._tree_frame.pack(side="left", fill="both", expand=True)
+            self._preview_panel.pack(side="right", fill="y", padx=(8, 0))
+
+    def _populate_mosaic(self, rows):
+        """Rellena el frame scrollable con tarjetas de PDF estilizadas."""
+        # Limpiar contenido anterior
+        for w in self._mosaic_frame.winfo_children():
+            w.destroy()
+
+        colors = self.get_colors()
+        is_dark = ctk.get_appearance_mode() == "Dark"
+
+        if not rows:
+            ctk.CTkLabel(
+                self._mosaic_frame,
+                text="📂 No hay documentos para mostrar",
+                font=("Arial", 13), text_color=colors["text_secondary"]
+            ).pack(pady=40)
+            return
+
+        # Paleta de colores para los íconos de PDF
+        icon_colors = ["#E53935", "#D81B60", "#8E24AA", "#5E35B1",
+                       "#3949AB", "#1E88E5", "#00897B", "#43A047"]
+
+        # Container grid
+        grid = ctk.CTkFrame(self._mosaic_frame, fg_color="transparent")
+        grid.pack(fill="both", expand=True, padx=4, pady=4)
+
+        COLS = 4  # tarjetas por fila
+
+        for i, row in enumerate(rows):
+            pdf_id   = row[0]
+            nombre   = row[1] or "Sin nombre"
+            desc     = row[2][:40] + "…" if row[2] and len(row[2]) > 40 else (row[2] or "")
+            tamano   = format_size(row[3])
+            fecha    = format_date_friendly(row[4])
+            cedula   = row[5] or ""
+            persona  = row[6] or "—"
+            empresa  = row[7] or ""
+
+            r, c = divmod(i, COLS)
+            color_accent = icon_colors[i % len(icon_colors)]
+
+            card_bg = ("#ffffff", "#1e2a4a") if not is_dark else ("#1e2a4a", "#1e2a4a")
+            card = ctk.CTkFrame(
+                grid, fg_color=card_bg,
+                corner_radius=12, border_width=2,
+                border_color=(color_accent, color_accent)
+            )
+            card.grid(row=r, column=c, padx=6, pady=6, sticky="nsew")
+
+            # hacer que la columna expanda uniformemente
+            grid.grid_columnconfigure(c, weight=1)
+
+            # ── Ícono de PDF estilizado ──
+            icon_frame = ctk.CTkFrame(card, fg_color=color_accent,
+                                       corner_radius=8, height=60, width=60)
+            icon_frame.pack(pady=(12, 4))
+            icon_frame.pack_propagate(False)
+
+            ctk.CTkLabel(
+                icon_frame, text="📄",
+                font=("Arial", 24), text_color="white"
+            ).pack(expand=True)
+
+            # extensión badge
+            ext = nombre.rsplit(".", 1)[-1].upper() if "." in nombre else "PDF"
+            ctk.CTkLabel(
+                card, text=ext,
+                font=("Arial", 8, "bold"),
+                text_color="white",
+                fg_color=color_accent,
+                corner_radius=4, width=32, height=16
+            ).pack(pady=(0, 4))
+
+            # ── Nombre del archivo ──
+            nombre_display = nombre[:22] + "…" if len(nombre) > 22 else nombre
+            ctk.CTkLabel(
+                card, text=nombre_display,
+                font=("Arial", 10, "bold"),
+                text_color=colors["text_primary"],
+                wraplength=150
+            ).pack(padx=8, pady=(0, 2))
+
+            # ── Persona / Empresa ──
+            if persona != "—":
+                persona_txt = persona[:18] + "…" if len(persona) > 18 else persona
+                ctk.CTkLabel(
+                    card, text=f"👤 {persona_txt}",
+                    font=("Arial", 8),
+                    text_color=colors["text_secondary"]
+                ).pack(padx=8)
+
+            if empresa:
+                emp_txt = empresa[:18] + "…" if len(empresa) > 18 else empresa
+                ctk.CTkLabel(
+                    card, text=f"🏢 {emp_txt}",
+                    font=("Arial", 8),
+                    text_color=colors["text_secondary"]
+                ).pack(padx=8)
+
+            # ── Tamaño + Fecha ──
+            meta_frame = ctk.CTkFrame(card, fg_color="transparent")
+            meta_frame.pack(padx=8, pady=(4, 8))
+
+            ctk.CTkLabel(
+                meta_frame, text=f"💾 {tamano}",
+                font=("Arial", 8), text_color=colors["text_secondary"]
+            ).pack(side="left", padx=(0, 6))
+
+            ctk.CTkLabel(
+                meta_frame, text=f"📅 {fecha}",
+                font=("Arial", 8), text_color=colors["text_secondary"]
+            ).pack(side="left")
+
+            # ── Interacciones: click selecciona, doble-click abre ──
+            def _on_card_click(event, _id=pdf_id, _card=card, _row=row):
+                self._mosaic_selected_id = _id
+                # resaltar la card seleccionada y des-resaltar las demás
+                for ch in grid.winfo_children():
+                    try:
+                        ch.configure(border_color=(
+                            icon_colors[list(grid.winfo_children()).index(ch) % len(icon_colors)],
+                            icon_colors[list(grid.winfo_children()).index(ch) % len(icon_colors)]
+                        ))
+                    except Exception:
+                        pass
+                _card.configure(border_color=("#FFD600", "#FFD600"))
+
+                # Actualizar preview lateral
+                self._preview_name.configure(text=_row[1] or "—")
+                info_parts = []
+                if _row[5]: info_parts.append(f"🪪 {_row[5]}")
+                if _row[6]: info_parts.append(f"👤 {_row[6]}")
+                if _row[7]: info_parts.append(f"🏢 {_row[7]}")
+                info_parts.append(f"💾 {format_size(_row[3])}")
+                info_parts.append(f"📅 {format_date_friendly(_row[4])}")
+                info_parts.append(f"🔒 AES-256-GCM")
+                self._preview_info.configure(text="\n".join(info_parts))
+
+                # sincronizar selección en el Treeview (para que las acciones funcionen)
+                for item in self.tree.get_children():
+                    vals = self.tree.item(item)["values"]
+                    if vals and int(vals[0]) == _id:
+                        self.tree.selection_set(item)
+                        break
+
+            def _on_card_dblclick(event, _id=pdf_id):
+                self._mosaic_selected_id = _id
+                # sincronizar y abrir
+                for item in self.tree.get_children():
+                    vals = self.tree.item(item)["values"]
+                    if vals and int(vals[0]) == _id:
+                        self.tree.selection_set(item)
+                        break
+                self.abrir_pdf_doble_click()
+
+            def _on_card_rclick(event, _id=pdf_id):
+                self._mosaic_selected_id = _id
+                for item in self.tree.get_children():
+                    vals = self.tree.item(item)["values"]
+                    if vals and int(vals[0]) == _id:
+                        self.tree.selection_set(item)
+                        break
+                self._ctx_menu.tk_popup(event.x_root, event.y_root)
+
+            # Bind a todos los hijos del card también
+            def _bind_recursive(widget, _id=pdf_id, _card=card, _row=row):
+                widget.bind("<Button-1>",
+                            lambda e, i=_id, c=_card, r=_row: _on_card_click(e, i, c, r))
+                widget.bind("<Double-1>",
+                            lambda e, i=_id: _on_card_dblclick(e, i))
+                widget.bind("<Button-3>",
+                            lambda e, i=_id: _on_card_rclick(e, i))
+                for child in widget.winfo_children():
+                    _bind_recursive(child, _id, _card, _row)
+
+            _bind_recursive(card)
 
     
     # HELPERS: BUSCA   DEBOUNCE
