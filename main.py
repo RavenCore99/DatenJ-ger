@@ -2333,7 +2333,15 @@ class AppDBPDF:
         win.transient(self.root)
         win.withdraw()
 
+        _auto_refresh_id = [None]   # mutable para cancelar el after
+        _last_hash = [None]        # hash de datos para detectar cambios
+
         def _close_win():
+            if _auto_refresh_id[0] is not None:
+                try:
+                    win.after_cancel(_auto_refresh_id[0])
+                except Exception:
+                    pass
             try:
                 win.grab_release()
             except tk.TclError:
@@ -2409,33 +2417,45 @@ class AppDBPDF:
         tree.tag_configure("odd",  background="#1e1533" if ctk.get_appearance_mode() == "Dark" else "#f3e5f5")
         tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
 
-        # ── Carga de datos ────────────────────────────────────────
-        def _cargar(filtro=""):
-            for row in tree.get_children():
-                tree.delete(row)
-            try:
-                query = (
-                    "SELECT pe.id, pe.cedula, pe.nombres, "
-                    "       COALESCE(pe.empresa, '—'), "
-                    "       COUNT(p.id) AS total_docs "
-                    "FROM Personas pe "
-                    "LEFT JOIN PDFs p ON p.persona_id = pe.id "
-                    "WHERE 1=1 "
+        # ── Carga de datos con detección de cambios ─────────────
+        def _fetch_rows(filtro=""):
+            """Ejecuta la query y devuelve las filas."""
+            query = (
+                "SELECT pe.id, pe.cedula, pe.nombres, "
+                "       COALESCE(pe.empresa, '—'), "
+                "       COUNT(p.id) AS total_docs "
+                "FROM Personas pe "
+                "LEFT JOIN PDFs p ON p.persona_id = pe.id "
+                "WHERE 1=1 "
+            )
+            params = []
+            if filtro.strip():
+                query += (
+                    "AND (pe.cedula LIKE ? OR pe.nombres LIKE ? "
+                    "     OR pe.empresa LIKE ?) "
                 )
-                params = []
-                if filtro.strip():
-                    query += (
-                        "AND (pe.cedula LIKE ? OR pe.nombres LIKE ? "
-                        "     OR pe.empresa LIKE ?) "
-                    )
-                    like = f"%{filtro.strip()}%"
-                    params.extend([like, like, like])
-                query += "GROUP BY pe.id ORDER BY pe.nombres ASC"
+                like = f"%{filtro.strip()}%"
+                params.extend([like, like, like])
+            query += "GROUP BY pe.id ORDER BY pe.nombres ASC"
+            with self._db_lock:
+                self.cursor.execute(query, params)
+                return self.cursor.fetchall()
 
-                with self._db_lock:
-                    self.cursor.execute(query, params)
-                    rows = self.cursor.fetchall()
+        def _rows_hash(rows):
+            """Hash rápido para detectar cambios en los datos."""
+            import hashlib
+            return hashlib.md5(str(rows).encode()).hexdigest()
 
+        def _cargar(filtro="", force=False):
+            try:
+                rows = _fetch_rows(filtro)
+                new_hash = _rows_hash(rows)
+                if not force and new_hash == _last_hash[0]:
+                    return  # sin cambios, no redibujar
+                _last_hash[0] = new_hash
+
+                for row in tree.get_children():
+                    tree.delete(row)
                 for i, (pid, cedula, nombres, empresa, docs) in enumerate(rows):
                     tag = "odd" if i % 2 == 0 else "even"
                     tree.insert("", "end",
@@ -2449,9 +2469,20 @@ class AppDBPDF:
                              str(e), notification_type="error")
 
         def _filtrar(*_args):
-            _cargar(entry_buscar.get())
+            _cargar(entry_buscar.get(), force=True)
 
         entry_buscar.bind("<KeyRelease>", _filtrar)
+
+        # ── Auto-refresh cada 10 segundos ─────────────────────────
+        def _auto_refresh():
+            try:
+                if win.winfo_exists():
+                    _cargar(entry_buscar.get())
+                    _auto_refresh_id[0] = win.after(10000, _auto_refresh)
+            except tk.TclError:
+                pass  # ventana ya destruida
+
+        _auto_refresh_id[0] = win.after(10000, _auto_refresh)
 
         # ── Formulario flotante para Agregar / Editar ─────────────
         def _abrir_formulario(modo="agregar", datos=None):
@@ -2668,9 +2699,20 @@ class AppDBPDF:
             corner_radius=8, width=120, height=38
         ).pack(side="left", padx=6)
 
+        lbl_refresh = ctk.CTkLabel(
+            bottom_bar, text="", font=("Arial", 9),
+            text_color=colors["text_secondary"]
+        )
+        lbl_refresh.pack(side="right", padx=(0, 6))
+
+        def _manual_refresh():
+            _cargar(entry_buscar.get(), force=True)
+            from datetime import datetime as _dt
+            lbl_refresh.configure(text=f"Última: {_dt.now().strftime('%H:%M:%S')}")
+
         ctk.CTkButton(
             bottom_bar, text="🔄 Refrescar",
-            command=lambda: _cargar(entry_buscar.get()),
+            command=_manual_refresh,
             fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=120, height=38
@@ -2680,7 +2722,7 @@ class AppDBPDF:
         tree.bind("<Double-1>", lambda _e: _editar())
 
         # carga inicial
-        _cargar()
+        _cargar(force=True)
 
     # LOG para auditoria — UI imrpovement
  
@@ -2789,7 +2831,7 @@ class AppDBPDF:
         tree.tag_configure("odd",  background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#f5f7ff")
         tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
 
-        # ── Carga de datos ────────────────────────────────────────
+        # ── Carga de datos (TODO el sistema, sin filtro de usuario) ──
         def _cargar(desde="", hasta="", accion_txt=""):
             for row in tree.get_children():
                 tree.delete(row)
@@ -2811,14 +2853,13 @@ class AppDBPDF:
                 if accion_txt.strip():
                     query += "AND a.accion LIKE ? "
                     params.append(f"%{accion_txt.strip()}%")
-                query += "ORDER BY a.fecha DESC LIMIT 1000"
+                query += "ORDER BY a.fecha DESC LIMIT 5000"
 
                 with self._db_lock:
                     self.cursor.execute(query, params)
                     rows = self.cursor.fetchall()
 
                 for i, (fecha, accion, pdf_id, usuario) in enumerate(rows):
-                    # recortar fecha a formato legible
                     fecha_fmt = fecha[:19].replace("T", "  ") if fecha else "—"
                     tag = "odd" if i % 2 == 0 else "even"
                     tree.insert("", "end",
@@ -2840,6 +2881,107 @@ class AppDBPDF:
             entry_accion.delete(0, tk.END)
             _cargar()
 
+        # ── Visor de Log del Backend (archivo) ────────────────────
+        def _ver_log_backend():
+            """Abre una sub-ventana con el contenido raw del log del sistema."""
+            import glob
+            log_paths = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "datenjager.log"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log"),
+            ]
+            # buscar también logs rotados
+            log_paths += glob.glob(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.log")
+            )
+
+            log_content = ""
+            found_log = None
+            for lp in log_paths:
+                if os.path.isfile(lp):
+                    try:
+                        with open(lp, "r", encoding="utf-8", errors="replace") as f:
+                            log_content = f.read()
+                        found_log = lp
+                        break
+                    except Exception:
+                        continue
+
+            # si no hay archivo de log, generar uno ahora con info del sistema
+            if not found_log:
+                import sys
+                import platform
+                log_content = (
+                    "═══ DatenJäger — Información del Sistema ═══\n\n"
+                    f"Python:     {sys.version}\n"
+                    f"Plataforma: {platform.platform()}\n"
+                    f"SQLite:     {__import__('sqlite3').sqlite_version}\n\n"
+                    "═══ Log de Auditoría exportado ═══\n\n"
+                )
+                try:
+                    with self._db_lock:
+                        self.cursor.execute(
+                            "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
+                            "COALESCE(u.nombre,'—') FROM Auditoria a "
+                            "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
+                            "ORDER BY a.fecha DESC LIMIT 500"
+                        )
+                        for r in self.cursor.fetchall():
+                            fecha_f = r[0][:19].replace('T', ' ') if r[0] else '—'
+                            log_content += f"[{fecha_f}] {r[1]} | PDF={r[2]} | User={r[3]}\n"
+                except Exception as ex:
+                    log_content += f"Error leyendo BD: {ex}\n"
+                found_log = "(generado en memoria)"
+
+            log_win = ctk.CTkToplevel(win)
+            log_win.title("📜 Log del Sistema — Backend")
+            log_win.geometry("820x540")
+            log_win.transient(win)
+            log_win.configure(fg_color=("#1b1b2f", "#0d0d1a"))
+            log_win.withdraw()
+
+            hdr = ctk.CTkFrame(log_win, fg_color=("#263238", "#1a1a2e"),
+                                height=42, corner_radius=0)
+            hdr.pack(fill="x")
+            hdr.pack_propagate(False)
+            ctk.CTkLabel(
+                hdr, text="📜 Log del Sistema",
+                font=("Arial", 14, "bold"), text_color="#4fc3f7"
+            ).pack(side="left", padx=14, pady=10)
+            ctk.CTkLabel(
+                hdr, text=os.path.basename(found_log) if found_log else "",
+                font=("Arial", 9), text_color="#78909c"
+            ).pack(side="left", padx=6)
+
+            txt = ctk.CTkTextbox(
+                log_win, font=("Courier", 10),
+                fg_color=("#0d1117", "#0d0d1a"),
+                text_color="#c9d1d9",
+                corner_radius=0,
+                wrap="none"
+            )
+            txt.pack(fill="both", expand=True, padx=0, pady=0)
+            txt.insert("1.0", log_content)
+            txt.configure(state="disabled")
+            # scroll al final
+            txt.see("end")
+
+            btn_bar = ctk.CTkFrame(log_win, fg_color="transparent")
+            btn_bar.pack(fill="x", padx=10, pady=6)
+
+            ctk.CTkButton(
+                btn_bar, text="Cerrar", command=log_win.destroy,
+                fg_color="#546e7a", hover_color="#455a64",
+                corner_radius=8, width=100, height=32,
+                font=("Arial", 10, "bold")
+            ).pack(side="right")
+
+            log_win.after(200, lambda: (
+                log_win.update_idletasks(),
+                log_win.deiconify(),
+                log_win.lift(),
+                log_win.focus_force()
+            ))
+
         # botones de acción en filter_card (se agregan después de definir _cargar)
         ctk.CTkButton(
             filter_card, text="🔍 Filtrar",
@@ -2857,11 +2999,31 @@ class AppDBPDF:
             width=80, height=30
         ).pack(side="left", pady=8)
 
+        # ── Barra inferior con botón de Log del Sistema ───────────
+        bottom_bar = ctk.CTkFrame(win, fg_color="transparent")
+        bottom_bar.pack(fill="x", padx=14, pady=(0, 8))
+
+        ctk.CTkButton(
+            bottom_bar, text="📜 Log del Sistema",
+            command=_ver_log_backend,
+            fg_color="#263238", hover_color="#37474f",
+            text_color="#4fc3f7", font=("Arial", 10, "bold"),
+            corner_radius=8, width=160, height=34
+        ).pack(side="left", padx=4)
+
+        ctk.CTkButton(
+            bottom_bar, text="🔄 Refrescar",
+            command=_aplicar_filtros,
+            fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
+            font=("Arial", 10, "bold"), corner_radius=8,
+            width=110, height=34
+        ).pack(side="right", padx=4)
+
         # Enter en cualquier filtro aplica búsqueda
         for e in (entry_desde, entry_hasta, entry_accion):
             e.bind("<Return>", lambda _ev: _aplicar_filtros())
 
-        # carga inicial completa
+        # carga inicial completa (todo el log)
         _cargar()
 
     def mostrar_agregar_pdf(self):
