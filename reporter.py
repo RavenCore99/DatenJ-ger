@@ -132,7 +132,7 @@ class _PDFGenerator:
 
         page.insert_text((self.MARGIN, 54),
                          "DatenJäger",
-                         fontsize=30, fontname="helv-bo", color=_BLANCO)
+                         fontsize=30, fontname="hebo", color=_BLANCO)
         page.insert_text((self.MARGIN, 78),
                          "Sistema de Gestión Documental — Sector Minero Ubaté",
                          fontsize=10, fontname="helv", color=(0.75, 0.85, 1.0))
@@ -141,9 +141,10 @@ class _PDFGenerator:
                          fontsize=8, fontname="helv", color=(0.65, 0.75, 0.95))
 
         # ── tarjetas de resumen ──
+        y = 140
         page.insert_text((self.MARGIN, y),
                          "RESUMEN EJECUTIVO",
-                         fontsize=11, fontname="helv-bo", color=_AZUL_CORP)
+                         fontsize=11, fontname="hebo", color=_AZUL_CORP)
         page.draw_line(fitz.Point(self.MARGIN, y + 5),
                        fitz.Point(self.PAGE_W - self.MARGIN, y + 5),
                        color=_VERDE_CORP, width=1.5)
@@ -164,11 +165,11 @@ class _PDFGenerator:
         for i, (label, valor) in enumerate(tarjetas):
             x = self.MARGIN + i * (card_w + gap)
             page.draw_rect(fitz.Rect(x, y, x + card_w, y + 74),
-                           color=None, fill=colores[i], radius=6)
+                           color=None, fill=colores[i])
             page.insert_textbox(
                 fitz.Rect(x + 4, y + 8, x + card_w - 4, y + 44),
                 valor,
-                fontsize=20, fontname="helv-bo",
+                fontsize=20, fontname="hebo",
                 color=_BLANCO, align=fitz.TEXT_ALIGN_CENTER
             )
             page.insert_textbox(
@@ -183,7 +184,7 @@ class _PDFGenerator:
         if stats.get("empresas_data"):
             page.insert_text((self.MARGIN, y),
                              "DISTRIBUCIÓN POR EMPRESA",
-                             fontsize=11, fontname="helv-bo", color=_AZUL_CORP)
+                             fontsize=11, fontname="hebo", color=_AZUL_CORP)
             page.draw_line(fitz.Point(self.MARGIN, y + 5),
                            fitz.Point(self.PAGE_W - self.MARGIN, y + 5),
                            color=_VERDE_CORP, width=1.5)
@@ -232,7 +233,7 @@ class _PDFGenerator:
                            color=None, fill=_AZUL_CORP)
             page.insert_text((self.MARGIN, 23),
                              "DatenJäger  —  Inventario de Documentos",
-                             fontsize=11, fontname="helv-bo", color=_BLANCO)
+                             fontsize=11, fontname="hebo", color=_BLANCO)
             page.insert_text((self.PAGE_W - 170, 23),
                              f"Generado: {self.fecha_gen}",
                              fontsize=8, fontname="helv", color=(0.75, 0.85, 1.0))
@@ -247,7 +248,7 @@ class _PDFGenerator:
             for (hdr, w, _idx, _trunc) in cols:
                 page.insert_textbox(
                     fitz.Rect(x + 3, y + 3, x + w - 2, y + header_h - 2),
-                    hdr, fontsize=7.5, fontname="helv-bo",
+                    hdr, fontsize=7.5, fontname="hebo",
                     color=_BLANCO, align=fitz.TEXT_ALIGN_LEFT
                 )
                 x += w
@@ -301,7 +302,7 @@ class _PDFGenerator:
             page.insert_text(
                 (table_x, y),
                 f"Total de documentos registrados: {len(rows)}",
-                fontsize=8, fontname="helv-bo", color=_GRIS_TEXTO
+                fontsize=8, fontname="hebo", color=_GRIS_TEXTO
             )
         self._footer(page)
 
@@ -315,13 +316,13 @@ class _PDFGenerator:
                        color=None, fill=_AZUL_CORP)
         page.insert_text((self.MARGIN, 23),
                          "DatenJäger  —  Distribución de Documentos por Empresa",
-                         fontsize=11, fontname="helv-bo", color=_BLANCO)
+                         fontsize=11, fontname="hebo", color=_BLANCO)
 
         # titulo seccion
         y = 60
         page.insert_text((self.MARGIN, y),
                          "DOCUMENTOS POR EMPRESA",
-                         fontsize=11, fontname="helv-bo", color=_AZUL_CORP)
+                         fontsize=11, fontname="hebo", color=_AZUL_CORP)
         page.draw_line(fitz.Point(self.MARGIN, y + 5),
                        fitz.Point(self.PAGE_W - self.MARGIN, y + 5),
                        color=_VERDE_CORP, width=1.5)
@@ -349,13 +350,13 @@ class _PDFGenerator:
             # barra coloreada
             page.draw_rect(
                 fitz.Rect(chart_x, y + 3, chart_x + bar_w, y + bar_h - 3),
-                color=None, fill=color, radius=3
+                color=None, fill=color
             )
             # valor numerico al final
             page.insert_text(
                 (chart_x + bar_w + 6, y + bar_h - 5),
                 str(cnt),
-                fontsize=8, fontname="helv-bo", color=color
+                fontsize=8, fontname="hebo", color=color
             )
             y += bar_h + gap
 
