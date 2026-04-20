@@ -301,6 +301,126 @@ class GradientBackground(tk.Canvas):
         self._draw()
 
 
+# ─────────────────────────────────────────────────
+# FONDO CÓSMICO CON PARTÍCULAS — Improvement #13
+# ─────────────────────────────────────────────────
+
+class CosmicBackground(GradientBackground):
+    """Fondo animado con gradiente + estrellas flotantes + nebulosas pulsantes."""
+
+    def __init__(self, parent, num_stars=55, **kwargs):
+        import random as _rnd
+        self._stars = []
+        self._nebulas = []
+        self._num_stars = num_stars
+        self._rnd = _rnd
+
+        # Paleta cósmica oscura por defecto
+        kwargs.setdefault("colors_dark",
+                          [("#050510", "#0d1b3e"), ("#0d1b3e", "#1a0a2e")])
+        kwargs.setdefault("colors_light",
+                          [("#e3f2fd", "#f3e5f5"), ("#f3e5f5", "#e8f5e9")])
+
+        super().__init__(parent, **kwargs)
+        self._init_particles()
+
+    def _init_particles(self):
+        rnd = self._rnd
+        self._stars = []
+        for _ in range(self._num_stars):
+            self._stars.append({
+                "x": rnd.random(),
+                "y": rnd.random(),
+                "size": rnd.uniform(0.8, 2.5),
+                "speed": rnd.uniform(0.0003, 0.0012),
+                "brightness": rnd.uniform(0.4, 1.0),
+                "phase": rnd.uniform(0, 2 * math.pi),
+                "color_idx": rnd.randint(0, 2),  # 0=blanco, 1=azul, 2=violeta
+            })
+
+        # Nebulosas (manchas de glow grandes)
+        self._nebulas = []
+        for _ in range(4):
+            self._nebulas.append({
+                "x": rnd.uniform(0.1, 0.9),
+                "y": rnd.uniform(0.1, 0.9),
+                "radius": rnd.uniform(0.08, 0.18),
+                "phase": rnd.uniform(0, 2 * math.pi),
+                "hue": rnd.choice(["#1a237e", "#4a148c", "#006064", "#b71c1c"]),
+            })
+
+    def _draw(self):
+        super()._draw()
+        w = self.winfo_width()
+        h = self.winfo_height()
+        if w < 2 or h < 2:
+            return
+
+        mode = ctk.get_appearance_mode()
+        is_dark = mode == "Dark"
+
+        # ── Nebulosas pulsantes ──
+        if is_dark:
+            for neb in self._nebulas:
+                pulse = (math.sin(self._phase * 0.8 + neb["phase"]) + 1) / 2
+                alpha_hex = int(8 + 14 * pulse)
+                r_base = int(neb["hue"][1:3], 16)
+                g_base = int(neb["hue"][3:5], 16)
+                b_base = int(neb["hue"][5:7], 16)
+                nx = neb["x"] * w
+                ny = neb["y"] * h
+                nr = neb["radius"] * min(w, h)
+                # dibujar varias capas concéntricas para simular glow
+                for layer in range(3):
+                    factor = 1.0 - layer * 0.25
+                    lr = nr * factor
+                    r = min(255, r_base + int(40 * factor))
+                    g = min(255, g_base + int(20 * factor))
+                    b = min(255, b_base + int(40 * factor))
+                    opacity = max(0, min(255, alpha_hex - layer * 3))
+                    color = f"#{r:02x}{g:02x}{b:02x}"
+                    self.create_oval(
+                        nx - lr, ny - lr, nx + lr, ny + lr,
+                        fill=color, outline="", stipple="gray12"
+                    )
+
+        # ── Estrellas ──
+        star_palettes = {
+            "Dark": [
+                lambda a: f"#{int(180+75*a):02x}{int(180+75*a):02x}{int(200+55*a):02x}",
+                lambda a: f"#{int(100+80*a):02x}{int(140+90*a):02x}{min(255,int(200+55*a)):02x}",
+                lambda a: f"#{int(160+70*a):02x}{int(100+60*a):02x}{min(255,int(200+55*a)):02x}",
+            ],
+            "Light": [
+                lambda a: f"#{int(140+40*a):02x}{int(140+40*a):02x}{int(160+40*a):02x}",
+                lambda a: f"#{int(80+50*a):02x}{int(100+60*a):02x}{int(180+40*a):02x}",
+                lambda a: f"#{int(130+40*a):02x}{int(80+30*a):02x}{int(170+40*a):02x}",
+            ],
+        }
+        palette = star_palettes.get(mode, star_palettes["Dark"])
+
+        for star in self._stars:
+            # Movimiento ascendente suave
+            star["y"] -= star["speed"]
+            if star["y"] < -0.02:
+                star["y"] = 1.02
+                star["x"] = self._rnd.random()
+
+            # Parpadeo
+            twinkle = (math.sin(self._phase * 2.5 + star["phase"]) + 1) / 2
+            alpha = star["brightness"] * (0.3 + 0.7 * twinkle)
+
+            color_fn = palette[star["color_idx"]]
+            color = color_fn(alpha)
+
+            x = star["x"] * w
+            y = star["y"] * h
+            s = star["size"] * (0.6 + 0.4 * twinkle)
+
+            self.create_oval(x - s, y - s, x + s, y + s,
+                             fill=color, outline="")
+
+
 
 # CLASE DE BARRA DE PROGRESO MEJORADA
 
