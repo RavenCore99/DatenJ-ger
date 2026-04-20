@@ -204,19 +204,18 @@ class AppDBPDF:
         )
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Elementos del intro card (se animan con fade-in secuencial)
+        # ── Typewriter label principal ──
         self.intro_text = ctk.CTkLabel(
             intro_card,
-            text="🔐 DatenJäger",
-            font=("Arial", 52, "bold"),
+            text="",
+            font=("Arial", 48, "bold"),
             text_color="white"
         )
-        self.intro_text.pack(padx=60, pady=(40, 4))
-        self.intro_text.bind("<Button-1>", self.on_intro_click)
+        self.intro_text.pack(padx=80, pady=(44, 4))
 
         self._intro_subtitle = ctk.CTkLabel(
             intro_card,
-            text="Sistema de Gestión Documental Seguro",
+            text="",
             text_color="#a0b4ff",
             font=("Arial", 13)
         )
@@ -229,47 +228,98 @@ class AppDBPDF:
             font=("Arial", 11)
         )
         self._intro_tech.pack(pady=(0, 16))
+        self._intro_tech.configure(text_color=COLOR_BG_DARK)  # oculto al inicio
 
-        # Hint pulsante en vez de botón — el usuario presiona clic o tecla
+        # Hint pulsante
         self._intro_hint = ctk.CTkLabel(
             intro_card,
             text="✨  Presiona cualquier tecla o haz clic para continuar",
             font=("Arial", 11),
-            text_color="#5c6bc0"
+            text_color=COLOR_BG_DARK
         )
         self._intro_hint.pack(pady=(8, 36))
 
-        # ── Fade-in secuencial del intro ──
-        self._intro_fade_elements = [
-            self.intro_text, self._intro_subtitle,
-            self._intro_tech, self._intro_hint
+        # ── Motor Typewriter ──
+        self._tw_phrases = [
+            "🔐 DatenJäger",
+            "🛡️ Seguridad Inquebrantable",
+            "🚀 Gestión Inteligente",
+            "🔒 Tus Documentos, Protegidos",
+            "⚙️ Cifrado Militar AES-256",
+            "🌍 Privacidad Sin Compromiso",
         ]
-        for el in self._intro_fade_elements:
-            el.configure(text_color=COLOR_BG_DARK)  # invisible al inicio
+        self._tw_idx = 0       # índice de frase actual
+        self._tw_char_idx = 0  # posición del carácter
+        self._tw_deleting = False
+        self._tw_paused = False
 
-        def _intro_fadein_sequence():
-            colors_final = [
-                "white", "#a0b4ff",
-                "#7986cb", "#5c6bc0"
-            ]
-            for idx, (el, final_col) in enumerate(
-                    zip(self._intro_fade_elements, colors_final)):
-                self.root.after(300 + idx * 350, lambda e=el, c=final_col: (
-                    e.configure(text_color=c) if c else None
-                ))
+        def _typewriter_tick():
+            try:
+                if not self.frame_intro.winfo_ismapped():
+                    return
+            except tk.TclError:
+                return
 
-            # Pulso suave del hint (parpadeo entre visible/sutil)
-            def _pulse_hint(visible=True):
-                try:
-                    if self.frame_intro.winfo_ismapped():
-                        col = "#5c6bc0" if visible else "#2a2a5e"
-                        self._intro_hint.configure(text_color=col)
-                        self.root.after(800, lambda: _pulse_hint(not visible))
-                except tk.TclError:
-                    pass
-            self.root.after(1800, _pulse_hint)
+            phrase = self._tw_phrases[self._tw_idx]
 
-        self.root.after(200, _intro_fadein_sequence)
+            if self._tw_paused:
+                self._tw_paused = False
+                self._tw_deleting = True
+                self.root.after(50, _typewriter_tick)
+                return
+
+            if not self._tw_deleting:
+                # Escribiendo
+                self._tw_char_idx += 1
+                display = phrase[:self._tw_char_idx]
+                self.intro_text.configure(text=display)
+
+                if self._tw_char_idx >= len(phrase):
+                    # Frase completa — pausa antes de borrar
+                    self._tw_paused = True
+                    # Mostrar sub-elementos después de la primera frase
+                    if self._tw_idx == 0:
+                        self.root.after(600, lambda: (
+                            self._intro_subtitle.configure(
+                                text="Sistema de Gestión Documental Seguro",
+                                text_color="#a0b4ff"),
+                            self._intro_tech.configure(text_color="#5c6bc0"),
+                            self._intro_hint.configure(text_color="#5c6bc0")
+                        ))
+                    self.root.after(2200, _typewriter_tick)
+                    return
+
+                speed = 65 if self._tw_char_idx > 2 else 120
+                self.root.after(speed, _typewriter_tick)
+            else:
+                # Borrando
+                self._tw_char_idx -= 1
+                display = phrase[:max(0, self._tw_char_idx)]
+                self.intro_text.configure(text=display if display else " ")
+
+                if self._tw_char_idx <= 0:
+                    # Cambiar a siguiente frase
+                    self._tw_deleting = False
+                    self._tw_idx = (self._tw_idx + 1) % len(self._tw_phrases)
+                    self._tw_char_idx = 0
+                    self.root.after(400, _typewriter_tick)
+                    return
+
+                self.root.after(35, _typewriter_tick)
+
+        # Iniciar la animación con delay
+        self.root.after(500, _typewriter_tick)
+
+        # Pulso suave del hint
+        def _pulse_hint(visible=True):
+            try:
+                if self.frame_intro.winfo_ismapped():
+                    col = "#5c6bc0" if visible else "#2a2a5e"
+                    self._intro_hint.configure(text_color=col)
+                    self.root.after(800, lambda: _pulse_hint(not visible))
+            except tk.TclError:
+                pass
+        self.root.after(4000, _pulse_hint)
 
         # ── Binds globales: clic o tecla → avanzar ──
         self._intro_active = True
@@ -1011,46 +1061,38 @@ class AppDBPDF:
             f.place_forget()
         self.root.update()
 
-    # ── Transición fade entre pantallas (improvement #13) ──────
+    # ── Transición fade entre pantallas (improvement #13) ──────────
+    # Usa un overlay sólido en vez de window alpha para no mostrar el escritorio
 
     def _fade_to(self, show_callback):
-        """Transición fade-out → switch → fade-in entre pantallas."""
+        """Transición fade con overlay sólido — sin transparencia de ventana."""
         if getattr(self, '_fading', False):
-            return  # evitar doble-fade
+            return
         self._fading = True
-        steps = 10
-        duration = 350  # ms total
-        step_ms = duration // (steps * 2)
 
-        def _fade_out(step=0):
-            if step <= steps:
-                alpha = 1.0 - (step / steps) * 0.75  # hasta 0.25
-                try:
-                    self.root.attributes('-alpha', alpha)
-                except tk.TclError:
-                    pass
-                self.root.after(step_ms, lambda: _fade_out(step + 1))
-            else:
-                # intercambio de frames en el punto más oscuro
-                show_callback()
-                _fade_in(0)
+        # Overlay sólido oscuro (tk.Frame, no Canvas — Canvas tiene conflicto con lift)
+        overlay = tk.Frame(self.root, bg="#0a0a14")
+        overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+        overlay.tkraise()
 
-        def _fade_in(step=0):
-            if step <= steps:
-                alpha = 0.25 + (step / steps) * 0.75
-                try:
-                    self.root.attributes('-alpha', alpha)
-                except tk.TclError:
-                    pass
-                self.root.after(step_ms, lambda: _fade_in(step + 1))
-            else:
-                try:
-                    self.root.attributes('-alpha', 1.0)
-                except tk.TclError:
-                    pass
-                self._fading = False
+        # Fase 1: mostrar overlay sólido brevemente, switch frames, luego quitar
+        def _do_switch():
+            self.root.update_idletasks()
+            show_callback()
+            self.root.update_idletasks()
+            # Mantener overlay un momento para que el frame destino renderice
+            self.root.after(80, _do_remove)
 
-        _fade_out()
+        def _do_remove():
+            try:
+                overlay.place_forget()
+                overlay.destroy()
+            except tk.TclError:
+                pass
+            self._fading = False
+
+        # Dar un instante para que el overlay se muestre antes de switchear
+        self.root.after(100, _do_switch)
 
     
     # HELPERS: TREEVIEW Estilismo y clasificacion
