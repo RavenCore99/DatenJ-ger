@@ -306,13 +306,17 @@ class GradientBackground(tk.Canvas):
 #                                                   ──
 
 class CosmicBackground(GradientBackground):
-    """Fondo animado con gradiente + estrellas flotantes + nebulosas pulsantes."""
+    """Fondo animado con gradiente + estrellas + nebulosas + cometas + destellos."""
 
-    def __init__(self, parent, num_stars=55, **kwargs):
+    def __init__(self, parent, num_stars=55, num_comets=3, num_sparkles=6, **kwargs):
         import random as _rnd
         self._stars = []
         self._nebulas = []
+        self._comets = []
+        self._sparkles = []
         self._num_stars = num_stars
+        self._num_comets = num_comets
+        self._num_sparkles = num_sparkles
         self._rnd = _rnd
 
         # Paleta cósmica oscura por defecto
@@ -323,6 +327,8 @@ class CosmicBackground(GradientBackground):
 
         super().__init__(parent, **kwargs)
         self._init_particles()
+
+    # ── Inicialización de partículas ──
 
     def _init_particles(self):
         rnd = self._rnd
@@ -338,16 +344,51 @@ class CosmicBackground(GradientBackground):
                 "color_idx": rnd.randint(0, 2),  # 0=blanco, 1=azul, 2=violeta
             })
 
-        # Nebulosas (manchas de glow grandes)
+        # Nebulosas deshabilitadas — solo estrellas + cometas
         self._nebulas = []
-        for _ in range(4):
-            self._nebulas.append({
-                "x": rnd.uniform(0.1, 0.9),
-                "y": rnd.uniform(0.1, 0.9),
-                "radius": rnd.uniform(0.08, 0.18),
-                "phase": rnd.uniform(0, 2 * math.pi),
-                "hue": rnd.choice(["#1a237e", "#4a148c", "#006064", "#b71c1c"]),
-            })
+
+        # Cometas — trayectorias diagonales con cola
+        self._comets = []
+        for _ in range(self._num_comets):
+            self._comets.append(self._new_comet(initial=True))
+
+        # Destellos — cruces efímeras brillantes
+        self._sparkles = []
+        for _ in range(self._num_sparkles):
+            self._sparkles.append(self._new_sparkle(initial=True))
+
+    def _new_comet(self, initial=False):
+        rnd = self._rnd
+        # Delay aleatorio antes de aparecer (evita que salgan todos juntos)
+        delay = rnd.uniform(0, 12) if initial else rnd.uniform(4, 10)
+        angle = rnd.uniform(0.3, 0.8)  # ángulo diagonal (radianes)
+        speed = rnd.uniform(0.008, 0.018)
+        return {
+            "x": rnd.uniform(-0.2, 0.3),
+            "y": rnd.uniform(-0.2, 0.2),
+            "angle": angle,
+            "speed": speed,
+            "tail_len": rnd.randint(5, 9),
+            "brightness": rnd.uniform(0.6, 1.0),
+            "delay": delay,
+            "active": False,
+            "color": rnd.choice(["white", "#a0c4ff", "#c8b4ff"]),
+        }
+
+    def _new_sparkle(self, initial=False):
+        rnd = self._rnd
+        return {
+            "x": rnd.random(),
+            "y": rnd.random(),
+            "life": 0.0,
+            "max_life": rnd.uniform(0.4, 0.9),
+            "size": rnd.uniform(3, 7),
+            "delay": rnd.uniform(0, 8) if initial else rnd.uniform(1.5, 5),
+            "active": False,
+            "color_idx": rnd.randint(0, 2),
+        }
+
+    # ── Dibujado ──
 
     def _draw(self):
         super()._draw()
@@ -358,31 +399,7 @@ class CosmicBackground(GradientBackground):
 
         mode = ctk.get_appearance_mode()
         is_dark = mode == "Dark"
-
-        # ── Nebulosas pulsantes ──
-        if is_dark:
-            for neb in self._nebulas:
-                pulse = (math.sin(self._phase * 0.8 + neb["phase"]) + 1) / 2
-                alpha_hex = int(8 + 14 * pulse)
-                r_base = int(neb["hue"][1:3], 16)
-                g_base = int(neb["hue"][3:5], 16)
-                b_base = int(neb["hue"][5:7], 16)
-                nx = neb["x"] * w
-                ny = neb["y"] * h
-                nr = neb["radius"] * min(w, h)
-                # dibujar varias capas concéntricas para simular glow
-                for layer in range(3):
-                    factor = 1.0 - layer * 0.25
-                    lr = nr * factor
-                    r = min(255, r_base + int(40 * factor))
-                    g = min(255, g_base + int(20 * factor))
-                    b = min(255, b_base + int(40 * factor))
-                    opacity = max(0, min(255, alpha_hex - layer * 3))
-                    color = f"#{r:02x}{g:02x}{b:02x}"
-                    self.create_oval(
-                        nx - lr, ny - lr, nx + lr, ny + lr,
-                        fill=color, outline="", stipple="gray12"
-                    )
+        dt = 0.016  # ~60fps timestep
 
         # ── Estrellas ──
         star_palettes = {
@@ -400,25 +417,124 @@ class CosmicBackground(GradientBackground):
         palette = star_palettes.get(mode, star_palettes["Dark"])
 
         for star in self._stars:
-            # Movimiento ascendente suave
             star["y"] -= star["speed"]
             if star["y"] < -0.02:
                 star["y"] = 1.02
                 star["x"] = self._rnd.random()
 
-            # Parpadeo
             twinkle = (math.sin(self._phase * 2.5 + star["phase"]) + 1) / 2
             alpha = star["brightness"] * (0.3 + 0.7 * twinkle)
-
             color_fn = palette[star["color_idx"]]
             color = color_fn(alpha)
 
             x = star["x"] * w
             y = star["y"] * h
             s = star["size"] * (0.6 + 0.4 * twinkle)
-
             self.create_oval(x - s, y - s, x + s, y + s,
                              fill=color, outline="")
+
+        # ── Cometas (shooting stars) ──
+        for comet in self._comets:
+            if not comet["active"]:
+                comet["delay"] -= dt
+                if comet["delay"] <= 0:
+                    comet["active"] = True
+                continue
+
+            # Mover cometa en diagonal
+            dx = math.cos(comet["angle"]) * comet["speed"]
+            dy = math.sin(comet["angle"]) * comet["speed"]
+            comet["x"] += dx
+            comet["y"] += dy
+
+            # Dibujar cola (segmentos decrecientes)
+            cx = comet["x"] * w
+            cy = comet["y"] * h
+            tail_segments = comet["tail_len"]
+            seg_len = 12  # pixeles por segmento
+
+            for seg in range(tail_segments):
+                t = seg / tail_segments  # 0=cabeza, 1=cola
+                sx = cx - math.cos(comet["angle"]) * seg * seg_len
+                sy = cy - math.sin(comet["angle"]) * seg * seg_len
+                ex = sx - math.cos(comet["angle"]) * seg_len
+                ey = sy - math.sin(comet["angle"]) * seg_len
+
+                if is_dark:
+                    intensity = int(255 * (1 - t * 0.7) * comet["brightness"])
+                    seg_color = f"#{intensity:02x}{intensity:02x}{min(255, intensity + 30):02x}"
+                else:
+                    intensity = int(180 * (1 - t * 0.6))
+                    seg_color = f"#{intensity:02x}{intensity:02x}{min(255, intensity + 20):02x}"
+
+                line_w = max(1, int(2.5 * (1 - t * 0.6)))
+                self.create_line(sx, sy, ex, ey,
+                                 fill=seg_color, width=line_w)
+
+            # Cabeza brillante
+            head_size = 2.5 * comet["brightness"]
+            self.create_oval(cx - head_size, cy - head_size,
+                             cx + head_size, cy + head_size,
+                             fill=comet["color"], outline="")
+
+            # Fuera de pantalla → relanzar
+            if comet["x"] > 1.3 or comet["y"] > 1.3:
+                idx = self._comets.index(comet)
+                self._comets[idx] = self._new_comet()
+
+        # ── Destellos (sparkles) ──
+        sparkle_colors = {
+            "Dark": [
+                lambda a: f"#{int(200+55*a):02x}{int(200+55*a):02x}{min(255,int(220+35*a)):02x}",
+                lambda a: f"#{int(130+80*a):02x}{int(170+60*a):02x}{min(255,int(220+35*a)):02x}",
+                lambda a: f"#{int(180+50*a):02x}{int(130+50*a):02x}{min(255,int(220+35*a)):02x}",
+            ],
+            "Light": [
+                lambda a: f"#{int(160+40*a):02x}{int(160+40*a):02x}{int(180+30*a):02x}",
+                lambda a: f"#{int(100+50*a):02x}{int(120+50*a):02x}{int(180+30*a):02x}",
+                lambda a: f"#{int(150+40*a):02x}{int(100+40*a):02x}{int(170+30*a):02x}",
+            ],
+        }
+        s_palette = sparkle_colors.get(mode, sparkle_colors["Dark"])
+
+        for sp in self._sparkles:
+            if not sp["active"]:
+                sp["delay"] -= dt
+                if sp["delay"] <= 0:
+                    sp["active"] = True
+                continue
+
+            sp["life"] += dt
+            if sp["life"] >= sp["max_life"]:
+                idx = self._sparkles.index(sp)
+                self._sparkles[idx] = self._new_sparkle()
+                continue
+
+            # Intensidad: sube y baja (fade in/out)
+            t_life = sp["life"] / sp["max_life"]
+            intensity = math.sin(t_life * math.pi)  # 0→1→0
+            sz = sp["size"] * intensity
+
+            if sz < 0.5:
+                continue
+
+            sx = sp["x"] * w
+            sy = sp["y"] * h
+
+            color_fn = s_palette[sp["color_idx"]]
+            color = color_fn(intensity)
+
+            # Cruz de destello (+)
+            arm = sz
+            self.create_line(sx - arm, sy, sx + arm, sy,
+                             fill=color, width=1)
+            self.create_line(sx, sy - arm, sx, sy + arm,
+                             fill=color, width=1)
+            # Punto central brillante
+            dot = sz * 0.3
+            self.create_oval(sx - dot, sy - dot, sx + dot, sy + dot,
+                             fill="white" if is_dark else "#e0e0ff",
+                             outline="")
 
 
 
