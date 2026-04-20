@@ -301,9 +301,9 @@ class GradientBackground(tk.Canvas):
         self._draw()
 
 
-# ─────────────────────────────────────────────────
-# FONDO CÓSMICO CON PARTÍCULAS — Improvement #13
-# ─────────────────────────────────────────────────
+# ─
+# FONDO COSMICO CON PARTICULAS — Improvement #13
+#                                                   ──
 
 class CosmicBackground(GradientBackground):
     """Fondo animado con gradiente + estrellas flotantes + nebulosas pulsantes."""
