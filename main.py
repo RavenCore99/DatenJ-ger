@@ -345,8 +345,9 @@ class AppDBPDF:
         # ─ INICIAL ─
         self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        _bg_inicial = GradientBackground(
+        _bg_inicial = CosmicBackground(
             self.frame_inicial,
+            num_stars=30, num_comets=2, num_sparkles=0,
             colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
             colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         )
