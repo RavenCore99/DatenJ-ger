@@ -32,7 +32,8 @@ from database import (conectar_db, hash_contrasena, verify_contrasena,
                       reset_failed_attempts, password_strength,
                       set_trust_token, check_trust_token, clear_trust_token)
 from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
-                           GradientBackground, PasswordStrengthBar, ConfirmDialog,
+                           GradientBackground, CosmicBackground,
+                           PasswordStrengthBar, ConfirmDialog,
                            PDFViewerWindow, get_dynamic_colors)
 from reporter import ReporteInventario
 
@@ -94,7 +95,7 @@ class AppDBPDF:
         self._apply_treeview_style()
         self._setup_treeview_sorting()
         self.root.minsize(900, 650)
-        self.mostrar_inicial()
+        # frame_intro ya está visible desde _crear_frames() — espera interacción del usuario
 
         self.root.bind("<F11>", self.toggle_fullscreen)
         self.root.bind("<Configure>", self._on_window_configure)
@@ -188,48 +189,108 @@ class AppDBPDF:
                     # Crea todos los frames de la aplicación
         colors = self.get_colors()
 
-        # ── INTRO ─ # por ajustar
+        # ── INTRO — Pantalla cósmica con fade-in (improvement #13) ──
         self.frame_intro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
         self.frame_intro.pack(expand=True, fill="both")
 
-        # Gradient animated background
-        self._intro_bg = GradientBackground(self.frame_intro)
+        # Fondo cósmico con estrellas y nebulosas
+        self._intro_bg = CosmicBackground(self.frame_intro, num_stars=70)
         self._intro_bg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         intro_card = ctk.CTkFrame(
-            self.frame_intro, fg_color=("#e8eeff", "#1a1a3e"),
-            corner_radius=20
+            self.frame_intro, fg_color=("#e8eeff", "#0d0d2b"),
+            corner_radius=24, border_width=1,
+            border_color=("#c8d8ff", "#1a237e")
         )
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
 
+        # Elementos del intro card (se animan con fade-in secuencial)
         self.intro_text = ctk.CTkLabel(
             intro_card,
             text="🔐 DatenJäger",
             font=("Arial", 52, "bold"),
             text_color="white"
         )
-        self.intro_text.pack(padx=60, pady=(40, 10))
+        self.intro_text.pack(padx=60, pady=(40, 4))
         self.intro_text.bind("<Button-1>", self.on_intro_click)
 
-        self.access_text = ctk.CTkLabel(
+        self._intro_subtitle = ctk.CTkLabel(
             intro_card,
-            text="Sistema de Gestión Documental Seguro\nAES-256-GCM · 2FA · PBKDF2",
-            text_color="#c8d8ff",
-            font=("Arial", 14)
+            text="Sistema de Gestión Documental Seguro",
+            text_color="#a0b4ff",
+            font=("Arial", 13)
         )
-        self.access_text.pack(pady=(0, 10))
-        self.access_text.bind("<Button-1>", self.on_intro_click)
+        self._intro_subtitle.pack(pady=(0, 2))
 
-        ctk.CTkButton(
+        self._intro_tech = ctk.CTkLabel(
             intro_card,
-            text="✨  Acceder al Sistema",
-            command=self.on_intro_click,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            font=("Arial", 13, "bold"),
-            corner_radius=10,
-            width=260, height=46
-        ).pack(pady=(10, 40))
+            text="AES-256-GCM  ·  2FA  ·  PBKDF2",
+            text_color=("#7986cb", "#5c6bc0"),
+            font=("Arial", 11)
+        )
+        self._intro_tech.pack(pady=(0, 16))
+
+        # Hint pulsante en vez de botón — el usuario presiona clic o tecla
+        self._intro_hint = ctk.CTkLabel(
+            intro_card,
+            text="✨  Presiona cualquier tecla o haz clic para continuar",
+            font=("Arial", 11),
+            text_color="#5c6bc0"
+        )
+        self._intro_hint.pack(pady=(8, 36))
+
+        # ── Fade-in secuencial del intro ──
+        self._intro_fade_elements = [
+            self.intro_text, self._intro_subtitle,
+            self._intro_tech, self._intro_hint
+        ]
+        for el in self._intro_fade_elements:
+            el.configure(text_color=COLOR_BG_DARK)  # invisible al inicio
+
+        def _intro_fadein_sequence():
+            colors_final = [
+                "white", "#a0b4ff",
+                "#7986cb", "#5c6bc0"
+            ]
+            for idx, (el, final_col) in enumerate(
+                    zip(self._intro_fade_elements, colors_final)):
+                self.root.after(300 + idx * 350, lambda e=el, c=final_col: (
+                    e.configure(text_color=c) if c else None
+                ))
+
+            # Pulso suave del hint (parpadeo entre visible/sutil)
+            def _pulse_hint(visible=True):
+                try:
+                    if self.frame_intro.winfo_ismapped():
+                        col = "#5c6bc0" if visible else "#2a2a5e"
+                        self._intro_hint.configure(text_color=col)
+                        self.root.after(800, lambda: _pulse_hint(not visible))
+                except tk.TclError:
+                    pass
+            self.root.after(1800, _pulse_hint)
+
+        self.root.after(200, _intro_fadein_sequence)
+
+        # ── Binds globales: clic o tecla → avanzar ──
+        self._intro_active = True
+
+        def _intro_trigger(event=None):
+            if self._intro_active:
+                self._intro_active = False
+                # Limpiar bindings
+                self.root.unbind("<Key>")
+                self.root.unbind("<Button-1>")
+                self.on_intro_click()
+
+        self.root.bind("<Key>", _intro_trigger)
+        self.root.bind("<Button-1>", _intro_trigger)
+        # También bind en el frame intro y todos sus hijos
+        self.frame_intro.bind("<Button-1>", _intro_trigger)
+        intro_card.bind("<Button-1>", _intro_trigger)
+        self.intro_text.bind("<Button-1>", _intro_trigger)
+        self._intro_subtitle.bind("<Button-1>", _intro_trigger)
+        self._intro_tech.bind("<Button-1>", _intro_trigger)
+        self._intro_hint.bind("<Button-1>", _intro_trigger)
 
         # ─ INICIAL ─
         self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -950,6 +1011,47 @@ class AppDBPDF:
             f.place_forget()
         self.root.update()
 
+    # ── Transición fade entre pantallas (improvement #13) ──────
+
+    def _fade_to(self, show_callback):
+        """Transición fade-out → switch → fade-in entre pantallas."""
+        if getattr(self, '_fading', False):
+            return  # evitar doble-fade
+        self._fading = True
+        steps = 10
+        duration = 350  # ms total
+        step_ms = duration // (steps * 2)
+
+        def _fade_out(step=0):
+            if step <= steps:
+                alpha = 1.0 - (step / steps) * 0.75  # hasta 0.25
+                try:
+                    self.root.attributes('-alpha', alpha)
+                except tk.TclError:
+                    pass
+                self.root.after(step_ms, lambda: _fade_out(step + 1))
+            else:
+                # intercambio de frames en el punto más oscuro
+                show_callback()
+                _fade_in(0)
+
+        def _fade_in(step=0):
+            if step <= steps:
+                alpha = 0.25 + (step / steps) * 0.75
+                try:
+                    self.root.attributes('-alpha', alpha)
+                except tk.TclError:
+                    pass
+                self.root.after(step_ms, lambda: _fade_in(step + 1))
+            else:
+                try:
+                    self.root.attributes('-alpha', 1.0)
+                except tk.TclError:
+                    pass
+                self._fading = False
+
+        _fade_out()
+
     
     # HELPERS: TREEVIEW Estilismo y clasificacion
    
@@ -1426,23 +1528,29 @@ class AppDBPDF:
         PDFViewerWindow(self.root, pdf_bytes, nombre)
 
     def mostrar_inicial(self):
-        # muestra la pantalla inicial
-        self._hide_all_frames()
-        self.frame_inicial.pack(expand=True, fill="both")
+        # muestra la pantalla inicial con fade
+        def _show():
+            self._hide_all_frames()
+            self.frame_inicial.pack(expand=True, fill="both")
+        self._fade_to(_show)
 
     def mostrar_login(self):
-        # muestra la pantalla de login
-        self._hide_all_frames()
-        self.entry_usuario_login.delete(0, tk.END)
-        self.entry_contrasena_login.delete(0, tk.END)
-        self.frame_login.pack(expand=True, fill="both")
+        # muestra la pantalla de login con fade
+        def _show():
+            self._hide_all_frames()
+            self.entry_usuario_login.delete(0, tk.END)
+            self.entry_contrasena_login.delete(0, tk.END)
+            self.frame_login.pack(expand=True, fill="both")
+        self._fade_to(_show)
 
     def mostrar_registro(self):
-        # muestra la pantalla de registro
-        self._hide_all_frames()
-        self.entry_usuario_registro.delete(0, tk.END)
-        self.entry_contrasena_registro.delete(0, tk.END)
-        self.frame_registro.pack(expand=True, fill="both")
+        # muestra la pantalla de registro con fade
+        def _show():
+            self._hide_all_frames()
+            self.entry_usuario_registro.delete(0, tk.END)
+            self.entry_contrasena_registro.delete(0, tk.END)
+            self.frame_registro.pack(expand=True, fill="both")
+        self._fade_to(_show)
 
     def registrarse(self):
         # registra un nuevo usuario
@@ -3896,9 +4004,12 @@ class AppDBPDF:
             self.conn.close()
 
     def on_intro_click(self, event=None):
-        # evento al hacer clic en intro
-        self.frame_intro.pack_forget()
-        self.mostrar_inicial()
+        # evento al hacer clic en intro — transición fade al panel inicial
+        def _show():
+            self.frame_intro.pack_forget()
+            self._hide_all_frames()
+            self.frame_inicial.pack(expand=True, fill="both")
+        self._fade_to(_show)
 
 
 # PUNTO DE ENTRADA
