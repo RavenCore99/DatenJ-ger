@@ -36,6 +36,7 @@ from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            PasswordStrengthBar, ConfirmDialog,
                            PDFViewerWindow, get_dynamic_colors)
 from reporter import ReporteInventario
+from icons import get_icon
 
 
 
@@ -233,7 +234,7 @@ class AppDBPDF:
         # Hint pulsante
         self._intro_hint = ctk.CTkLabel(
             intro_card,
-            text="✨  Presiona cualquier tecla o haz clic para continuar",
+            text="Presiona cualquier tecla o haz clic para continuar",
             font=("Arial", 11),
             text_color=COLOR_BG_DARK
         )
@@ -241,12 +242,12 @@ class AppDBPDF:
 
         # ── Motor Typewriter ──
         self._tw_phrases = [
-            "🔐 DatenJäger",
-            "🛡️ Seguridad Inquebrantable",
-            "🚀 Gestión Inteligente",
-            "🔒 Tus Documentos, Protegidos",
-            "⚙️ Cifrado Militar AES-256",
-            "🌍 Privacidad Sin Compromiso",
+            "DatenJäger",
+            "Seguridad Inquebrantable",
+            "Gestión Inteligente",
+            "Tus Documentos, Protegidos",
+            "Cifrado Militar AES-256",
+            "Privacidad Sin Compromiso",
         ]
         self._tw_idx = 0       # índice de frase actual
         self._tw_char_idx = 0  # posición del carácter
@@ -361,7 +362,9 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             card_inicial,
-            text="🔐 DatenJäger",
+            text="  DatenJäger",
+            image=get_icon("key-round", 28),
+            compound="left",
             font=("Arial", 28, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(30, 4))
@@ -375,7 +378,9 @@ class AppDBPDF:
 
         ctk.CTkButton(
             card_inicial,
-            text="🔓  Iniciar Sesión",
+            text="  Iniciar Sesión",
+            image=get_icon("unlock", 20),
+            compound="left",
             command=self.mostrar_login,
             fg_color=COLOR_PRIMARY,
             hover_color="#388E3C",
@@ -387,7 +392,9 @@ class AppDBPDF:
 
         ctk.CTkButton(
             card_inicial,
-            text="✍️   Crear Usuario",
+            text="  Crear Usuario",
+            image=get_icon("pen-line", 20),
+            compound="left",
             command=self.mostrar_registro,
             fg_color=COLOR_SECONDARY,
             hover_color="#1976D2",
@@ -422,7 +429,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             card_login,
-            text="🔓 Iniciar Sesión  🔓",
+            text="Iniciar Sesión",
             font=("Arial", 24, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(28, 4))
@@ -460,7 +467,7 @@ class AppDBPDF:
         self.entry_contrasena_login.pack(side="left")
         self._show_pw_login = False
         ctk.CTkButton(
-            pw_row_login, text="👁", width=38, height=42,
+            pw_row_login, text="", image=get_icon("eye", 16), width=38, height=42,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             corner_radius=8, font=("Arial", 13),
             command=lambda: self._toggle_pw(
@@ -470,7 +477,9 @@ class AppDBPDF:
         self.entry_contrasena_login.bind("<Return>", lambda e: self.login())
 
         ctk.CTkButton(
-            card_login, text="✅  Siguiente  ✅",
+            card_login, text="  Siguiente",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=self.login,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -478,7 +487,9 @@ class AppDBPDF:
         ).pack(pady=(16, 8))
 
         ctk.CTkButton(
-            card_login, text="⬅️   Volver  ⬅️",
+            card_login, text="  Volver",
+            image=get_icon("arrow-left", 16),
+            compound="left",
             command=self.mostrar_inicial,
             fg_color="#9E9E9E", hover_color="#757575",
             text_color="white", font=("Arial", 11, "bold"),
@@ -502,7 +513,7 @@ class AppDBPDF:
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            card_2fa, text="🔐 Verificación 2FA 🔐",
+            card_2fa, text="Verificación 2FA",
             font=("Arial", 22, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(28, 6))
@@ -524,14 +535,16 @@ class AppDBPDF:
 
                      # TOTP countdown ring 
         self._totp_timer_label = ctk.CTkLabel(
-            card_2fa, text="⏳ 30s", font=("Arial", 10),
+            card_2fa, text="30s", font=("Arial", 10),
             text_color=colors["text_secondary"]
         )
         self._totp_timer_label.pack()
         self._start_totp_timer()
 
         ctk.CTkButton(
-            card_2fa, text="✅  Verificar",
+            card_2fa, text="  Verificar",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=self.verificar_2fa,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -545,7 +558,9 @@ class AppDBPDF:
         ).pack(pady=(4, 0))
 
         ctk.CTkButton(
-            card_2fa, text="🔄  Código de Respaldo  🔄 ",
+            card_2fa, text="  Código de Respaldo",
+            image=get_icon("refresh-cw", 16),
+            compound="left",
             command=self.usar_codigo_respaldo,
             fg_color=COLOR_WARNING, hover_color="#F57C00",
             text_color="white", font=("Arial", 11, "bold"),
@@ -553,7 +568,9 @@ class AppDBPDF:
         ).pack(pady=6)
 
         ctk.CTkButton(
-            card_2fa, text="⬅️   Volver   ⬅️ ",
+            card_2fa, text="  Volver",
+            image=get_icon("arrow-left", 16),
+            compound="left",
             command=self.mostrar_login,
             fg_color="#9E9E9E", hover_color="#757575",
             text_color="white", font=("Arial", 11, "bold"),
@@ -577,7 +594,7 @@ class AppDBPDF:
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            card_reg, text="  Crear Usuario",
+            card_reg, text="Crear Usuario",
             font=("Arial", 24, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(28, 4))
@@ -615,7 +632,7 @@ class AppDBPDF:
         self.entry_contrasena_registro.pack(side="left")
         self._show_pw_reg = False
         ctk.CTkButton(
-            pw_row_reg, text="👁", width=38, height=42,
+            pw_row_reg, text="", image=get_icon("eye", 16), width=38, height=42,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             corner_radius=8, font=("Arial", 13),
             command=lambda: self._toggle_pw(
@@ -632,7 +649,9 @@ class AppDBPDF:
         )
 
         ctk.CTkButton(
-            card_reg, text="✅  Registrar",
+            card_reg, text="  Registrar",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=self.registrarse,
             fg_color=COLOR_SECONDARY, hover_color="#1976D2",
             text_color="white", font=("Arial", 12, "bold"),
@@ -640,7 +659,9 @@ class AppDBPDF:
         ).pack(pady=(8, 8))
 
         ctk.CTkButton(
-            card_reg, text="⬅️   Volver",
+            card_reg, text="  Volver",
+            image=get_icon("arrow-left", 16),
+            compound="left",
             command=self.mostrar_inicial,
             fg_color="#9E9E9E", hover_color="#757575",
             text_color="white", font=("Arial", 11, "bold"),
@@ -667,7 +688,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             self._setup2fa_scroll,
-            text="🔐 Configurar Autenticación 2FA  🔐",
+            text="Configurar Autenticación 2FA",
             font=("Arial", 20, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(20, 6))
@@ -708,7 +729,9 @@ class AppDBPDF:
         )
         self.label_secret.pack(side="left", padx=(0, 8))
         ctk.CTkButton(
-            secret_row, text="📋 Copiar",
+            secret_row, text="  Copiar",
+            image=get_icon("clipboard", 14),
+            compound="left",
             width=90, height=30,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             font=("Arial", 10, "bold"), corner_radius=6,
@@ -729,7 +752,9 @@ class AppDBPDF:
         self.entry_confirm_2fa.pack(pady=6)
 
         ctk.CTkButton(
-            self._setup2fa_scroll, text="✅  Confirmar y Activar 2FA",
+            self._setup2fa_scroll, text="  Confirmar y Activar 2FA",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=self.confirmar_setup_2fa,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -738,7 +763,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             self._setup2fa_scroll,
-            text="⚠️ Guarda tus códigos de respaldo en un lugar seguro",
+            text="Guarda tus códigos de respaldo en un lugar seguro",
             text_color=COLOR_WARNING, font=("Arial", 10, "bold")
         ).pack(pady=(4, 16))
 
@@ -756,7 +781,9 @@ class AppDBPDF:
         navbar.pack_propagate(False)
 
         ctk.CTkLabel(
-            navbar, text="🔐 DatenJäger",
+            navbar, text="  DatenJäger",
+            image=get_icon("key-round", 22),
+            compound="left",
             font=("Arial", 18, "bold"), text_color="white"
         ).pack(side="left", padx=16, pady=10)
 
@@ -778,7 +805,7 @@ class AppDBPDF:
                 corner_radius=7, font=("Arial", 10, "bold")
             )
 
-        _make_nav_btn("🚪 Cerrar Sesión", self._logout,
+        _make_nav_btn("  Cerrar Sesión", self._logout,
                       "#C62828", "#B71C1C").pack(side="right", padx=6, pady=10)
 
         def toggle_theme():
@@ -787,46 +814,46 @@ class AppDBPDF:
             ctk.set_appearance_mode(new_mode)
             self.config.set("theme", new_mode)
             btn_theme.configure(
-                text="☀️  Claro" if new_mode == "Dark" else "🌙 Oscuro"
+                text="  Claro" if new_mode == "Dark" else "  Oscuro"
             )
             self.actualizar_colores_dinamicos()
 
         current_theme = ctk.get_appearance_mode()
         btn_theme = _make_nav_btn(
-            "☀️  Claro" if current_theme == "Dark" else "🌙 Oscuro",
+            "  Claro" if current_theme == "Dark" else "  Oscuro",
             toggle_theme
         )
         btn_theme.pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
-            "👤  Mi Cuenta",
+            "  Mi Cuenta",
             self.abrir_configuracion_cuenta,
             color="#1565c0", hover="#0d47a1"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
-            "📋 Auditoría",
+            "  Auditoría",
             self.mostrar_auditoria,
             color="#37474f", hover="#455a64"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
-            "👥 Personas",
+            "  Personas",
             self.mostrar_gestion_personas,
             color="#6A1B9A", hover="#4A148C"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
-            "📑 Reporte",
+            "  Reporte",
             lambda: self.exportar_reporte_dashboard("pdf"),
             color="#00695c", hover="#004d40"
         ).pack(side="right", padx=4, pady=10)
 
         _make_nav_btn(
-            "ℹ️  Acerca de",
+            "  Acerca de",
             lambda: Notification(
                 self.root,
-                "🔐 DatenJäger v.2.0",
+                "DatenJäger v.2.0",
                 "Encriptación AES-256-GCM · PBKDF2 · 2FA\nSeguridad Empresarial Moderna",
                 notification_type="info", duration=4000
             )
@@ -855,7 +882,8 @@ class AppDBPDF:
         search_card.pack(side="left")
 
         ctk.CTkLabel(
-            search_card, text="🔍",
+            search_card, text="",
+            image=get_icon("search", 16),
             font=("Arial", 14), text_color=colors["text_secondary"]
         ).pack(side="left", padx=(10, 2))
 
@@ -882,12 +910,12 @@ class AppDBPDF:
 
                         # botones de accion
         actions = [
-            ("➕ Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
-            ("👁 Ver Todos", self.ver_pdfs,               COLOR_SECONDARY, "#1565c0"),
-            ("ℹ️ Detalles",  self.mostrar_detalles_pdf,   COLOR_WARNING,   "#E65100"),
-            ("✏️ Editar",    self.editar_pdf,             "#7B1FA2",       "#6A1B9A"),
-            ("⬇️ Exportar",  self.exportar_pdf,           "#00897B",       "#00695C"),
-            ("🗑️ Eliminar",  self.eliminar_pdf,           COLOR_ERROR,     "#B71C1C"),
+            ("  Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
+            ("  Ver Todos", self.ver_pdfs,               COLOR_SECONDARY, "#1565c0"),
+            ("  Detalles",  self.mostrar_detalles_pdf,   COLOR_WARNING,   "#E65100"),
+            ("  Editar",    self.editar_pdf,             "#7B1FA2",       "#6A1B9A"),
+            ("  Exportar",  self.exportar_pdf,           "#00897B",       "#00695C"),
+            ("  Eliminar",  self.eliminar_pdf,           COLOR_ERROR,     "#B71C1C"),
         ]
         for text, cmd, fg, hover in actions:
             ctk.CTkButton(
@@ -900,7 +928,7 @@ class AppDBPDF:
         # -- Toggle vista lista / mosaico --
         self._view_mode = "list"  # "list" | "mosaic"
         self._btn_toggle_view = ctk.CTkButton(
-            actions_row, text="🔲 Mosaico",
+            actions_row, text="  Mosaico",
             command=self._toggle_view_mode,
             fg_color=("#546e7a", "#37474f"), hover_color="#455a64",
             text_color="white", font=("Arial", 10, "bold"),
@@ -941,12 +969,12 @@ class AppDBPDF:
 
                         # Right-click context menu
         self._ctx_menu = tk.Menu(self.root, tearoff=0)
-        self._ctx_menu.add_command(label="📂 Abrir / Desencriptar", command=self.abrir_pdf_doble_click)
-        self._ctx_menu.add_command(label="ℹ️  Ver Detalles",         command=self.mostrar_detalles_pdf)
-        self._ctx_menu.add_command(label="✏️  Editar Metadatos",     command=self.editar_pdf)
-        self._ctx_menu.add_command(label="⬇️  Exportar PDF",         command=self.exportar_pdf)
+        self._ctx_menu.add_command(label="Abrir / Desencriptar", command=self.abrir_pdf_doble_click)
+        self._ctx_menu.add_command(label="Ver Detalles",         command=self.mostrar_detalles_pdf)
+        self._ctx_menu.add_command(label="Editar Metadatos",     command=self.editar_pdf)
+        self._ctx_menu.add_command(label="Exportar PDF",         command=self.exportar_pdf)
         self._ctx_menu.add_separator()
-        self._ctx_menu.add_command(label="🗑️  Eliminar",             command=self.eliminar_pdf)
+        self._ctx_menu.add_command(label="Eliminar",             command=self.eliminar_pdf)
 
                         # -- Mosaic frame (hidden by default) --
         self._mosaic_frame = ctk.CTkScrollableFrame(
@@ -966,7 +994,9 @@ class AppDBPDF:
         self._preview_panel.pack_propagate(False)
 
         ctk.CTkLabel(
-            self._preview_panel, text="📋 Detalle del Documento",
+            self._preview_panel, text="  Detalle del Documento",
+            image=get_icon("clipboard", 16),
+            compound="left",
             font=("Arial", 11, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(14, 6), padx=10)
@@ -991,7 +1021,9 @@ class AppDBPDF:
 
         ctk.CTkButton(
             self._preview_panel,
-            text="📂 Abrir",
+            text="  Abrir",
+            image=get_icon("folder-open", 16),
+            compound="left",
             command=self.abrir_pdf_doble_click,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             font=("Arial", 10, "bold"),
@@ -1000,7 +1032,7 @@ class AppDBPDF:
 
         ctk.CTkButton(
             self._preview_panel,
-            text="⬇️ Exportar",
+            text="  Exportar",
             command=self.exportar_pdf,
             fg_color="#00897B", hover_color="#00695C",
             font=("Arial", 10, "bold"),
@@ -1009,7 +1041,7 @@ class AppDBPDF:
 
         ctk.CTkButton(
             self._preview_panel,
-            text="✏️ Editar",
+            text="  Editar",
             command=self.editar_pdf,
             fg_color="#7B1FA2", hover_color="#6A1B9A",
             font=("Arial", 10, "bold"),
@@ -1018,7 +1050,7 @@ class AppDBPDF:
 
         ctk.CTkButton(
             self._preview_panel,
-            text="🗑️ Eliminar",
+            text="  Eliminar",
             command=self.eliminar_pdf,
             fg_color=COLOR_ERROR, hover_color="#B71C1C",
             font=("Arial", 10, "bold"),
@@ -1028,7 +1060,7 @@ class AppDBPDF:
                             # -- Status bar --
         self.status = ctk.CTkLabel(
             self.frame_principal,
-            text="✅ Listo",
+            text="Listo",
             text_color=colors["text_primary"],
             font=("Arial", 10),
             anchor="w"
@@ -1207,7 +1239,7 @@ class AppDBPDF:
         if self._view_mode == "list":
             # Cambiar a mosaico
             self._view_mode = "mosaic"
-            self._btn_toggle_view.configure(text="📋 Lista")
+            self._btn_toggle_view.configure(text="  Lista")
 
             self._tree_frame.pack_forget()
             self._preview_panel.pack_forget()
@@ -1219,7 +1251,7 @@ class AppDBPDF:
         else:
             # Cambiar a lista
             self._view_mode = "list"
-            self._btn_toggle_view.configure(text="🔲 Mosaico")
+            self._btn_toggle_view.configure(text="  Mosaico")
 
             self._mosaic_frame.pack_forget()
             self._preview_panel.pack_forget()
@@ -1239,7 +1271,7 @@ class AppDBPDF:
         if not rows:
             ctk.CTkLabel(
                 self._mosaic_frame,
-                text="📂 No hay documentos para mostrar",
+                text="No hay documentos para mostrar",
                 font=("Arial", 13), text_color=colors["text_secondary"]
             ).pack(pady=40)
             return
@@ -1285,7 +1317,8 @@ class AppDBPDF:
             icon_frame.pack_propagate(False)
 
             ctk.CTkLabel(
-                icon_frame, text="📄",
+                icon_frame, text="",
+                image=get_icon("file-text", 24),
                 font=("Arial", 24), text_color="white"
             ).pack(expand=True)
 
@@ -1312,7 +1345,7 @@ class AppDBPDF:
             if persona != "—":
                 persona_txt = persona[:18] + "…" if len(persona) > 18 else persona
                 ctk.CTkLabel(
-                    card, text=f"👤 {persona_txt}",
+                    card, text=f"{persona_txt}",
                     font=("Arial", 8),
                     text_color=colors["text_secondary"]
                 ).pack(padx=8)
@@ -1320,7 +1353,7 @@ class AppDBPDF:
             if empresa:
                 emp_txt = empresa[:18] + "…" if len(empresa) > 18 else empresa
                 ctk.CTkLabel(
-                    card, text=f"🏢 {emp_txt}",
+                    card, text=f"{emp_txt}",
                     font=("Arial", 8),
                     text_color=colors["text_secondary"]
                 ).pack(padx=8)
@@ -1330,12 +1363,12 @@ class AppDBPDF:
             meta_frame.pack(padx=8, pady=(4, 8))
 
             ctk.CTkLabel(
-                meta_frame, text=f"💾 {tamano}",
+                meta_frame, text=f"{tamano}",
                 font=("Arial", 8), text_color=colors["text_secondary"]
             ).pack(side="left", padx=(0, 6))
 
             ctk.CTkLabel(
-                meta_frame, text=f"📅 {fecha}",
+                meta_frame, text=f"{fecha}",
                 font=("Arial", 8), text_color=colors["text_secondary"]
             ).pack(side="left")
 
@@ -1356,12 +1389,12 @@ class AppDBPDF:
                 # Actualizar preview lateral
                 self._preview_name.configure(text=_row[1] or "—")
                 info_parts = []
-                if _row[5]: info_parts.append(f"🪪 {_row[5]}")
-                if _row[6]: info_parts.append(f"👤 {_row[6]}")
-                if _row[7]: info_parts.append(f"🏢 {_row[7]}")
-                info_parts.append(f"💾 {format_size(_row[3])}")
-                info_parts.append(f"📅 {format_date_friendly(_row[4])}")
-                info_parts.append(f"🔒 AES-256-GCM")
+                if _row[5]: info_parts.append(f"ID: {_row[5]}")
+                if _row[6]: info_parts.append(f"Persona: {_row[6]}")
+                if _row[7]: info_parts.append(f"Empresa: {_row[7]}")
+                info_parts.append(f"Tamaño: {format_size(_row[3])}")
+                info_parts.append(f"Fecha: {format_date_friendly(_row[4])}")
+                info_parts.append(f"Cifrado: AES-256-GCM")
                 self._preview_info.configure(text="\n".join(info_parts))
 
                 # sincronizar selección en el Treeview (para que las acciones funcionen)
@@ -1430,7 +1463,7 @@ class AppDBPDF:
         if secret:
             self.root.clipboard_clear()
             self.root.clipboard_append(secret)
-            Notification(self.root, "📋 Copiado",
+            Notification(self.root, "Copiado",
                          "Clave secreta copiada al portapapeles",
                          notification_type="success", duration=2000)
 
@@ -1445,7 +1478,7 @@ class AppDBPDF:
             if hasattr(self, '_totp_timer_label') and self._totp_timer_label.winfo_exists():
                 color = "#4CAF50" if remaining > 10 else "#FF9800" if remaining > 5 else "#F44336"
                 self._totp_timer_label.configure(
-                    text=f"⏳ Código válido: {remaining}s",
+                    text=f"Código válido: {remaining}s",
                     text_color=color
                 )
             self.root.after(1000, tick)
@@ -1475,14 +1508,14 @@ class AppDBPDF:
         colors = self.get_colors()
         self._preview_name.configure(text=pdf_nombre)
         info = (
-            f"📄 {pdf_nombre}\n\n"
-            f"📝 {descripcion or '—'}\n\n"
-            f"💾 {tamano}\n"
-            f"📅 {fecha}\n"
-            f"🪪 Cédula: {cedula or '—'}\n"
-            f"👤 {nombres or '—'}\n"
-            f"🏢 {empresa or '—'}\n\n"
-            f"🔒 AES-256-GCM Encriptado"
+            f"{pdf_nombre}\n\n"
+            f"Desc: {descripcion or '—'}\n\n"
+            f"Tamaño: {tamano}\n"
+            f"Fecha: {fecha}\n"
+            f"Cédula: {cedula or '—'}\n"
+            f"Persona: {nombres or '—'}\n"
+            f"Empresa: {empresa or '—'}\n\n"
+            f"AES-256-GCM Encriptado"
         )
         self._preview_info.configure(text=info)
 
@@ -1542,10 +1575,10 @@ class AppDBPDF:
         # se llama al hilo principal despues de que se guarda correctamente un PDF
         colors = self.get_colors()
         self.status.configure(
-            text=f"✅ PDF {nombre} agregado y encriptado",
+            text=f"PDF {nombre} agregado y encriptado",
             text_color=colors["text_primary"]
         )
-        Notification(self.root, "✅ Éxito",
+        Notification(self.root, "Éxito",
                      f"PDF {nombre} agregado\nEncriptado con AES-256-GCM",
                      notification_type="success")
         window.destroy()
@@ -1554,9 +1587,9 @@ class AppDBPDF:
 
     def _on_pdf_add_error(self, error):
         # se llama al hilo principal cuando falla la adición de un PDF
-        Notification(self.root, "❌ Error", str(error), notification_type="error")
+        Notification(self.root, "Error", str(error), notification_type="error")
         colors = self.get_colors()
-        self.status.configure(text="❌ Error al agregar PDF",
+        self.status.configure(text="Error al agregar PDF",
                               text_color=colors["text_primary"])
 
     def _abrir_visor_pdf(self, pdf_bytes: bytes, nombre: str, window=None):
@@ -1565,7 +1598,7 @@ class AppDBPDF:
             window.destroy()
         colors = self.get_colors()
         self.status.configure(
-            text=f"✅ PDF cargado: {nombre}",
+            text=f"PDF cargado: {nombre}",
             text_color=colors["text_primary"]
         )
         PDFViewerWindow(self.root, pdf_bytes, nombre)
@@ -1602,7 +1635,7 @@ class AppDBPDF:
 
         if not nombre or not contrasena:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "Ingresa nombre de usuario y contraseña",
                 notification_type="error"
             )
@@ -1610,7 +1643,7 @@ class AppDBPDF:
 
         if len(nombre) < 3:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "El nombre de usuario debe tener al menos 3 caracteres",
                 notification_type="error"
             )
@@ -1618,7 +1651,7 @@ class AppDBPDF:
 
         if len(contrasena) < 8:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "La contraseña debe tener mínimo 8 caracteres",
                 notification_type="error"
             )
@@ -1627,7 +1660,7 @@ class AppDBPDF:
         score, label, _ = password_strength(contrasena)
         if score < 2:
             Notification(
-                self.root, "⚠️ Contraseña insegura",
+                self.root, "Contraseña insegura",
                 f"Fortaleza: {label}\n"
                 "Requisitos: 8+ caracteres, mayúsculas,\nnúmeros y caracteres especiales (!@#$…)",
                 notification_type="warning", duration=5000
@@ -1651,19 +1684,19 @@ class AppDBPDF:
             self.mostrar_setup_2fa()
 
             Notification(
-                self.root, "✅ Éxito",
+                self.root, "Éxito",
                 f"Usuario {nombre} registrado\nConfigurando 2FA…",
                 notification_type="success"
             )
         except Exception as e:
             if "UNIQUE constraint failed" in str(e):
                 Notification(
-                    self.root, "❌ Error",
+                    self.root, "Error",
                     f"El usuario '{nombre}' ya existe",
                     notification_type="error"
                 )
             else:
-                Notification(self.root, "❌ Error", str(e), notification_type="error")
+                Notification(self.root, "Error", str(e), notification_type="error")
 
     def login(self):
         # inicia sesion (paso 1: validar usuario/contraseña)
@@ -1672,7 +1705,7 @@ class AppDBPDF:
 
         if not nombre or not contrasena:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "Ingresa nombre de usuario y contraseña",
                 notification_type="error"
             )
@@ -1683,7 +1716,7 @@ class AppDBPDF:
         if locked:
             mins = secs // 60 + 1
             Notification(
-                self.root, "🔒 Cuenta bloqueada 🔒",
+                self.root, "Cuenta bloqueada",
                 f"Demasiados intentos fallidos.\nIntenta de nuevo en {mins} minuto(s).",
                 notification_type="error", duration=5000
             )
@@ -1783,25 +1816,25 @@ class AppDBPDF:
                     locked2, secs2 = check_account_locked(self.cursor, nombre)
                     if locked2:
                         Notification(
-                            self.root, "🔒 Cuenta bloqueada",
+                            self.root, "Cuenta bloqueada",
                             "Se bloqueó tu cuenta por múltiples intentos fallidos.\n"
                             f"Espera {secs2 // 60 + 1} min.",
                             notification_type="error", duration=5000
                         )
                     else:
                         Notification(
-                            self.root, "❌ Error",
+                            self.root, "Error",
                             "Contraseña incorrecta",
                             notification_type="error"
                         )
             else:
                 Notification(
-                    self.root, "❌ Error",
+                    self.root, "Error",
                     "Usuario no encontrado",
                     notification_type="error"
                 )
         except Exception as e:
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
 
     def mostrar_setup_2fa(self):
         # muestra pantalla para configurar 2FA
@@ -1835,7 +1868,7 @@ class AppDBPDF:
 
         if not codigo or len(codigo) != 6:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "Ingresa un código válido de 6 dígitos",
                 notification_type="error"
             )
@@ -1864,7 +1897,7 @@ class AppDBPDF:
 
                 # La notificacion y la navegación ocurren despues de que el usuario cierra el diálogo
                 Notification(
-                    self.root, "✅ 2FA Configurado",
+                    self.root, "2FA Configurado",
                     "Autenticación 2FA activada correctamente",
                     notification_type="success"
                 )
@@ -1872,18 +1905,18 @@ class AppDBPDF:
                 self.mostrar_login()
             else:
                 Notification(
-                    self.root, "❌ Error",
+                    self.root, "Error",
                     "El código es incorrecto o ha expirado",
                     notification_type="error"
                 )
         except Exception as e:
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
 
     def _mostrar_codigos_respaldo(self, backup_codes):
             # muestra los códigos de respaldo en una ventana modal, con opción para copiar al portapapeles
         colors = self.get_colors()
         win = ctk.CTkToplevel(self.root)
-        win.title("⚠️ Códigos de Respaldo")
+        win.title("Códigos de Respaldo")
         win.geometry("440x420")
         win.resizable(False, False)
         win.transient(self.root)
@@ -1892,7 +1925,7 @@ class AppDBPDF:
 
         def _build():
             ctk.CTkLabel(
-                win, text="⚠️ Guarda tus Códigos de Respaldo",
+                win, text="Guarda tus Códigos de Respaldo",
                 font=("Arial", 16, "bold"),
                 text_color=COLOR_WARNING
             ).pack(pady=(20, 8))
@@ -1910,7 +1943,7 @@ class AppDBPDF:
 
             for code in backup_codes:
                 ctk.CTkLabel(
-                    codes_frame, text=f"  🔑  {code}",
+                    codes_frame, text=f"  {code}",
                     font=("Arial", 15, "bold"),
                     text_color=COLOR_WARNING
                 ).pack(pady=4)
@@ -1919,11 +1952,13 @@ class AppDBPDF:
                 texto = "\n".join(backup_codes)
                 win.clipboard_clear()
                 win.clipboard_append(texto)
-                Notification(win, "📋 Copiado", "Códigos copiados al portapapeles",
+                Notification(win, "Copiado", "Códigos copiados al portapapeles",
                              notification_type="success", duration=2000)
 
             ctk.CTkButton(
-                win, text="📋 Copiar todos",
+                win, text="  Copiar todos",
+                image=get_icon("clipboard", 14),
+                compound="left",
                 command=copiar_todos,
                 fg_color=COLOR_SECONDARY, hover_color="#1565c0",
                 text_color="white", font=("Arial", 11, "bold"),
@@ -1931,7 +1966,9 @@ class AppDBPDF:
             ).pack(pady=8)
 
             ctk.CTkButton(
-                win, text="✅ Entendido",
+                win, text="  Entendido",
+                image=get_icon("check-circle", 16),
+                compound="left",
                 command=win.destroy,
                 fg_color=COLOR_PRIMARY, hover_color="#388E3C",
                 text_color="white", font=("Arial", 12, "bold"),
@@ -1951,7 +1988,7 @@ class AppDBPDF:
         if not codigo or len(codigo) != 6:
             Notification(
                 self.root,
-                "❌ Error",
+                "Error",
                 "Ingresa un código válido de 6 dígitos",
                 notification_type="error"
             )
@@ -1977,21 +2014,21 @@ class AppDBPDF:
                     self._audit("2FA fallido: código incorrecto o expirado")
                     Notification(
                         self.root,
-                        "❌ Error",
+                        "Error",
                         "El código es incorrecto o ha expirado",
                         notification_type="error"
                     )
             else:
                 Notification(
                     self.root,
-                    "❌ Error",
+                    "Error",
                     "Usuario no encontrado",
                     notification_type="error"
                 )
         except Exception as e:
             Notification(
                 self.root,
-                "❌ Error",
+                "Error",
                 str(e),
                 notification_type="error"
             )
@@ -2036,7 +2073,7 @@ class AppDBPDF:
 
                     Notification(
                         self.root,
-                        "✅ Código Aceptado",
+                        "Código Aceptado",
                         "Login completado con código de respaldo",
                         notification_type="success"
                     )
@@ -2046,14 +2083,14 @@ class AppDBPDF:
                     self._audit("Código de respaldo inválido")
                     Notification(
                         self.root,
-                        "❌ Error",
+                        "Error",
                         "El código de respaldo es inválido",
                         notification_type="error"
                     )
         except Exception as e:
             Notification(
                 self.root,
-                "❌ Error",
+                "Error",
                 str(e),
                 notification_type="error"
             )
@@ -2069,7 +2106,7 @@ class AppDBPDF:
 
         colors = self.get_colors()
         win = ctk.CTkToplevel(self.root)
-        win.title("👤 Configuración de Cuenta")
+        win.title("Configuración de Cuenta")
         win.geometry("520x560")
         win.resizable(False, False)
         win.transient(self.root)
@@ -2078,7 +2115,9 @@ class AppDBPDF:
 
         def _build():
             ctk.CTkLabel(
-                win, text=f"👤  {self.usuario_nombre}",
+                win, text=f"  {self.usuario_nombre}",
+                image=get_icon("user", 20),
+                compound="left",
                 font=("Arial", 17, "bold"),
                 text_color=colors["text_primary"]
             ).pack(pady=(20, 4))
@@ -2091,13 +2130,13 @@ class AppDBPDF:
             tabs = ctk.CTkTabview(win, width=480, height=440, corner_radius=12)
             tabs.pack(padx=18, pady=(0, 18), fill="both", expand=True)
 
-            tabs.add("🔑 Contraseña")
-            tabs.add("🔐 Códigos 2FA")
-            tabs.add("🛡️ Confianza")
+            tabs.add("Contraseña")
+            tabs.add("Códigos 2FA")
+            tabs.add("Confianza")
 
-            self._build_tab_contrasena(tabs.tab("🔑 Contraseña"), win, colors)
-            self._build_tab_codigos(tabs.tab("🔐 Códigos 2FA"), colors)
-            self._build_tab_confianza(tabs.tab("🛡️ Confianza"), colors)
+            self._build_tab_contrasena(tabs.tab("Contraseña"), win, colors)
+            self._build_tab_codigos(tabs.tab("Códigos 2FA"), colors)
+            self._build_tab_confianza(tabs.tab("Confianza"), colors)
 
             win.update_idletasks()
             win.deiconify()
@@ -2167,16 +2206,16 @@ class AppDBPDF:
 
             # validaciones básicas
             if not all([pw_actual, pw_nueva, pw_confirm, totp_code]):
-                Notification(win, "⚠️ Campos incompletos",
+                Notification(win, "Campos incompletos",
                              "Completa todos los campos", notification_type="warning")
                 return
             if pw_nueva != pw_confirm:
-                Notification(win, "❌ Error", "Las nuevas contraseñas no coinciden",
+                Notification(win, "Error", "Las nuevas contraseñas no coinciden",
                              notification_type="error")
                 return
             score, label, _ = password_strength(pw_nueva)
             if score < 2:
-                Notification(win, "⚠️ Contraseña débil",
+                Notification(win, "Contraseña débil",
                              f"Fortaleza: {label}. Usa mayúsculas, números y símbolos.",
                              notification_type="warning")
                 return
@@ -2193,13 +2232,13 @@ class AppDBPDF:
                 hash_stored, totp_enabled, totp_enc = row
                 ok, _ = verify_contrasena(pw_actual, hash_stored)
                 if not ok:
-                    Notification(win, "❌ Error", "Contraseña actual incorrecta",
+                    Notification(win, "Error", "Contraseña actual incorrecta",
                                  notification_type="error")
                     return
 
                 # 2. verificar código TOTP del autenticador
                 if not totp_enabled or not totp_enc:
-                    Notification(win, "❌ Error",
+                    Notification(win, "Error",
                                  "El 2FA no está configurado. Configúralo primero.",
                                  notification_type="error")
                     return
@@ -2207,7 +2246,7 @@ class AppDBPDF:
                     totp_enc, self._session_key
                 )
                 if not pyotp.TOTP(totp_secret).verify(totp_code):
-                    Notification(win, "❌ Código inválido",
+                    Notification(win, "Código inválido",
                                  "El código del autenticador es incorrecto o expiró",
                                  notification_type="error")
                     return
@@ -2252,17 +2291,19 @@ class AppDBPDF:
                 self._session_key = new_key
                 self._audit("Cambio de contraseña")
 
-                Notification(self.root, "✅ Contraseña cambiada",
+                Notification(self.root, "Contraseña cambiada",
                              "Tu contraseña fue actualizada correctamente.\n"
                              "El token de confianza fue invalidado.",
                              notification_type="success", duration=4000)
                 win.destroy()
 
             except Exception as e:
-                Notification(win, "❌ Error", str(e), notification_type="error")
+                Notification(win, "Error", str(e), notification_type="error")
 
         ctk.CTkButton(
-            parent, text="✅  Cambiar Contraseña",
+            parent, text="  Cambiar Contraseña",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=aplicar,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -2296,14 +2337,14 @@ class AppDBPDF:
                     plain = EncryptionManager.decrypt_str_with_key(row[0], self._session_key)
                     self.root.clipboard_clear()
                     self.root.clipboard_append(plain.replace(",", "\n"))
-                    Notification(parent, "📋 Copiado", "Códigos copiados al portapapeles",
+                    Notification(parent, "Copiado", "Códigos copiados al portapapeles",
                                  notification_type="success", duration=2000)
             except Exception as e:
-                Notification(parent, "❌ Error", str(e), notification_type="error")
+                Notification(parent, "Error", str(e), notification_type="error")
 
         def regenerar():
             dlg = ConfirmDialog(
-                parent, "🔄 Regenerar Códigos",
+                parent, "Regenerar Códigos",
                 "¿Generar nuevos códigos de respaldo?\nLos actuales quedarán inválidos.",
                 confirm_text="Regenerar", danger=True
             )
@@ -2321,19 +2362,21 @@ class AppDBPDF:
                 self.conn.commit()
                 self._audit("Regeneración de códigos de respaldo")
                 self._refresh_backup_codes_display(codes_frame, colors)
-                Notification(parent, "✅ Códigos regenerados",
+                Notification(parent, "Códigos regenerados",
                              "Guarda los nuevos códigos en un lugar seguro.",
                              notification_type="success")
             except Exception as e:
-                Notification(parent, "❌ Error", str(e), notification_type="error")
+                Notification(parent, "Error", str(e), notification_type="error")
 
         btn_row = ctk.CTkFrame(parent, fg_color="transparent")
         btn_row.pack(pady=14)
-        ctk.CTkButton(btn_row, text="📋 Copiar todos", command=copiar,
+        ctk.CTkButton(btn_row, text="  Copiar todos",
+                image=get_icon("clipboard", 14),
+                compound="left", command=copiar,
                       fg_color=COLOR_SECONDARY, hover_color="#1565c0",
                       text_color="white", font=("Arial", 11, "bold"),
                       width=166, height=36, corner_radius=8).pack(side="left", padx=6)
-        ctk.CTkButton(btn_row, text="🔄 Regenerar", command=regenerar,
+        ctk.CTkButton(btn_row, text="  Regenerar", command=regenerar,
                       fg_color=COLOR_WARNING, hover_color="#F57C00",
                       text_color="white", font=("Arial", 11, "bold"),
                       width=166, height=36, corner_radius=8).pack(side="left", padx=6)
@@ -2352,7 +2395,7 @@ class AppDBPDF:
                 codigos = [c for c in plain.split(",") if c.strip()]
                 for c in codigos:
                     ctk.CTkLabel(
-                        codes_frame, text=f"  🔑  {c}",
+                        codes_frame, text=f"  {c}",
                         font=("Arial", 13, "bold"), text_color=COLOR_WARNING
                     ).pack(pady=3)
                 ctk.CTkLabel(
@@ -2413,15 +2456,17 @@ class AppDBPDF:
                 tokens = self.config.get("trust_tokens", {})
                 tokens.pop(self.usuario_nombre, None)
                 self.config.set("trust_tokens", tokens)
-                info_label.configure(text="✅ Siempre se solicitará el código 2FA.")
+                info_label.configure(text="Siempre se solicitará el código 2FA.")
             else:
                 info_label.configure(
-                    text=f"✅ Guardado. El código 2FA no se pedirá durante {elegido} "
+                    text=f"Guardado. El código 2FA no se pedirá durante {elegido} "
                          "tras la próxima verificación exitosa."
                 )
 
         ctk.CTkButton(
-            parent, text="💾  Guardar preferencia",
+            parent, text="  Guardar preferencia",
+            image=get_icon("save", 18),
+            compound="left",
             command=guardar_trust,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -2430,7 +2475,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             parent,
-            text="⚠️ Cambiar la contraseña invalida\nautomáticamente el token de confianza.",
+            text="Cambiar la contraseña invalida\nautomáticamente el token de confianza.",
             font=("Arial", 9), text_color=COLOR_WARNING, justify="center"
         ).pack(pady=(14, 0))
 
@@ -2516,7 +2561,7 @@ class AppDBPDF:
             return
         Notification(
             self.root,
-            "⚠️ Sesión por expirar",
+            "Sesión por expirar",
             "Sin actividad detectada.\nLa sesión se cerrará en 30 segundos.",
             notification_type="warning",
             duration=28000
@@ -2537,7 +2582,7 @@ class AppDBPDF:
         self._reset_preview_panel()
         self.mostrar_inicial()
         Notification(
-            self.root, "🔒 Sesión expirada",
+            self.root, "Sesión expirada",
             f"La sesión de {nombre} se cerró automáticamente\npor inactividad.",
             notification_type="warning", duration=5000
         )
@@ -2547,14 +2592,14 @@ class AppDBPDF:
         self._hide_all_frames()
         self.frame_principal.pack(expand=True, fill="both")
         colors = self.get_colors()
-        self.status.configure(text=f"✅ Sesión activa: {self.usuario_nombre}",
+        self.status.configure(text=f"Sesión activa: {self.usuario_nombre}",
                               text_color=colors["text_primary"])
         # update user badge in navbar
         if hasattr(self, '_user_badge'):
-            self._user_badge.configure(text=f" 👤 {self.usuario_nombre} ")
+            self._user_badge.configure(text=f"  {self.usuario_nombre} ", image=get_icon("user", 14), compound="left")
         Notification(
             self.root,
-            "✅ Sesión Iniciada",
+            "Sesión Iniciada",
             f"Bienvenido, {self.usuario_nombre}!\n2FA verificado – AES-256-GCM activo",
             notification_type="success",
             duration=3000
@@ -2568,7 +2613,7 @@ class AppDBPDF:
             # cierra la sesion del usuario actual
         dlg = ConfirmDialog(
             self.root,
-            "🚪 Cerrar Sesión",
+            "  Cerrar Sesión",
             f"¿Deseas cerrar la sesión de {self.usuario_nombre}?",
             confirm_text="Cerrar Sesión",
             cancel_text="Cancelar",
@@ -2586,7 +2631,7 @@ class AppDBPDF:
             self._reset_preview_panel()
             self.mostrar_inicial()
             Notification(
-                self.root, "👋 Sesión cerrada",
+                self.root, "Sesión cerrada",
                 "Has cerrado sesión correctamente",
                 notification_type="info", duration=2500
             )
@@ -2656,7 +2701,7 @@ class AppDBPDF:
     def exportar_reporte_dashboard(self, formato="pdf"):
         """Exporta reporte del dashboard usando reporter.py."""
         if not self.usuario_actual:
-            Notification(self.root, "❌ Error", "No hay sesión activa.",
+            Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
             return
 
@@ -2686,13 +2731,13 @@ class AppDBPDF:
             self._audit(accion)
             Notification(
                 self.root,
-                "✅ Reporte generado",
+                "Reporte generado",
                 f"Se exportó correctamente en:\n{destino}",
                 notification_type="success",
                 duration=3000
             )
         except Exception as e:
-            Notification(self.root, "❌ Error de reporte", str(e),
+            Notification(self.root, "Error de reporte", str(e),
                          notification_type="error")
         finally:
             self.progress_bar.stop()
@@ -2704,12 +2749,12 @@ class AppDBPDF:
     def mostrar_gestion_personas(self):
         """Panel independiente para CRUD de personas (cédula, nombres, empresa)."""
         if not self.usuario_actual:
-            Notification(self.root, "❌ Error", "No hay sesión activa.",
+            Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
             return
 
         win = ctk.CTkToplevel(self.root)
-        win.title("👥 Gestión de Personas — DatenJäger")
+        win.title("Gestión de Personas — DatenJäger")
         win.geometry("960x620")
         win.minsize(760, 480)
         win.transient(self.root)
@@ -2740,7 +2785,9 @@ class AppDBPDF:
         header.pack(fill="x")
         header.pack_propagate(False)
         ctk.CTkLabel(
-            header, text="👥 Gestión de Personas",
+            header, text="  Gestión de Personas",
+            image=get_icon("users", 18),
+            compound="left",
             font=("Arial", 16, "bold"), text_color="white"
         ).pack(side="left", padx=16, pady=14)
         ctk.CTkLabel(
@@ -2753,7 +2800,8 @@ class AppDBPDF:
                                    corner_radius=10)
         action_bar.pack(fill="x", padx=14, pady=(10, 4))
 
-        ctk.CTkLabel(action_bar, text="🔍",
+        ctk.CTkLabel(action_bar, text="",
+                     image=get_icon("search", 14),
                      font=("Arial", 14)).pack(side="left", padx=(14, 4), pady=8)
         entry_buscar = ctk.CTkEntry(action_bar,
                                      placeholder_text="Buscar por cédula, nombre o empresa…",
@@ -2847,7 +2895,7 @@ class AppDBPDF:
                     text=f"{len(rows)} persona{'s' if len(rows) != 1 else ''}"
                 )
             except Exception as e:
-                Notification(self.root, "❌ Error al cargar personas",
+                Notification(self.root, "Error al cargar personas",
                              str(e), notification_type="error")
 
         def _filtrar(*_args):
@@ -2873,7 +2921,7 @@ class AppDBPDF:
             datos: (id, cedula, nombres, empresa) cuando modo='editar'
             """
             form = ctk.CTkToplevel(win)
-            titulo = "➕ Agregar Persona" if modo == "agregar" else "✏️ Editar Persona"
+            titulo = "Agregar Persona" if modo == "agregar" else "Editar Persona"
             form.title(titulo)
             form.geometry("440x380")
             form.resizable(False, False)
@@ -2925,7 +2973,7 @@ class AppDBPDF:
                 empresa = e_empresa.get().strip() or None
 
                 if not cedula or not nombres:
-                    Notification(form, "❌ Error",
+                    Notification(form, "Error",
                                  "Cédula y nombres son obligatorios.",
                                  notification_type="error")
                     return
@@ -2938,7 +2986,7 @@ class AppDBPDF:
                                 (cedula,)
                             )
                             if self.cursor.fetchone():
-                                Notification(form, "⚠️ Duplicado",
+                                Notification(form, "Duplicado",
                                              f"Ya existe una persona con cédula {cedula}.",
                                              notification_type="warning")
                                 return
@@ -2959,13 +3007,13 @@ class AppDBPDF:
                             msg = f"Persona '{nombres}' actualizada."
                         self.conn.commit()
 
-                    Notification(self.root, "✅ Guardado", msg,
+                    Notification(self.root, "Guardado", msg,
                                  notification_type="success", duration=2500)
                     form.destroy()
                     _cargar(entry_buscar.get())
                 except Exception as exc:
                     self.conn.rollback()
-                    Notification(form, "❌ Error", str(exc),
+                    Notification(form, "Error", str(exc),
                                  notification_type="error")
 
             btn_row = ctk.CTkFrame(form, fg_color="transparent")
@@ -2981,7 +3029,7 @@ class AppDBPDF:
 
             ctk.CTkButton(
                 btn_row,
-                text="💾 Guardar" if modo == "editar" else "➕ Agregar",
+                text="  Guardar" if modo == "editar" else "  Agregar",
                 command=_guardar,
                 fg_color="#6A1B9A" if modo == "agregar" else COLOR_PRIMARY,
                 hover_color="#4A148C" if modo == "agregar" else "#388E3C",
@@ -3006,7 +3054,7 @@ class AppDBPDF:
         def _editar():
             sel = tree.selection()
             if not sel:
-                Notification(win, "⚠️ Selecciona una persona",
+                Notification(win, "Selecciona una persona",
                              "Haz clic en una persona de la lista para editarla.",
                              notification_type="warning")
                 return
@@ -3017,7 +3065,7 @@ class AppDBPDF:
         def _eliminar():
             sel = tree.selection()
             if not sel:
-                Notification(win, "⚠️ Selecciona una persona",
+                Notification(win, "Selecciona una persona",
                              "Haz clic en una persona de la lista para eliminarla.",
                              notification_type="warning")
                 return
@@ -3032,7 +3080,7 @@ class AppDBPDF:
                 msg = f"¿Eliminar a '{nombres}' (cédula {cedula})?"
 
             dlg = ConfirmDialog(
-                win, "🗑️ Eliminar Persona", msg,
+                win, "Eliminar Persona", msg,
                 confirm_text="Eliminar", danger=True
             )
             if not dlg.result:
@@ -3044,13 +3092,13 @@ class AppDBPDF:
                     )
                     self._audit("Eliminar persona (Panel Personas)")
                     self.conn.commit()
-                Notification(self.root, "✅ Eliminada",
+                Notification(self.root, "Eliminada",
                              f"Persona '{nombres}' eliminada correctamente.",
                              notification_type="success", duration=2500)
                 _cargar(entry_buscar.get())
             except Exception as exc:
                 self.conn.rollback()
-                Notification(win, "❌ Error", str(exc),
+                Notification(win, "Error", str(exc),
                              notification_type="error")
 
         # ── Barra inferior de botones ─────────────────────────────
@@ -3058,7 +3106,9 @@ class AppDBPDF:
         bottom_bar.pack(fill="x", padx=14, pady=(0, 10))
 
         ctk.CTkButton(
-            bottom_bar, text="➕ Agregar Persona",
+            bottom_bar, text="  Agregar Persona",
+            image=get_icon("plus", 16),
+            compound="left",
             command=_agregar,
             fg_color="#6A1B9A", hover_color="#4A148C",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3066,7 +3116,7 @@ class AppDBPDF:
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
-            bottom_bar, text="✏️ Editar",
+            bottom_bar, text="  Editar",
             command=_editar,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3074,7 +3124,7 @@ class AppDBPDF:
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
-            bottom_bar, text="🗑️ Eliminar",
+            bottom_bar, text="  Eliminar",
             command=_eliminar,
             fg_color=COLOR_ERROR, hover_color="#C62828",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3093,7 +3143,9 @@ class AppDBPDF:
             lbl_refresh.configure(text=f"Última: {_dt.now().strftime('%H:%M:%S')}")
 
         ctk.CTkButton(
-            bottom_bar, text="🔄 Refrescar",
+            bottom_bar, text="  Refrescar",
+            image=get_icon("refresh-cw", 16),
+            compound="left",
             command=_manual_refresh,
             fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3112,12 +3164,12 @@ class AppDBPDF:
     def mostrar_auditoria(self):
         """abre ventana con el visor de log de auditoria con filtros."""
         if not self.usuario_actual:
-            Notification(self.root, "❌ Error", "No hay sesión activa.",
+            Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
             return
 
         win = ctk.CTkToplevel(self.root)
-        win.title("📋 Log de Auditoría — DatenJäger")
+        win.title("Log de Auditoría — DatenJäger")
         win.geometry("960x600")
         win.minsize(760, 460)
         win.transient(self.root)
@@ -3140,7 +3192,9 @@ class AppDBPDF:
         header.pack(fill="x")
         header.pack_propagate(False)
         ctk.CTkLabel(
-            header, text="📋 Log de Auditoría",
+            header, text="  Log de Auditoría",
+            image=get_icon("clipboard", 18),
+            compound="left",
             font=("Arial", 16, "bold"), text_color="white"
         ).pack(side="left", padx=16, pady=14)
         ctk.CTkLabel(
@@ -3251,7 +3305,7 @@ class AppDBPDF:
                     text=f"{len(rows)} registro{'s' if len(rows) != 1 else ''}"
                 )
             except Exception as e:
-                Notification(self.root, "❌ Error al cargar auditoría",
+                Notification(self.root, "Error al cargar auditoría",
                              str(e), notification_type="error")
 
         def _aplicar_filtros():
@@ -3315,7 +3369,7 @@ class AppDBPDF:
                 found_log = "(generado en memoria)"
 
             log_win = ctk.CTkToplevel(win)
-            log_win.title("📜 Log del Sistema — Backend")
+            log_win.title("Log del Sistema — Backend")
             log_win.geometry("820x540")
             log_win.transient(win)
             log_win.configure(fg_color=("#1b1b2f", "#0d0d1a"))
@@ -3326,7 +3380,9 @@ class AppDBPDF:
             hdr.pack(fill="x")
             hdr.pack_propagate(False)
             ctk.CTkLabel(
-                hdr, text="📜 Log del Sistema",
+                hdr, text="  Log del Sistema",
+                image=get_icon("scroll-text", 16),
+                compound="left",
                 font=("Arial", 14, "bold"), text_color="#4fc3f7"
             ).pack(side="left", padx=14, pady=10)
             ctk.CTkLabel(
@@ -3366,7 +3422,9 @@ class AppDBPDF:
 
         # botones de acción en filter_card (se agregan después de definir _cargar)
         ctk.CTkButton(
-            filter_card, text="🔍 Filtrar",
+            filter_card, text="  Filtrar",
+            image=get_icon("search", 14),
+            compound="left",
             command=_aplicar_filtros,
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             font=("Arial", 10, "bold"), corner_radius=7,
@@ -3374,7 +3432,7 @@ class AppDBPDF:
         ).pack(side="left", padx=(0, 4), pady=8)
 
         ctk.CTkButton(
-            filter_card, text="✖ Limpiar",
+            filter_card, text="Limpiar",
             command=_limpiar_filtros,
             fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             font=("Arial", 10, "bold"), corner_radius=7,
@@ -3386,7 +3444,9 @@ class AppDBPDF:
         bottom_bar.pack(fill="x", padx=14, pady=(0, 8))
 
         ctk.CTkButton(
-            bottom_bar, text="📜 Log del Sistema",
+            bottom_bar, text="  Log del Sistema",
+            image=get_icon("scroll-text", 16),
+            compound="left",
             command=_ver_log_backend,
             fg_color="#263238", hover_color="#37474f",
             text_color="#4fc3f7", font=("Arial", 10, "bold"),
@@ -3394,7 +3454,9 @@ class AppDBPDF:
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
-            bottom_bar, text="🔄 Refrescar",
+            bottom_bar, text="  Refrescar",
+            image=get_icon("refresh-cw", 16),
+            compound="left",
             command=_aplicar_filtros,
             fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             font=("Arial", 10, "bold"), corner_radius=8,
@@ -3412,7 +3474,7 @@ class AppDBPDF:
         """Muestra ventana para agregar PDF"""
         if not self.usuario_actual:
             Notification(
-                self.root, "❌ Error",
+                self.root, "Error",
                 "No hay usuario autenticado",
                 notification_type="error"
             )
@@ -3420,7 +3482,7 @@ class AppDBPDF:
 
         colors = self.get_colors()
         add_window = ctk.CTkToplevel(self.root)
-        add_window.title("➕ Agregar PDF")
+        add_window.title("Agregar PDF")
         add_window.geometry("500x640")
         add_window.resizable(False, False)
         add_window.transient(self.root)
@@ -3429,7 +3491,7 @@ class AppDBPDF:
 
         ctk.CTkLabel(
             add_window,
-            text="➕ Agregar Nuevo PDF",
+            text="Agregar Nuevo PDF",
             font=("Arial", 20, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(20, 4))
@@ -3445,7 +3507,9 @@ class AppDBPDF:
 
         btn_buscar = ctk.CTkButton(
             add_window,
-            text="📁 Seleccionar Archivo PDF",
+            text="  Seleccionar Archivo PDF",
+            image=get_icon("folder", 18),
+            compound="left",
             command=self.seleccionar_archivo,
             fg_color=COLOR_PRIMARY,
             hover_color="#388E3C",
@@ -3458,7 +3522,7 @@ class AppDBPDF:
 
         self.label_file = ctk.CTkLabel(
             add_window,
-            text="📄 Ningún archivo seleccionado",
+            text="Ningún archivo seleccionado",
             text_color=colors["text_secondary"],
             font=("Arial", 10)
         )
@@ -3484,7 +3548,9 @@ class AppDBPDF:
 
         ctk.CTkButton(
             add_window,
-            text="✅  Agregar y Encriptar (AES-256-GCM)",
+            text="  Agregar y Encriptar (AES-256-GCM)",
+            image=get_icon("check-circle", 18),
+            compound="left",
             command=lambda: self.procesar_agregar_pdf(add_window),
             fg_color=COLOR_SECONDARY,
             hover_color="#1565c0",
@@ -3510,12 +3576,12 @@ class AppDBPDF:
             filetypes=[("PDF files", "*.pdf")]
         )
         if self.selected_file:
-            self.label_file.configure(text=f"📄 {os.path.basename(self.selected_file)}")
+            self.label_file.configure(text=f"{os.path.basename(self.selected_file)}")
 
     def procesar_agregar_pdf(self, window):
         # procesa la adicion de un PDF: encripta en segundo plano, guarda en BD en hilo principal
         if not self.selected_file:
-            Notification(self.root, "❌ Error", "Selecciona un archivo PDF",
+            Notification(self.root, "Error", "Selecciona un archivo PDF",
                          notification_type="error")
             return
 
@@ -3525,7 +3591,7 @@ class AppDBPDF:
         empresa     = self.entry_empresa.get().strip()
 
         if not cedula or not nombres:
-            Notification(self.root, "❌ Error", "Cédula y nombres son requeridos",
+            Notification(self.root, "Error", "Cédula y nombres son requeridos",
                          notification_type="error")
             return
 
@@ -3578,11 +3644,11 @@ class AppDBPDF:
 
             colors = self.get_colors()
             self.status.configure(
-                text=f"✅ Se muestran {len(rows)} PDFs (Encriptados)",
+                text=f"Se muestran {len(rows)} PDFs (Encriptados)",
                 text_color=colors["text_primary"]
             )
         except Exception as e:
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
         finally:
             self.progress_bar.stop()
 
@@ -3615,18 +3681,18 @@ class AppDBPDF:
 
             colors = self.get_colors()
             self.status.configure(
-                text=f"✅ Se muestran {len(rows)} resultados",
+                text=f"Se muestran {len(rows)} resultados",
                 text_color=colors["text_primary"]
             )
             Notification(
                 self.root,
-                "✅ Búsqueda completada",
+                "Búsqueda completada",
                 f"Se encontraron {len(rows)} PDF(s) encriptados",
                 notification_type="success",
                 duration=2000
             )
         except Exception as e:
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
         finally:
             self.progress_bar.stop()
 
@@ -3636,7 +3702,7 @@ class AppDBPDF:
 
         if not selected:
             Notification(
-                self.root, "⚠️ Advertencia",
+                self.root, "Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
@@ -3647,7 +3713,7 @@ class AppDBPDF:
 
         colors = self.get_colors()
         details_window = ctk.CTkToplevel(self.root)
-        details_window.title("ℹ️ Detalles del PDF")
+        details_window.title("Detalles del PDF")
         details_window.geometry("460x680")
         details_window.resizable(False, False)
         details_window.transient(self.root)
@@ -3655,7 +3721,7 @@ class AppDBPDF:
         details_window.withdraw()
 
         ctk.CTkLabel(
-            details_window, text="📋 Detalles del Documento",
+            details_window, text="Detalles del Documento",
             font=("Arial", 18, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(20, 4))
@@ -3683,21 +3749,23 @@ class AppDBPDF:
                 wraplength=250, anchor="w"
             ).pack(side="left")
 
-        info_row("🆔  ID:", pdf_id)
-        info_row("📄  Nombre:", pdf_nombre)
-        info_row("📝  Descripción:", descripcion)
-        info_row("💾  Tamaño:", tamano)
-        info_row("📅  Fecha:", fecha)
-        info_row("🪪  Cédula:", cedula)
-        info_row("👤  Nombres:", nombres)
-        info_row("🏢  Empresa:", empresa)
-        info_row("🔒  Encriptación:", "AES-256-GCM")
+        info_row("ID:", pdf_id)
+        info_row("Nombre:", pdf_nombre)
+        info_row("Descripción:", descripcion)
+        info_row("Tamaño:", tamano)
+        info_row("Fecha:", fecha)
+        info_row("Cédula:", cedula)
+        info_row("Nombres:", nombres)
+        info_row("Empresa:", empresa)
+        info_row("Encriptación:", "AES-256-GCM")
 
         btn_row = ctk.CTkFrame(details_window, fg_color="transparent")
         btn_row.pack(pady=14)
 
         ctk.CTkButton(
-            btn_row, text="📂 Abrir",
+            btn_row, text="  Abrir",
+            image=get_icon("folder-open", 16),
+            compound="left",
             command=lambda: self.abrir_pdf_id(pdf_id, details_window),
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3705,7 +3773,7 @@ class AppDBPDF:
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
-            btn_row, text="⬇️ Exportar",
+            btn_row, text="  Exportar",
             command=lambda: (details_window.destroy(), self.exportar_pdf()),
             fg_color="#00897B", hover_color="#00695C",
             text_color="white", font=("Arial", 11, "bold"),
@@ -3745,12 +3813,12 @@ class AppDBPDF:
             result = self.cursor.fetchone()
         except Exception as e:
             self.progress_bar.stop()
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
             return
 
         if not result:
             self.progress_bar.stop()
-            Notification(self.root, "❌ Error", "PDF no encontrado", notification_type="error")
+            Notification(self.root, "Error", "PDF no encontrado", notification_type="error")
             return
 
         datos_enc, nombre, encriptado = result
@@ -3767,7 +3835,7 @@ class AppDBPDF:
                 self.root.after(
                     0,
                     lambda err=e: Notification(
-                        self.root, "❌ Error",
+                        self.root, "Error",
                         f"No se pudo abrir el PDF: {err}",
                         notification_type="error"
                     )
@@ -3783,7 +3851,7 @@ class AppDBPDF:
 
         if not selected:
             Notification(
-                self.root, "⚠️ Advertencia",
+                self.root, "Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
@@ -3794,7 +3862,7 @@ class AppDBPDF:
 
         dlg = ConfirmDialog(
             self.root,
-            "🗑️  Eliminar PDF",
+            "Eliminar PDF",
             f"¿Eliminar permanentemente\n\"{pdf_nombre}\"?\n\nEsta acción no se puede deshacer.",
             confirm_text="Sí, eliminar",
             cancel_text="Cancelar",
@@ -3812,7 +3880,7 @@ class AppDBPDF:
             )
 
             if self.cursor.rowcount == 0:
-                Notification(self.root, "❌ Error", "PDF no encontrado",
+                Notification(self.root, "Error", "PDF no encontrado",
                              notification_type="error")
                 return
 
@@ -3823,14 +3891,14 @@ class AppDBPDF:
 
             self.conn.commit()
             self._reset_preview_panel()
-            Notification(self.root, "✅ Eliminado",
+            Notification(self.root, "Eliminado",
                          f"'{pdf_nombre}' eliminado correctamente",
                          notification_type="success")
             self.cargar_dashboard()
             self.ver_pdfs()
         except Exception as e:
             self.conn.rollback()
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
         finally:
             self.progress_bar.stop()
 
@@ -3840,7 +3908,7 @@ class AppDBPDF:
 
         if not selected:
             Notification(
-                self.root, "⚠️ Advertencia",
+                self.root, "Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
@@ -3851,7 +3919,7 @@ class AppDBPDF:
 
         colors = self.get_colors()
         edit_win = ctk.CTkToplevel(self.root)
-        edit_win.title("✏️ Editar Metadatos del PDF")
+        edit_win.title("Editar Metadatos del PDF")
         edit_win.geometry("480x520")
         edit_win.resizable(False, False)
         edit_win.transient(self.root)
@@ -3859,7 +3927,7 @@ class AppDBPDF:
         edit_win.withdraw()
 
         ctk.CTkLabel(
-            edit_win, text="✏️ Editar Metadatos",
+            edit_win, text="Editar Metadatos",
             font=("Arial", 18, "bold"),
             text_color=colors["text_primary"]
         ).pack(pady=(20, 4))
@@ -3899,7 +3967,7 @@ class AppDBPDF:
             nueva_empresa  = e_empresa.get().strip()
 
             if not nuevo_nombre:
-                Notification(edit_win, "❌ Error", "El nombre no puede estar vacío",
+                Notification(edit_win, "Error", "El nombre no puede estar vacío",
                              notification_type="error")
                 return
 
@@ -3919,7 +3987,7 @@ class AppDBPDF:
                     ("Editar metadatos PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
                 )
                 self.conn.commit()
-                Notification(self.root, "✅ Guardado",
+                Notification(self.root, "Guardado",
                              "Metadatos actualizados correctamente",
                              notification_type="success")
                 edit_win.destroy()
@@ -3927,10 +3995,12 @@ class AppDBPDF:
                 self._reset_preview_panel()
             except Exception as exc:
                 self.conn.rollback()
-                Notification(edit_win, "❌ Error", str(exc), notification_type="error")
+                Notification(edit_win, "Error", str(exc), notification_type="error")
 
         ctk.CTkButton(
-            edit_win, text="💾 Guardar Cambios",
+            edit_win, text="  Guardar Cambios",
+            image=get_icon("save", 18),
+            compound="left",
             command=guardar,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
@@ -3953,7 +4023,7 @@ class AppDBPDF:
 
         if not selected:
             Notification(
-                self.root, "⚠️ Advertencia",
+                self.root, "Advertencia",
                 "Selecciona un PDF de la lista",
                 notification_type="warning"
             )
@@ -3981,12 +4051,12 @@ class AppDBPDF:
             result = self.cursor.fetchone()
         except Exception as e:
             self.progress_bar.stop()
-            Notification(self.root, "❌ Error", str(e), notification_type="error")
+            Notification(self.root, "Error", str(e), notification_type="error")
             return
 
         if not result:
             self.progress_bar.stop()
-            Notification(self.root, "❌ Error", "PDF no encontrado", notification_type="error")
+            Notification(self.root, "Error", "PDF no encontrado", notification_type="error")
             return
 
         datos_enc, encriptado = result
@@ -3999,7 +4069,7 @@ class AppDBPDF:
                 with open(dest, 'wb') as f:
                     f.write(datos)
                 self.root.after(0, lambda: Notification(
-                    self.root, "✅ Exportado",
+                    self.root, "Exportado",
                     f"PDF exportado a:\n{dest}",
                     notification_type="success", duration=4000
                 ))
@@ -4010,7 +4080,7 @@ class AppDBPDF:
                 self.conn.commit()
             except Exception as e:
                 self.root.after(0, lambda err=e: Notification(
-                    self.root, "❌ Error",
+                    self.root, "Error",
                     f"Error al exportar: {err}",
                     notification_type="error"
                 ))
