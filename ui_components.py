@@ -11,6 +11,7 @@ import tkinter as tk
 import os
 import math
 from datetime import datetime, timedelta
+from icons import get_icon
 
 
 # FUNCIon PARA OBTENER COLORES DINAMICOS SEGuN EL TEMA
@@ -79,11 +80,11 @@ class Notification(ctk.CTkToplevel):
         "warning": ("#e65100", "#ef6c00"),
         "info":    ("#0d47a1", "#1565c0"),
     }
-    ICONS = {
-        "success": "✅",
-        "error":   "❌",
-        "warning": "⚠️",
-        "info":    "ℹ️",
+    ICON_NAMES = {
+        "success": "check-circle",
+        "error":   "x-circle",
+        "warning": "alert-triangle",
+        "info":    "info",
     }
 
     def __init__(self, parent, title, message, notification_type="info", duration=3000):
@@ -99,7 +100,8 @@ class Notification(ctk.CTkToplevel):
             self.attributes('-topmost', True)
 
         colors = self.COLORS.get(notification_type, self.COLORS["info"])
-        icon = self.ICONS.get(notification_type, "ℹ️")
+        icon_name = self.ICON_NAMES.get(notification_type, "info")
+        icon_img = get_icon(icon_name, 18)
         self.configure(fg_color=colors[0])
 
         # Rounded outer frame
@@ -115,7 +117,8 @@ class Notification(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             top_row,
-            text=icon,
+            text="",
+            image=icon_img,
             font=("Arial", 18),
             text_color="white"
         ).pack(side="left", padx=(0, 6))
@@ -698,7 +701,9 @@ class DashboardWidget:
         # ── Título ─────────────────────────────────────────
         ctk.CTkLabel(
             self.frame,
-            text="📊 ESTADÍSTICAS DEL REPOSITORIO",
+            text="  ESTADÍSTICAS DEL REPOSITORIO",
+            image=get_icon("bar-chart", 16),
+            compound="left",
             font=("Arial", 13, "bold"),
             text_color=colors["text_secondary"]
         ).pack(pady=(8, 4))
@@ -788,7 +793,8 @@ class DashboardWidget:
         aes_card.pack_propagate(False)
 
         ctk.CTkLabel(
-            aes_card, text="🔒", font=("Arial", 20), text_color="white"
+            aes_card, text="", image=get_icon("lock", 24),
+            font=("Arial", 20), text_color="white"
         ).pack(pady=(16, 2))
         ctk.CTkLabel(
             aes_card, text="AES-256",
@@ -1039,7 +1045,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
         import fitz  # PyMuPDF — importado localmente para detectar error temprano
         super().__init__(parent)
 
-        self.title(f"📄 {nombre}")
+        self.title(f"PDF: {nombre}")
         self.geometry("940x740")
         self.minsize(640, 500)
         self.transient(parent)
@@ -1079,7 +1085,9 @@ class PDFViewerWindow(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             top,
-            text=f"📄  {nombre}",
+            text=f"  {nombre}",
+            image=get_icon("file-text", 18),
+            compound="left",
             font=("Arial", 13, "bold"),
             text_color=colors["text_primary"]
         ).pack(side="left", padx=18, pady=10)
