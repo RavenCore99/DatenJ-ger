@@ -94,3 +94,4 @@ EMOJI_MAP = {
     "✍️": "pen-line",
     "➕": "plus",
 }
+# Copyright (c) 2024 DatenJäger. All rights reserved.
