@@ -363,7 +363,7 @@ pip install -r requirements.txt
 
 ---
 
-## Instalacion y Ejecucion
+## Instalacion y Ejecucion (DEV)
 
 ### 1. Clonar el repositorio
 
