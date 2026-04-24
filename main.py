@@ -34,6 +34,7 @@ from reporter import ReporteInventario
 from icons import get_icon
 from personas import GestorPersonas
 from audit import GestorAuditoria
+from pdf_manager import GestorPDF
 
 
 
@@ -65,7 +66,7 @@ class AppDBPDF:
     def __init__(self, root):
         # init
         self.root = root
-        self.root.title("DatenJäger v.2.0 – Gestión Documental Segura")
+        self.root.title("DatenJäger v.2.0 – Gestión Documental ")
         self.root.geometry("1100x760")
 
         self.config = Config()
@@ -91,6 +92,7 @@ class AppDBPDF:
         # modulos externos
         self.personas = GestorPersonas(self)
         self.auditoria = GestorAuditoria(self)
+        self.pdf = GestorPDF(self)
 
         self._setup_atajos()
         self._crear_frames()
@@ -247,7 +249,7 @@ class AppDBPDF:
             "Seguridad Inquebrantable",
             "Gestión Inteligente",
             "Tus Documentos, Protegidos",
-            "Cifrado Militar AES-256",
+            "Cifrado  AES-256",
             "Privacidad Sin Compromiso",
         ]
         self._tw_idx = 0       # índice de frase actual
@@ -1532,75 +1534,21 @@ class AppDBPDF:
 
     def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
                         cedula, nombres, empresa, usuario_actual, window):
-        # guarda el blob PDF ya cifrado en la base de datos
-        try:
-            self.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
-            result = self.cursor.fetchone()
-            if result:
-                persona_id = result[0]
-                self.cursor.execute(
-                    "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
-                    (nombres, empresa, persona_id)
-                )
-            else:
-                self.cursor.execute(
-                    "INSERT INTO Personas (cedula, nombres, empresa) VALUES (?, ?, ?)",
-                    (cedula, nombres, empresa)
-                )
-                persona_id = self.cursor.lastrowid
-
-            self.cursor.execute(
-                "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, "
-                "tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (nombre, descripcion, datos_enc, 1, tamano,
-                 datetime.now().isoformat(), usuario_actual, persona_id)
-            )
-            pdf_id = self.cursor.lastrowid
-
-            self.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Agregar PDF (Encriptado AES-256-GCM)", pdf_id, usuario_actual,
-                 datetime.now().isoformat())
-            )
-            self.conn.commit()
-            self._on_pdf_added(nombre, window)
-        except Exception as e:
-            self.conn.rollback()
-            self._on_pdf_add_error(e)
-        finally:
-            self.progress_bar.stop()
+        # delegado a pdf_manager.py
+        self.pdf._save_to_db(datos_enc, tamano, nombre, descripcion,
+                             cedula, nombres, empresa, usuario_actual, window)
 
     def _on_pdf_added(self, nombre, window):
-        # se llama al hilo principal despues de que se guarda correctamente un PDF
-        colors = self.get_colors()
-        self.status.configure(
-            text=f"PDF {nombre} agregado y encriptado",
-            text_color=colors["text_primary"]
-        )
-        Notification(self.root, "Éxito",
-                     f"PDF {nombre} agregado\nEncriptado con AES-256-GCM",
-                     notification_type="success")
-        window.destroy()
-        self.cargar_dashboard()
-        self.ver_pdfs()
+        # delegado a pdf_manager.py
+        self.pdf._on_added(nombre, window)
 
     def _on_pdf_add_error(self, error):
-        # se llama al hilo principal cuando falla la adición de un PDF
-        Notification(self.root, "Error", str(error), notification_type="error")
-        colors = self.get_colors()
-        self.status.configure(text="Error al agregar PDF",
-                              text_color=colors["text_primary"])
+        # delegado a pdf_manager.py
+        self.pdf._on_add_error(error)
 
     def _abrir_visor_pdf(self, pdf_bytes: bytes, nombre: str, window=None):
-        # abre el visor PDF inline con los bytes descifrados — sin escribir al disco
-        if window:
-            window.destroy()
-        colors = self.get_colors()
-        self.status.configure(
-            text=f"PDF cargado: {nombre}",
-            text_color=colors["text_primary"]
-        )
-        PDFViewerWindow(self.root, pdf_bytes, nombre)
+        # delegado a pdf_manager.py
+        self.pdf._abrir_visor(pdf_bytes, nombre, window)
 
     def mostrar_inicial(self):
         # muestra la pantalla inicial con fade
@@ -2739,623 +2687,48 @@ class AppDBPDF:
         self.auditoria.mostrar()
 
     def mostrar_agregar_pdf(self):
-        # ventana agregar pdf
-        if not self.usuario_actual:
-            Notification(
-                self.root, "Error",
-                "No hay usuario autenticado",
-                notification_type="error"
-            )
-            return
-
-        colors = self.get_colors()
-        add_window = ctk.CTkToplevel(self.root)
-        add_window.title("Agregar PDF")
-        add_window.geometry("500x640")
-        add_window.resizable(False, False)
-        add_window.transient(self.root)
-        add_window.configure(fg_color=colors["bg_secondary"])
-        add_window.withdraw()
-
-        ctk.CTkLabel(
-            add_window,
-            text="Agregar Nuevo PDF",
-            font=("Arial", 20, "bold"),
-            text_color=colors["text_primary"]
-        ).pack(pady=(20, 4))
-
-        ctk.CTkLabel(
-            add_window,
-            text="El archivo se encriptará con AES-256-GCM antes de guardarse",
-            font=("Arial", 10),
-            text_color=COLOR_SECONDARY
-        ).pack(pady=(0, 12))
-
-        self.selected_file = None
-
-        btn_buscar = ctk.CTkButton(
-            add_window,
-            text="  Seleccionar Archivo PDF",
-            image=get_icon("folder", 18),
-            compound="left",
-            command=self.seleccionar_archivo,
-            fg_color=COLOR_PRIMARY,
-            hover_color="#388E3C",
-            text_color="white",
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=300, height=44
-        )
-        btn_buscar.pack(pady=8)
-
-        self.label_file = ctk.CTkLabel(
-            add_window,
-            text="Ningún archivo seleccionado",
-            text_color=colors["text_secondary"],
-            font=("Arial", 10)
-        )
-        self.label_file.pack(pady=4)
-
-        sep = ctk.CTkFrame(add_window, height=1, fg_color=("#cccccc", "#3a3a3a"))
-        sep.pack(fill="x", padx=40, pady=8)
-
-        def add_labeled_entry(parent, label, placeholder, width=360):
-            ctk.CTkLabel(parent, text=label,
-                         text_color=colors["text_primary"],
-                         font=("Arial", 11, "bold")).pack(anchor="w", padx=60)
-            e = ctk.CTkEntry(parent, placeholder_text=placeholder,
-                             width=width, height=38, corner_radius=8,
-                             border_width=2, font=("Arial", 11))
-            e.pack(pady=(4, 8))
-            return e
-
-        self.entry_descripcion = add_labeled_entry(add_window, "Descripción:", "Descripción del documento")
-        self.entry_cedula       = add_labeled_entry(add_window, "Cédula:", "Número de cédula")
-        self.entry_nombres      = add_labeled_entry(add_window, "Nombres completos:", "Nombres del titular")
-        self.entry_empresa      = add_labeled_entry(add_window, "Empresa:", "Nombre de la empresa")
-
-        ctk.CTkButton(
-            add_window,
-            text="  Agregar y Encriptar (AES-256-GCM)",
-            image=get_icon("check-circle", 18),
-            compound="left",
-            command=lambda: self.procesar_agregar_pdf(add_window),
-            fg_color=COLOR_SECONDARY,
-            hover_color="#1565c0",
-            text_color="white",
-            font=("Arial", 12, "bold"),
-            corner_radius=8,
-            width=340, height=44
-        ).pack(pady=10)
-
-        ctk.CTkButton(
-            add_window, text="Cancelar",
-            command=add_window.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=180, height=34
-        ).pack(pady=(0, 16))
-
-        self._show_modal_window(add_window, delay_ms=250)
+        # delegado a pdf_manager.py
+        self.pdf.mostrar_agregar()
 
     def seleccionar_archivo(self):
-         # seleccionar archivo
-        self.selected_file = filedialog.askopenfilename(
-            filetypes=[("PDF files", "*.pdf")]
-        )
-        if self.selected_file:
-            self.label_file.configure(text=f"{os.path.basename(self.selected_file)}")
+        # delegado a pdf_manager.py
+        self.pdf.seleccionar_archivo()
 
     def procesar_agregar_pdf(self, window):
-        # encriptar en thread y guardar
-        if not self.selected_file:
-            Notification(self.root, "Error", "Selecciona un archivo PDF",
-                         notification_type="error")
-            return
-
-        descripcion = self.entry_descripcion.get().strip()
-        cedula      = self.entry_cedula.get().strip()
-        nombres     = self.entry_nombres.get().strip()
-        empresa     = self.entry_empresa.get().strip()
-
-        if not cedula or not nombres:
-            Notification(self.root, "Error", "Cédula y nombres son requeridos",
-                         notification_type="error")
-            return
-
-        self.progress_bar.start("Encriptando y agregando PDF...")
-
-        
-
-        
-        selected_file  = self.selected_file
-        usuario_nombre = self.usuario_nombre
-        usuario_actual = self.usuario_actual
-
-        def encrypt_task():
-            try:
-                with open(selected_file, 'rb') as f:
-                    datos_originales = f.read()
-                datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
-                tamano    = len(datos_originales)
-                nombre    = os.path.basename(selected_file)
-                # guardar en main thread
-                self.root.after(0, lambda: self._save_pdf_to_db(
-                    datos_enc, tamano, nombre, descripcion,
-                    cedula, nombres, empresa, usuario_actual, window
-                ))
-            except Exception as e:
-                self.root.after(0, lambda err=e: self._on_pdf_add_error(err))
-                self.root.after(0, self.progress_bar.stop)
-
-        threading.Thread(target=encrypt_task, daemon=True).start()
+        # delegado a pdf_manager.py
+        self.pdf.procesar_agregar(window)
 
     def ver_pdfs(self):
-        # ver pdfs
-        if not self.usuario_actual:
-            return
-
-        self.progress_bar.start("Cargando PDFs...")
-
-        try:
-            self.cursor.execute("""
-                SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ?
-                ORDER BY p.fecha_subida DESC
-            """, (self.usuario_actual,))
-
-            rows = self.cursor.fetchall()
-            self._populate_treeview(rows)
-
-            colors = self.get_colors()
-            self.status.configure(
-                text=f"Se muestran {len(rows)} PDFs (Encriptados)",
-                text_color=colors["text_primary"]
-            )
-        except Exception as e:
-            Notification(self.root, "Error", str(e), notification_type="error")
-        finally:
-            self.progress_bar.stop()
+        # delegado a pdf_manager.py
+        self.pdf.ver_todos()
 
     def buscar_pdfs(self):
-        # buscar pdfs
-        term = self.entry_busqueda.get().strip()
-
-        if not term:
-            self.ver_pdfs()
-            return
-
-        self.progress_bar.start(f"Buscando '{term}'...")
-
-        try:
-            self.cursor.execute("""
-                SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ? AND (
-                    p.nombre LIKE ? OR p.descripcion LIKE ?
-                    OR pe.cedula LIKE ? OR pe.nombres LIKE ?
-                    OR pe.empresa LIKE ?
-                )
-            """, (self.usuario_actual,
-                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
-
-            rows = self.cursor.fetchall()
-            self._populate_treeview(rows)
-
-            colors = self.get_colors()
-            self.status.configure(
-                text=f"Se muestran {len(rows)} resultados",
-                text_color=colors["text_primary"]
-            )
-            Notification(
-                self.root,
-                "Búsqueda completada",
-                f"Se encontraron {len(rows)} PDF(s) encriptados",
-                notification_type="success",
-                duration=2000
-            )
-        except Exception as e:
-            Notification(self.root, "Error", str(e), notification_type="error")
-        finally:
-            self.progress_bar.stop()
+        # delegado a pdf_manager.py
+        self.pdf.buscar()
 
     def mostrar_detalles_pdf(self):
-        # detalles pdf
-        selected = self.tree.selection()
-
-        if not selected:
-            Notification(
-                self.root, "Advertencia",
-                "Selecciona un PDF de la lista",
-                notification_type="warning"
-            )
-            return
-
-        values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres, empresa = values
-
-        colors = self.get_colors()
-        details_window = ctk.CTkToplevel(self.root)
-        details_window.title("Detalles del PDF")
-        details_window.geometry("460x680")
-        details_window.resizable(False, False)
-        details_window.transient(self.root)
-        details_window.configure(fg_color=colors["bg_secondary"])
-        details_window.withdraw()
-
-        ctk.CTkLabel(
-            details_window, text="Detalles del Documento",
-            font=("Arial", 18, "bold"),
-            text_color=colors["text_primary"]
-        ).pack(pady=(20, 4))
-
-        sep = ctk.CTkFrame(details_window, height=1, fg_color=COLOR_SECONDARY)
-        sep.pack(fill="x", padx=30)
-
-        info_frame = ctk.CTkFrame(
-            details_window, fg_color=("#f0f4ff", "#1a2540"),
-            corner_radius=10
-        )
-        info_frame.pack(padx=30, pady=14, fill="x")
-
-        def info_row(label, value):
-            row = ctk.CTkFrame(info_frame, fg_color="transparent")
-            row.pack(fill="x", padx=16, pady=4)
-            ctk.CTkLabel(
-                row, text=label, font=("Arial", 11, "bold"),
-                text_color=colors["text_secondary"], width=120, anchor="w"
-            ).pack(side="left")
-            ctk.CTkLabel(
-                row, text=str(value) if value else "—",
-                font=("Arial", 11),
-                text_color=colors["text_primary"],
-                wraplength=250, anchor="w"
-            ).pack(side="left")
-
-        info_row("ID:", pdf_id)
-        info_row("Nombre:", pdf_nombre)
-        info_row("Descripción:", descripcion)
-        info_row("Tamaño:", tamano)
-        info_row("Fecha:", fecha)
-        info_row("Cédula:", cedula)
-        info_row("Nombres:", nombres)
-        info_row("Empresa:", empresa)
-        info_row("Encriptación:", "AES-256-GCM")
-
-        btn_row = ctk.CTkFrame(details_window, fg_color="transparent")
-        btn_row.pack(pady=14)
-
-        ctk.CTkButton(
-            btn_row, text="  Abrir",
-            image=get_icon("folder-open", 16),
-            compound="left",
-            command=lambda: self.abrir_pdf_id(pdf_id, details_window),
-            fg_color=COLOR_SECONDARY, hover_color="#1565c0",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=150, height=40
-        ).pack(side="left", padx=6)
-
-        ctk.CTkButton(
-            btn_row, text="  Exportar",
-            command=lambda: (details_window.destroy(), self.exportar_pdf()),
-            fg_color="#00897B", hover_color="#00695C",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=150, height=40
-        ).pack(side="left", padx=6)
-
-        ctk.CTkButton(
-            details_window, text="Cerrar",
-            command=details_window.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=200, height=36
-        ).pack(pady=(0, 16))
-
-        self._show_modal_window(details_window, delay_ms=250)
+        # delegado a pdf_manager.py
+        self.pdf.mostrar_detalles()
 
     def abrir_pdf_doble_click(self):
-        # abrir doble click
-        selected = self.tree.selection()
-
-        if not selected:
-            return
-
-        values = self.tree.item(selected[0])['values']
-        pdf_id = values[0]
-        self.abrir_pdf_id(pdf_id)
+        # delegado a pdf_manager.py
+        self.pdf.abrir_doble_click()
 
     def abrir_pdf_id(self, pdf_id, window=None):
-        # abrir pdf, decrypt en thread
-        self.progress_bar.start("Desencriptando PDF...")
-
-        try:
-            self.cursor.execute(
-                "SELECT datos, nombre, datos_encriptados FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.usuario_actual)
-            )
-            result = self.cursor.fetchone()
-        except Exception as e:
-            self.progress_bar.stop()
-            Notification(self.root, "Error", str(e), notification_type="error")
-            return
-
-        if not result:
-            self.progress_bar.stop()
-            Notification(self.root, "Error", "PDF no encontrado", notification_type="error")
-            return
-
-        datos_enc, nombre, encriptado = result
-        self._audit("Abrir / Descifrar PDF", pdf_id=pdf_id)
-        usuario_nombre = self.usuario_nombre
-
-        def decrypt_task():
-            try:
-                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
-                         if encriptado else bytes(datos_enc))
-                # mostrar sin guardar
-                self.root.after(0, lambda d=datos: self._abrir_visor_pdf(d, nombre, window))
-            except Exception as e:
-                self.root.after(
-                    0,
-                    lambda err=e: Notification(
-                        self.root, "Error",
-                        f"No se pudo abrir el PDF: {err}",
-                        notification_type="error"
-                    )
-                )
-            finally:
-                self.root.after(0, self.progress_bar.stop)
-
-        threading.Thread(target=decrypt_task, daemon=True).start()
+        # delegado a pdf_manager.py
+        self.pdf.abrir_por_id(pdf_id, window)
 
     def eliminar_pdf(self):
-        # eliminar pdf
-        selected = self.tree.selection()
-
-        if not selected:
-            Notification(
-                self.root, "Advertencia",
-                "Selecciona un PDF de la lista",
-                notification_type="warning"
-            )
-            return
-
-        pdf_id = self.tree.item(selected[0])['values'][0]
-        pdf_nombre = self.tree.item(selected[0])['values'][1]
-
-        dlg = ConfirmDialog(
-            self.root,
-            "Eliminar PDF",
-            f"¿Eliminar permanentemente\n\"{pdf_nombre}\"?\n\nEsta acción no se puede deshacer.",
-            confirm_text="Sí, eliminar",
-            cancel_text="Cancelar",
-            danger=True
-        )
-        if not dlg.result:
-            return
-
-        self.progress_bar.start("Eliminando PDF…")
-
-        try:
-            self.cursor.execute(
-                "DELETE FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.usuario_actual)
-            )
-
-            if self.cursor.rowcount == 0:
-                Notification(self.root, "Error", "PDF no encontrado",
-                             notification_type="error")
-                return
-
-            self.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Eliminar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
-            )
-
-            self.conn.commit()
-            self._reset_preview_panel()
-            Notification(self.root, "Eliminado",
-                         f"'{pdf_nombre}' eliminado correctamente",
-                         notification_type="success")
-            self.cargar_dashboard()
-            self.ver_pdfs()
-        except Exception as e:
-            self.conn.rollback()
-            Notification(self.root, "Error", str(e), notification_type="error")
-        finally:
-            self.progress_bar.stop()
+        # delegado a pdf_manager.py
+        self.pdf.eliminar()
 
     def editar_pdf(self):
-        # editar metadatos
-        selected = self.tree.selection()
-
-        if not selected:
-            Notification(
-                self.root, "Advertencia",
-                "Selecciona un PDF de la lista",
-                notification_type="warning"
-            )
-            return
-
-        values = self.tree.item(selected[0])['values']
-        pdf_id, pdf_nombre, descripcion, tamano, fecha, cedula, nombres, empresa = values
-
-        colors = self.get_colors()
-        edit_win = ctk.CTkToplevel(self.root)
-        edit_win.title("Editar Metadatos del PDF")
-        edit_win.geometry("480x520")
-        edit_win.resizable(False, False)
-        edit_win.transient(self.root)
-        edit_win.configure(fg_color=colors["bg_secondary"])
-        edit_win.withdraw()
-
-        ctk.CTkLabel(
-            edit_win, text="Editar Metadatos",
-            font=("Arial", 18, "bold"),
-            text_color=colors["text_primary"]
-        ).pack(pady=(20, 4))
-
-        ctk.CTkLabel(
-            edit_win, text=f"Editando: {pdf_nombre}",
-            font=("Arial", 10), text_color=COLOR_SECONDARY
-        ).pack(pady=(0, 16))
-
-        def add_field(label, current, placeholder=""):
-            ctk.CTkLabel(
-                edit_win, text=label,
-                text_color=colors["text_primary"],
-                font=("Arial", 11, "bold")
-            ).pack(anchor="w", padx=40)
-            e = ctk.CTkEntry(
-                edit_win, width=380, height=40,
-                corner_radius=8, border_width=2,
-                font=("Arial", 11),
-                placeholder_text=placeholder
-            )
-            e.insert(0, str(current) if current else "")
-            e.pack(pady=(4, 10))
-            return e
-
-        e_nombre  = add_field("Nombre del archivo:", pdf_nombre)
-        e_desc    = add_field("Descripción:", descripcion or "", "Sin descripción")
-        e_cedula  = add_field("Cédula:", cedula or "")
-        e_nombres = add_field("Nombres:", nombres or "")
-        e_empresa = add_field("Empresa:", empresa or "", "Nombre de la empresa")
-
-        def guardar():
-            nuevo_nombre   = e_nombre.get().strip()
-            nueva_desc     = e_desc.get().strip()
-            nueva_cedula   = e_cedula.get().strip()
-            nuevos_nombres = e_nombres.get().strip()
-            nueva_empresa  = e_empresa.get().strip()
-
-            if not nuevo_nombre:
-                Notification(edit_win, "Error", "El nombre no puede estar vacío",
-                             notification_type="error")
-                return
-
-            try:
-                self.cursor.execute(
-                    "UPDATE PDFs SET nombre = ?, descripcion = ? WHERE id = ? AND usuario_id = ?",
-                    (nuevo_nombre, nueva_desc, pdf_id, self.usuario_actual)
-                )
-                if nueva_cedula:
-                    self.cursor.execute(
-                        """UPDATE Personas SET nombres = ?, empresa = ?
-                           WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",
-                        (nuevos_nombres, nueva_empresa, pdf_id)
-                    )
-                self.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
-                    ("Editar metadatos PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
-                )
-                self.conn.commit()
-                Notification(self.root, "Guardado",
-                             "Metadatos actualizados correctamente",
-                             notification_type="success")
-                edit_win.destroy()
-                self.ver_pdfs()
-                self._reset_preview_panel()
-            except Exception as exc:
-                self.conn.rollback()
-                Notification(edit_win, "Error", str(exc), notification_type="error")
-
-        ctk.CTkButton(
-            edit_win, text="  Guardar Cambios",
-            image=get_icon("save", 18),
-            compound="left",
-            command=guardar,
-            fg_color=COLOR_PRIMARY, hover_color="#388E3C",
-            text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=260, height=42
-        ).pack(pady=(8, 4))
-
-        ctk.CTkButton(
-            edit_win, text="Cancelar",
-            command=edit_win.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
-            text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=260, height=36
-        ).pack(pady=(0, 20))
-
-        self._show_modal_window(edit_win, delay_ms=250)
+        # delegado a pdf_manager.py
+        self.pdf.editar()
 
     def exportar_pdf(self):
-        # exportar pdf
-        selected = self.tree.selection()
-
-        if not selected:
-            Notification(
-                self.root, "Advertencia",
-                "Selecciona un PDF de la lista",
-                notification_type="warning"
-            )
-            return
-
-        values = self.tree.item(selected[0])['values']
-        pdf_id = values[0]
-        pdf_nombre = values[1]
-
-        dest = filedialog.asksaveasfilename(
-            defaultextension=".pdf",
-            initialfile=pdf_nombre,
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
-        )
-        if not dest:
-            return
-
-        self.progress_bar.start("Desencriptando y exportando…")
-
-        try:
-            self.cursor.execute(
-                "SELECT datos, datos_encriptados FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.usuario_actual)
-            )
-            result = self.cursor.fetchone()
-        except Exception as e:
-            self.progress_bar.stop()
-            Notification(self.root, "Error", str(e), notification_type="error")
-            return
-
-        if not result:
-            self.progress_bar.stop()
-            Notification(self.root, "Error", "PDF no encontrado", notification_type="error")
-            return
-
-        datos_enc, encriptado = result
-        usuario_nombre = self.usuario_nombre
-
-        def export_task():
-            try:
-                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
-                         if encriptado else bytes(datos_enc))
-                with open(dest, 'wb') as f:
-                    f.write(datos)
-                self.root.after(0, lambda: Notification(
-                    self.root, "Exportado",
-                    f"PDF exportado a:\n{dest}",
-                    notification_type="success", duration=4000
-                ))
-                self.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
-                    ("Exportar PDF", pdf_id, self.usuario_actual, datetime.now().isoformat())
-                )
-                self.conn.commit()
-            except Exception as e:
-                self.root.after(0, lambda err=e: Notification(
-                    self.root, "Error",
-                    f"Error al exportar: {err}",
-                    notification_type="error"
-                ))
-            finally:
-                self.root.after(0, self.progress_bar.stop)
-
-        threading.Thread(target=export_task, daemon=True).start()
+        # delegado a pdf_manager.py
+        self.pdf.exportar()
 
     def slide_in_frame(self, frame, start_relx=1.0, end_relx=0.0, steps=20, callback=None):
         # animacion slide
