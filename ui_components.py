@@ -1,9 +1,7 @@
 
 
 
-# Modulo de Componentes UI
-# Contiene widgets reutilizables para la interfaz
-# Colores adaptados dinamicamente a modo oscuro/claro
+# componentes de interfaz reutilizables
 
 
 import customtkinter as ctk
@@ -14,11 +12,11 @@ from datetime import datetime, timedelta
 from icons import get_icon
 
 
-# FUNCIon PARA OBTENER COLORES DINAMICOS SEGuN EL TEMA
+# colores segun el tema
 
 
 def get_dynamic_colors():
-    # retorna colores dinamicos según el tema actual
+    # colores del tema actual
     mode = ctk.get_appearance_mode()
     
     if mode == "Dark": # Dark mode
@@ -52,7 +50,7 @@ def get_dynamic_colors():
             "gradient_end": "#bbdefb",
         }
 
-# colores estaticos (no cambian)
+# colores fijos
 COLOR_BG_LIGHT = "#f0f4ff"
 COLOR_BG_DARK = "#1a1a2e"
 COLOR_PRIMARY = "#4CAF50"
@@ -64,15 +62,15 @@ COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK = "#e0e0e0"
 
 
-# CLASE DE NOTIFICACIÓN APILABLE
+# notificaciones
 
 
-# Registro global de notificaciones activas para apilarlas
+# registro activas
 _active_notifications = []
 
 
 class Notification(ctk.CTkToplevel):
-    # notificaciones emergentes tipo toast con apilamiento automatico
+    # toast apilable
 
     COLORS = {
         "success": ("#2e7d32", "#43a047"),
@@ -104,14 +102,14 @@ class Notification(ctk.CTkToplevel):
         icon_img = get_icon(icon_name, 18)
         self.configure(fg_color=colors[0])
 
-        # Rounded outer frame
+        # frame exterior
         outer = ctk.CTkFrame(self, fg_color=colors[1], corner_radius=12)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
 
         content = ctk.CTkFrame(outer, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=12, pady=10)
 
-        # Icon + title row
+        # fila icono + titulo
         top_row = ctk.CTkFrame(content, fg_color="transparent")
         top_row.pack(fill="x")
 
@@ -130,7 +128,7 @@ class Notification(ctk.CTkToplevel):
             text_color="white"
         ).pack(side="left", anchor="w")
 
-        # Close button
+        # boton cerrar
         close_btn = ctk.CTkButton(
             top_row,
             text="✕",
@@ -144,7 +142,7 @@ class Notification(ctk.CTkToplevel):
         )
         close_btn.pack(side="right")
 
-        # Message
+        # mensaje
         ctk.CTkLabel(
             content,
             text=message,
@@ -154,7 +152,7 @@ class Notification(ctk.CTkToplevel):
             justify="left"
         ).pack(anchor="w", pady=(4, 0))
 
-        # barra de progreso de duracion
+        # barra duracion
         self._progress = ctk.CTkProgressBar(
             content, height=3,
             fg_color=colors[0],
@@ -173,7 +171,7 @@ class Notification(ctk.CTkToplevel):
 
     @staticmethod
     def _reposition_all():
-        # repossciona todas las notificaciones activas en una pila en la esquina inferior derecha
+        # reposicionar notificaciones
         screen_w = _active_notifications[0].winfo_screenwidth() if _active_notifications else 1920
         screen_h = _active_notifications[0].winfo_screenheight() if _active_notifications else 1080
         notif_w = 380
@@ -205,11 +203,11 @@ class Notification(ctk.CTkToplevel):
 
 
 
-# WIDGET INDICADOR DE FORTALEZA DE CONTRASEÑA
+# indicador fortaleza
 
 
 class PasswordStrengthBar:
-    # indicador visual de fortaleza de contraseña
+    # barra fortaleza contraseña
 
     def __init__(self, parent):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -247,11 +245,11 @@ class PasswordStrengthBar:
 
 
 
-# FONDO CON GRADIENTE ANIMADO
+# fondo gradiente
 
 
 class GradientBackground(tk.Canvas):
-    # canvas que pinta un gradiente vertical animado que oscila suavemente
+    # gradiente animado
 
     def __init__(self, parent, colors_dark=None, colors_light=None, **kwargs):
         super().__init__(parent, highlightthickness=0, **kwargs)
@@ -263,7 +261,7 @@ class GradientBackground(tk.Canvas):
         self._animate()
 
     def _lerp_color(self, c1, c2, t):
-        # interpola entre dos colores hex
+        # interpolar colores
         r1, g1, b1 = int(c1[1:3], 16), int(c1[3:5], 16), int(c1[5:7], 16)
         r2, g2, b2 = int(c2[1:3], 16), int(c2[3:5], 16), int(c2[5:7], 16)
         r = int(r1 + (r2 - r1) * t)
@@ -280,7 +278,7 @@ class GradientBackground(tk.Canvas):
         mode = ctk.get_appearance_mode()
         palette = self._colors_dark if mode == "Dark" else self._colors_light
 
-        # agarra los dos pares de colores de gradiente para mezclar entre ellos
+        # mezclar colores gradiente
         t_cycle = (math.sin(self._phase) + 1) / 2  # 0..1
         c1a, c1b = palette[0]
         c2a, c2b = palette[1]
@@ -304,12 +302,10 @@ class GradientBackground(tk.Canvas):
         self._draw()
 
 
-# ─
-# FONDO COSMICO CON PARTICULAS — Improvement #13
-#                                                   ──
+# fondo cosmico con particulas
 
 class CosmicBackground(GradientBackground):
-    """Fondo animado con gradiente + estrellas + nebulosas + cometas + destellos."""
+    # fondo animado con estrellas y efectos
 
     def __init__(self, parent, num_stars=55, num_comets=3, num_sparkles=6, **kwargs):
         import random as _rnd
@@ -322,7 +318,7 @@ class CosmicBackground(GradientBackground):
         self._num_sparkles = num_sparkles
         self._rnd = _rnd
 
-        # Paleta cósmica oscura por defecto
+        # paleta oscura
         kwargs.setdefault("colors_dark",
                           [("#050510", "#0d1b3e"), ("#0d1b3e", "#1a0a2e")])
         kwargs.setdefault("colors_light",
@@ -331,7 +327,7 @@ class CosmicBackground(GradientBackground):
         super().__init__(parent, **kwargs)
         self._init_particles()
 
-    # ── Inicialización de partículas ──
+    # inicializar particulas
 
     def _init_particles(self):
         rnd = self._rnd
@@ -347,22 +343,22 @@ class CosmicBackground(GradientBackground):
                 "color_idx": rnd.randint(0, 2),  # 0=blanco, 1=azul, 2=violeta
             })
 
-        # Nebulosas deshabilitadas — solo estrellas + cometas
+        # sin nebulosas
         self._nebulas = []
 
-        # Cometas — trayectorias diagonales con cola
+        # cometas
         self._comets = []
         for _ in range(self._num_comets):
             self._comets.append(self._new_comet(initial=True))
 
-        # Destellos — cruces efímeras brillantes
+        # destellos
         self._sparkles = []
         for _ in range(self._num_sparkles):
             self._sparkles.append(self._new_sparkle(initial=True))
 
     def _new_comet(self, initial=False):
         rnd = self._rnd
-        # Delay aleatorio antes de aparecer (evita que salgan todos juntos)
+        # delay aleatorio
         delay = rnd.uniform(0, 12) if initial else rnd.uniform(4, 10)
         angle = rnd.uniform(0.3, 0.8)  # ángulo diagonal (radianes)
         speed = rnd.uniform(0.008, 0.018)
@@ -391,7 +387,7 @@ class CosmicBackground(GradientBackground):
             "color_idx": rnd.randint(0, 2),
         }
 
-    # ── Dibujado ──
+    # dibujar
 
     def _draw(self):
         super()._draw()
@@ -404,7 +400,7 @@ class CosmicBackground(GradientBackground):
         is_dark = mode == "Dark"
         dt = 0.016  # ~60fps timestep
 
-        # ── Estrellas ──
+        # estrellas
         star_palettes = {
             "Dark": [
                 lambda a: f"#{int(180+75*a):02x}{int(180+75*a):02x}{int(200+55*a):02x}",
@@ -436,7 +432,7 @@ class CosmicBackground(GradientBackground):
             self.create_oval(x - s, y - s, x + s, y + s,
                              fill=color, outline="")
 
-        # ── Cometas (shooting stars) ──
+        # cometas
         for comet in self._comets:
             if not comet["active"]:
                 comet["delay"] -= dt
@@ -444,13 +440,13 @@ class CosmicBackground(GradientBackground):
                     comet["active"] = True
                 continue
 
-            # Mover cometa en diagonal
+            # mover
             dx = math.cos(comet["angle"]) * comet["speed"]
             dy = math.sin(comet["angle"]) * comet["speed"]
             comet["x"] += dx
             comet["y"] += dy
 
-            # Dibujar cola (segmentos decrecientes)
+            # cola
             cx = comet["x"] * w
             cy = comet["y"] * h
             tail_segments = comet["tail_len"]
@@ -474,18 +470,18 @@ class CosmicBackground(GradientBackground):
                 self.create_line(sx, sy, ex, ey,
                                  fill=seg_color, width=line_w)
 
-            # Cabeza brillante
+            # cabeza
             head_size = 2.5 * comet["brightness"]
             self.create_oval(cx - head_size, cy - head_size,
                              cx + head_size, cy + head_size,
                              fill=comet["color"], outline="")
 
-            # Fuera de pantalla → relanzar
+            # relanzar
             if comet["x"] > 1.3 or comet["y"] > 1.3:
                 idx = self._comets.index(comet)
                 self._comets[idx] = self._new_comet()
 
-        # ── Destellos (sparkles) ──
+        # sparkles
         sparkle_colors = {
             "Dark": [
                 lambda a: f"#{int(200+55*a):02x}{int(200+55*a):02x}{min(255,int(220+35*a)):02x}",
@@ -513,7 +509,7 @@ class CosmicBackground(GradientBackground):
                 self._sparkles[idx] = self._new_sparkle()
                 continue
 
-            # Intensidad: sube y baja (fade in/out)
+            # fade in/out
             t_life = sp["life"] / sp["max_life"]
             intensity = math.sin(t_life * math.pi)  # 0→1→0
             sz = sp["size"] * intensity
@@ -527,13 +523,13 @@ class CosmicBackground(GradientBackground):
             color_fn = s_palette[sp["color_idx"]]
             color = color_fn(intensity)
 
-            # Cruz de destello (+)
+            # cruz
             arm = sz
             self.create_line(sx - arm, sy, sx + arm, sy,
                              fill=color, width=1)
             self.create_line(sx, sy - arm, sx, sy + arm,
                              fill=color, width=1)
-            # Punto central brillante
+            # punto central
             dot = sz * 0.3
             self.create_oval(sx - dot, sy - dot, sx + dot, sy + dot,
                              fill="white" if is_dark else "#e0e0ff",
@@ -541,11 +537,11 @@ class CosmicBackground(GradientBackground):
 
 
 
-# CLASE DE BARRA DE PROGRESO MEJORADA
+# barra de progreso
 
 
 class ProgressBarModerno:
-    # barra de progreso moderna con porcentaje
+    # progreso con porcentaje
 
     def __init__(self, parent, width=600, height=20):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -585,7 +581,7 @@ class ProgressBarModerno:
         self.animating = False
 
     def start(self, text="Procesando..."):
-        # inicia animacion
+        # iniciar
         if not self.animating:
             colors = get_dynamic_colors()
             self.label_text.configure(text=text, text_color=colors["text_primary"])
@@ -594,7 +590,7 @@ class ProgressBarModerno:
             self.frame.pack(fill="x", pady=5)
 
     def stop(self):
-        # detiene animacion
+        # detener
         if self.animating:
             self.progress.stop()
             self.animating = False
@@ -604,15 +600,12 @@ class ProgressBarModerno:
         self.frame.pack(**kwargs)
 
 
-#                    #
-# CLASE DASHBOARD  — improvement #11
-# Gráficos visuales con matplotlib + regresión lineal (ML)
-#                    #
+# dashboard con graficos
 
 class DashboardWidget:
-    """Dashboard con tarjetas KPI, gráfico donut por empresa y línea de
-    tendencia temporal con regresión lineal (numpy).
-    Se integra con Tkinter via matplotlib FigureCanvasTkAgg."""
+    # Dashboard con tarjetas KPI, gráfico donut por empresa y línea de
+    # tendencia temporal con regresión lineal (numpy).
+    # Se integra con Tkinter via matplotlib FigureCanvasTkAgg.
 
     def __init__(self, parent, cursor, usuario_id):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -622,7 +615,7 @@ class DashboardWidget:
         self.construir_dashboard()
 
     def _query_stats(self):
-        """Consulta las estadísticas globales del usuario."""
+        # stats del usuario
         from database import format_size
 
         self.cursor.execute(
@@ -655,7 +648,7 @@ class DashboardWidget:
         }
 
     def _query_empresas(self):
-        """Distribución de documentos por empresa."""
+        # docs por empresa
         self.cursor.execute(
             "SELECT COALESCE(pe.empresa, 'Sin empresa'), COUNT(*) "
             "FROM PDFs p LEFT JOIN Personas pe ON p.persona_id = pe.id "
@@ -667,7 +660,7 @@ class DashboardWidget:
         return self.cursor.fetchall()
 
     def _query_timeline(self):
-        """Subidas por día (para gráfico temporal y regresión)."""
+        # subidas por dia
         self.cursor.execute(
             "SELECT DATE(fecha_subida) AS dia, COUNT(*) "
             "FROM PDFs WHERE usuario_id = ? "
@@ -676,7 +669,7 @@ class DashboardWidget:
         )
         return self.cursor.fetchall()
 
-    # ── Construcción ──────────────────────────────────────────────
+    # construir dashboard
 
     def construir_dashboard(self):
         import matplotlib
@@ -691,14 +684,14 @@ class DashboardWidget:
         empresas = self._query_empresas()
         timeline = self._query_timeline()
 
-        # Colores matplotlib según tema
+        # colores matplotlib
         fig_bg   = "#1a1a2e" if is_dark else "#f0f4ff"
         ax_bg    = "#16213e" if is_dark else "#f0f4ff"
         txt_col  = "#e0e0e0" if is_dark else "#1a237e"
         grid_col = "#2a3a5e" if is_dark else "#d0d8e8"
         ring_bg  = "#2a3a5e" if is_dark else "#d0d8e8"
 
-        # ── Título ─────────────────────────────────────────
+        # titulo
         ctk.CTkLabel(
             self.frame,
             text="  ESTADÍSTICAS DEL REPOSITORIO",
@@ -708,11 +701,11 @@ class DashboardWidget:
             text_color=colors["text_secondary"]
         ).pack(pady=(8, 4))
 
-        # ── Fila 1: 4 Mini-gauges + card AES ──────────────
+        # gauges + card aes
         row1 = ctk.CTkFrame(self.frame, fg_color="transparent")
         row1.pack(fill="x", padx=10, pady=(2, 0))
 
-        # --- 4 gauges como una sola figura matplotlib ---
+        # gauges matplotlib
         gauge_data = [
             (stats["total_pdfs"],     "PDFs Totales",  "#2196F3", 50),
             (stats["total_size_str"], "Espacio Usado",  "#7B1FA2", None),
@@ -730,7 +723,7 @@ class DashboardWidget:
             ax.axis("off")
 
             if max_val is not None and isinstance(valor, (int, float)):
-                # gauge numérico: semicírculo de progreso
+                # semicirculo progreso
                 ratio = min(valor / max(max_val, 1), 1.0)
                 theta_bg = np.linspace(0, np.pi, 60)
                 theta_fg = np.linspace(0, np.pi * ratio, max(2, int(60 * ratio)))
@@ -738,26 +731,26 @@ class DashboardWidget:
                 r_outer = 1.0
                 r_inner = 0.65
 
-                # fondo del semicírculo
+                # fondo
                 x_bg = np.concatenate([r_outer * np.cos(theta_bg),
                                         r_inner * np.cos(theta_bg[::-1])])
                 y_bg = np.concatenate([r_outer * np.sin(theta_bg),
                                         r_inner * np.sin(theta_bg[::-1])])
                 ax.fill(x_bg, y_bg, color=ring_bg, alpha=0.4)
 
-                # progreso del semicírculo
+                # progreso
                 x_fg = np.concatenate([r_outer * np.cos(theta_fg),
                                         r_inner * np.cos(theta_fg[::-1])])
                 y_fg = np.concatenate([r_outer * np.sin(theta_fg),
                                         r_inner * np.sin(theta_fg[::-1])])
                 ax.fill(x_fg, y_fg, color=color, alpha=0.9)
 
-                # valor centrado
+                # valor
                 ax.text(0, 0.35, str(valor),
                         ha="center", va="center",
                         fontsize=16, fontweight="bold", color=color)
             else:
-                # gauge de texto (para espacio) — anillo completo decorativo
+                # gauge texto decorativo
                 theta_full = np.linspace(0, np.pi, 60)
                 r_outer = 1.0
                 r_inner = 0.65
@@ -772,7 +765,7 @@ class DashboardWidget:
                         ha="center", va="center",
                         fontsize=10, fontweight="bold", color="white" if is_dark else color)
 
-            # label debajo
+            # label
             ax.text(0, -0.15, label,
                     ha="center", va="center",
                     fontsize=7.5, color=txt_col, fontweight="bold")
@@ -786,7 +779,7 @@ class DashboardWidget:
                                        expand=True, padx=(0, 5))
         self._chart_canvases.append((fig_g, canvas_g))
 
-        # --- Card AES-256-GCM (se mantiene como CTk widget) ---
+        # card aes
         aes_card = ctk.CTkFrame(row1, fg_color=COLOR_PRIMARY,
                                  corner_radius=12, width=120)
         aes_card.pack(side="right", fill="y", padx=(5, 0), pady=4)
@@ -811,11 +804,11 @@ class DashboardWidget:
 
         plt.close(fig_g)
 
-        # ── Fila 2: Gráficos analíticos ──────────────────
+        # graficos
         charts_frame = ctk.CTkFrame(self.frame, fg_color="transparent")
         charts_frame.pack(fill="x", padx=10, pady=(4, 4))
 
-        # ── Gráfico 1: Donut chart por empresa ────────────
+        # donut por empresa
         fig1, ax1 = plt.subplots(figsize=(3.2, 2.4), dpi=90)
         fig1.patch.set_facecolor(fig_bg)
         ax1.set_facecolor(ax_bg)
@@ -858,7 +851,7 @@ class DashboardWidget:
                                       expand=True, fill="both")
         self._chart_canvases.append((fig1, canvas1))
 
-        # ── Gráfico 2: Línea temporal + Regresión lineal ──
+        # linea temporal + regresion
         fig2, ax2 = plt.subplots(figsize=(4.4, 2.4), dpi=90)
         fig2.patch.set_facecolor(fig_bg)
         ax2.set_facecolor(ax_bg)
@@ -938,10 +931,10 @@ class DashboardWidget:
         plt.close(fig1)
         plt.close(fig2)
 
-    # ── Cleanup ───────────────────────────────────────────
+    # cleanup
 
     def destroy(self):
-        """Libera recursos de matplotlib al destruir el widget."""
+        # liberar matplotlib
         for fig, canvas in self._chart_canvases:
             try:
                 canvas.get_tk_widget().destroy()
@@ -955,11 +948,11 @@ class DashboardWidget:
 
 
 
-# DIALOG DE CONFIRMACION ACTUALIZADO
+# dialogo confirmacion
 
 
 class ConfirmDialog(ctk.CTkToplevel):
-    # dialogo de confirmacion moderno que sustituye a messagebox.askyesno
+    # confirmacion modal
 
     def __init__(self, parent, title, message, confirm_text="Sí, confirmar",
                  cancel_text="Cancelar", danger=True):
@@ -1029,14 +1022,13 @@ class ConfirmDialog(ctk.CTkToplevel):
 
 
 
-# VISOR DE PDF INLINE
+# visor pdf
 
 
 class PDFViewerWindow(ctk.CTkToplevel):
-    """Visor de PDF inline con PyMuPDF.
-    Renderiza páginas como imágenes directamente desde bytes en memoria —
-    el documento descifrado nunca se escribe al disco.
-    """
+    # Visor de PDF inline con PyMuPDF.
+    # Renderiza páginas como imágenes directamente desde bytes en memoria —
+    # el documento descifrado nunca se escribe al disco.
 
     _ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
     _ZOOM_DEFAULT = 2  # índice inicial → 1.0x
@@ -1050,7 +1042,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
         self.minsize(640, 500)
         self.transient(parent)
 
-        # documento abierto desde bytes, sin archivo temporal
+        # abrir doc en memoria
         self._doc      = fitz.open(stream=pdf_bytes, filetype="pdf")
         self._page_idx = 0
         self._zoom_idx = self._ZOOM_DEFAULT
@@ -1063,7 +1055,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
         self.update_idletasks()
         self._render_page()
 
-        # atajos de teclado
+        # atajos
         self.bind("<Left>",  lambda e: self._prev_page())
         self.bind("<Right>", lambda e: self._next_page())
         self.bind("<Prior>", lambda e: self._prev_page())   # Re Pág
@@ -1075,10 +1067,10 @@ class PDFViewerWindow(ctk.CTkToplevel):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.focus_force()
 
-    # ── construcción de UI ────────────────────────────────────────────────
+    # construir ui
 
     def _build_ui(self, nombre, colors):
-        # barra superior: nombre del archivo y contador de páginas
+        # barra superior
         top = ctk.CTkFrame(self, fg_color=colors["bg_card"], corner_radius=0, height=50)
         top.pack(fill="x")
         top.pack_propagate(False)
@@ -1100,7 +1092,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
         )
         self._page_label.pack(side="right", padx=18)
 
-        # barra de controles: navegación y zoom
+        # controles
         ctrl = ctk.CTkFrame(self, fg_color=colors["bg_secondary"], corner_radius=0, height=48)
         ctrl.pack(fill="x")
         ctrl.pack_propagate(False)
@@ -1116,7 +1108,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
                       fg_color=COLOR_SECONDARY, hover_color="#1565c0",
                       **_btn).pack(side="left", padx=(4, 14), pady=7)
 
-        # divisor visual
+        
         ctk.CTkFrame(ctrl, width=2, height=26,
                      fg_color=colors["text_secondary"]).pack(side="left", padx=4)
 
@@ -1138,7 +1130,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
                       fg_color="#7B1FA2", hover_color="#6A1B9A",
                       **_btn).pack(side="left", padx=4, pady=7)
 
-        # área del canvas con barras de desplazamiento
+        # canvas con scroll
         canvas_outer = ctk.CTkFrame(self, fg_color=colors["bg_primary"], corner_radius=0)
         canvas_outer.pack(fill="both", expand=True)
 
@@ -1160,12 +1152,12 @@ class PDFViewerWindow(ctk.CTkToplevel):
         h_sb.pack(side="bottom", fill="x")
         self._canvas.pack(fill="both", expand=True)
 
-        # scroll con rueda del ratón (Linux y Windows/Mac)
+        # scroll raton
         self._canvas.bind("<MouseWheel>", self._on_scroll)
         self._canvas.bind("<Button-4>",   self._on_scroll)
         self._canvas.bind("<Button-5>",   self._on_scroll)
 
-    # ── renderizado ───────────────────────────────────────────────────────
+    # renderizar
 
     def _render_page(self):
         import fitz
@@ -1180,7 +1172,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
 
         self._canvas.delete("all")
 
-        # centrar página horizontalmente en el canvas
+        # centrar pagina
         cw = max(self._canvas.winfo_width(), pix.width + 40)
         cx = cw // 2
         self._canvas.create_image(cx, 20, anchor="n", image=self._tk_img)
@@ -1192,7 +1184,7 @@ class PDFViewerWindow(ctk.CTkToplevel):
         )
         self._zoom_label.configure(text=f"{int(zoom * 100)}%")
 
-    # ── controles ─────────────────────────────────────────────────────────
+    # controles
 
     def _prev_page(self):
         if self._page_idx > 0:
@@ -1215,14 +1207,14 @@ class PDFViewerWindow(ctk.CTkToplevel):
             self._render_page()
 
     def _on_scroll(self, event):
-        # compatibilidad Linux (Button-4/5) y Windows/Mac (delta)
+        # compat linux/windows
         if event.num == 4 or getattr(event, 'delta', 0) > 0:
             self._canvas.yview_scroll(-1, "units")
         else:
             self._canvas.yview_scroll(1, "units")
 
     def _on_close(self):
-        # liberar el documento de memoria al cerrar
+        # liberar memoria
         self._doc.close()
         self.destroy()
 

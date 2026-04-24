@@ -1,16 +1,11 @@
-"""
-Modulo de Reportes
-Generacio de reportes de inventario en CSV y PDF para DatenJäger.
-
-"""
-# Copyright (c) 2024 DatenJäger. All rights reserved.
+# reporter.py - generacion de reportes csv y pdf
 
 import csv
 from datetime import datetime
 import fitz  # PyMuPDF 
 
 
-# ── Paleta colores (RGB 0.0–1.0) ───
+# colores rgb
 _AZUL_CORP   = (0.10, 0.13, 0.49)   # #1a237e
 _VERDE_CORP  = (0.30, 0.69, 0.31)   # #4CAF50
 _GRIS_CLARO  = (0.94, 0.94, 0.94)
@@ -18,7 +13,7 @@ _BLANCO      = (1.0,  1.0,  1.0)
 _NEGRO       = (0.0,  0.0,  0.0)
 _GRIS_TEXTO  = (0.35, 0.35, 0.35)
 
-# Paleta para el grafico de barras (máx. 6 colores cíclicos)
+# colores para el grafico
 _CHART_COLORS = [
     (0.30, 0.69, 0.31),  # verde
     (0.23, 0.51, 0.96),  # azul
@@ -30,17 +25,13 @@ _CHART_COLORS = [
 
 
 class ReporteInventario:
-    """Punto de entrada publico para generar reportes CSV y PDF."""
+    # genera reportes csv y pdf
 
-    # ── CSV ──
+    
 
     @staticmethod
     def generar_csv(rows: list, dest_path: str, usuario_nombre: str = "") -> None:
-        """
-        Exporta el inventario como CSV compatible 
-        rows: lista de tuplas (id, nombre, descripcion, tamano_bytes, fecha_iso,
-                               cedula, nombres, empresa)
-        """
+        # exporta inventario a csv
         from database import format_size
 
         headers = [
@@ -80,20 +71,7 @@ class ReporteInventario:
     @staticmethod
     def generar_pdf(rows: list, stats: dict, dest_path: str,
                     usuario_nombre: str = "") -> None:
-        """
-        genera un reporte PDF de 3 páginas:
-          1. Portada con resumen ejecutivo y lista de empresas
-          2. Tabla del inventario (paginada automáticamente)
-          3. Gráfico de barras horizontales por empresa
-
-        stats: {
-            'total_pdfs'    : int,
-            'total_size_str': str,
-            'total_personas': int,
-            'total_empresas': int,
-            'empresas_data' : [(empresa, count), ...]   ordenada DESC
-        }
-        """
+        # genera pdf de 3 paginas: portada, inventario y grafico
         doc = fitz.open()
         gen = _PDFGenerator(doc, usuario_nombre)
         gen.pagina_portada(stats)
@@ -104,13 +82,13 @@ class ReporteInventario:
         doc.close()
 
 
-# ── Generador interno (no usar directamente) ─────────────────────────────
+# generador interno pdf
 
 class _PDFGenerator:
-    """construye las paginas del reporte usando las primitivas de PyMuPDF."""
+    # construye paginas del reporte
 
-    PAGE_W  = 595   # A4 ancho 
-    PAGE_H  = 842   # A4 alto
+    PAGE_W  = 595
+    PAGE_H  = 842
     MARGIN  = 40
 
     def __init__(self, doc: fitz.Document, usuario: str):
@@ -118,15 +96,15 @@ class _PDFGenerator:
         self.usuario = usuario
         self.fecha_gen = datetime.now().strftime("%d/%m/%Y  %H:%M")
 
-    # ── pagina 1: Portada / Resumen ─
+    # portada
 
     def pagina_portada(self, stats: dict):
         page = self.doc.new_page(width=self.PAGE_W, height=self.PAGE_H)
 
-        # banda azul superior
+        # header azul
         page.draw_rect(fitz.Rect(0, 0, self.PAGE_W, 112),
                        color=None, fill=_AZUL_CORP)
-        # franja verde acento
+        # linea verde
         page.draw_rect(fitz.Rect(0, 112, self.PAGE_W, 116),
                        color=None, fill=_VERDE_CORP)
 
@@ -140,7 +118,7 @@ class _PDFGenerator:
                          f"Reporte de Inventario  ·  {self.fecha_gen}  ·  Usuario: {self.usuario}",
                          fontsize=8, fontname="helv", color=(0.65, 0.75, 0.95))
 
-        # ── tarjetas de resumen ──
+        # tarjetas resumen
         y = 140
         page.insert_text((self.MARGIN, y),
                          "RESUMEN EJECUTIVO",
@@ -179,7 +157,7 @@ class _PDFGenerator:
                 color=(0.85, 0.93, 1.0), align=fitz.TEXT_ALIGN_CENTER
             )
 
-        # ── lista de empresas en portada ──
+        # lista empresas
         y += 96
         if stats.get("empresas_data"):
             page.insert_text((self.MARGIN, y),
@@ -191,7 +169,7 @@ class _PDFGenerator:
             y += 20
             for j, (emp, cnt) in enumerate(stats["empresas_data"][:10]):
                 color = _CHART_COLORS[j % len(_CHART_COLORS)]
-                # Cuadro de color
+                
                 page.draw_rect(fitz.Rect(self.MARGIN, y, self.MARGIN + 10, y + 10),
                                color=None, fill=color)
                 page.insert_text(
@@ -203,12 +181,12 @@ class _PDFGenerator:
 
         self._footer(page)
 
-    # ── paginas de inventario (paginacion automatica) ─
+    # paginas inventario
 
     def pagina_inventario(self, rows: list):
         from database import format_size
 
-        # Definición de columnas: (encabezado, ancho_pt, índice_row, truncar_chars)
+        # columnas tabla
         cols = [
             ("Nombre",       115, 1, 21),
             ("Descripción",  130, 2, 26),
@@ -288,7 +266,7 @@ class _PDFGenerator:
                 )
                 x += w
 
-            # Línea divisora entre filas
+            
             page.draw_line(
                 fitz.Point(table_x, y + row_h),
                 fitz.Point(table_x + total_w, y + row_h),
@@ -296,7 +274,7 @@ class _PDFGenerator:
             )
             y += row_h
 
-        # Pie de tabla
+        # pie
         y += 10
         if y < self.PAGE_H - 52:
             page.insert_text(
@@ -306,19 +284,19 @@ class _PDFGenerator:
             )
         self._footer(page)
 
-    # ── pagina para grafico de barras ──
+    # pagina grafico
 
     def pagina_grafico(self, empresas_data: list):
         page = self.doc.new_page(width=self.PAGE_W, height=self.PAGE_H)
 
-        # Header
+        
         page.draw_rect(fitz.Rect(0, 0, self.PAGE_W, 36),
                        color=None, fill=_AZUL_CORP)
         page.insert_text((self.MARGIN, 23),
                          "DatenJäger  —  Distribución de Documentos por Empresa",
                          fontsize=11, fontname="hebo", color=_BLANCO)
 
-        # titulo seccion
+        
         y = 60
         page.insert_text((self.MARGIN, y),
                          "DOCUMENTOS POR EMPRESA",
@@ -327,7 +305,7 @@ class _PDFGenerator:
                        fitz.Point(self.PAGE_W - self.MARGIN, y + 5),
                        color=_VERDE_CORP, width=1.5)
 
-        # barras horizontales
+        # barras
         y        = 84
         bar_h    = 24
         gap      = 10
@@ -341,18 +319,18 @@ class _PDFGenerator:
             bar_w = max(6, int((cnt / max_val) * chart_w))
             label = (emp or "Sin empresa")[:24]
 
-            # etiqueta izquierda
+            
             page.insert_textbox(
                 fitz.Rect(self.MARGIN, y + 4, self.MARGIN + label_w, y + bar_h),
                 label, fontsize=8, fontname="helv",
                 color=_NEGRO, align=fitz.TEXT_ALIGN_RIGHT
             )
-            # barra coloreada
+            
             page.draw_rect(
                 fitz.Rect(chart_x, y + 3, chart_x + bar_w, y + bar_h - 3),
                 color=None, fill=color
             )
-            # valor numerico al final
+            
             page.insert_text(
                 (chart_x + bar_w + 6, y + bar_h - 5),
                 str(cnt),
@@ -360,7 +338,7 @@ class _PDFGenerator:
             )
             y += bar_h + gap
 
-        # nota
+        
         y += 14
         page.insert_text(
             (self.MARGIN, y),
@@ -370,7 +348,7 @@ class _PDFGenerator:
 
         self._footer(page)
 
-    # ── Footer  ──
+    # footer
 
     def _footer(self, page: fitz.Page):
         page.draw_line(

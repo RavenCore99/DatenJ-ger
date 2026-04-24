@@ -1,5 +1,5 @@
-# icons.py - Cargador centralizado de iconos
-# Usa CTkImage para renderizado cross-platform consistente
+# iconos del sistema
+# carga y cachea los png para los widgets
 
 import os
 from PIL import Image
@@ -10,26 +10,18 @@ _cache = {}
 
 
 def get_icon(name: str, size: int = 18) -> ctk.CTkImage:
-    """Carga un icono PNG y lo cachea.
-
-    Args:
-        name: Nombre del icono sin extensión (ej: 'folder-open', 'lock')
-        size: Tamaño en píxeles (cuadrado). Default: 18
-
-    Returns:
-        CTkImage listo para usar en image= de cualquier widget CTk
-    """
+    # carga icono png y lo guarda en cache
     key = (name, size)
     if key not in _cache:
         path = os.path.join(ICONS_DIR, f"{name}.png")
         if not os.path.exists(path):
-            # Fallback: retorna un placeholder transparente | evita crashear
+            # si no existe el icono, devuelve uno vacio
             img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
             _cache[key] = ctk.CTkImage(light_image=img, dark_image=img, size=(size, size))
             return _cache[key]
         img = Image.open(path).convert("RGBA")
-        # version light (invertir a oscuro para fondos claros)
-        img_dark = img.copy()  # blanco sobre fondo oscuro
+        # para modo claro invertimos el color
+        img_dark = img.copy()  # dark mode va tal cual
         img_light = _invert_white_to_dark(img.copy())
         _cache[key] = ctk.CTkImage(
             light_image=img_light,
@@ -40,14 +32,14 @@ def get_icon(name: str, size: int = 18) -> ctk.CTkImage:
 
 
 def _invert_white_to_dark(img: Image.Image) -> Image.Image:
-    """Invierte los píxeles blancos a un tono oscuro (#1a237e) para modo claro."""
+    # invierte blanco a azul oscuro para fondos claros
     pixels = img.load()
     w, h = img.size
     for y in range(h):
         for x in range(w):
             r, g, b, a = pixels[x, y]
             if a > 0:
-                # Invertir: blanco → azul oscuro (#1a237e)
+                # invertir color
                 brightness = (r + g + b) / (3 * 255)
                 nr = int(26 * brightness)
                 ng = int(35 * brightness)
@@ -56,7 +48,7 @@ def _invert_white_to_dark(img: Image.Image) -> Image.Image:
     return img
 
 
-# Mapeo  → nombre de icono para referencia rapida
+# mapeo de referencia
 EMOJI_MAP = {
     "📂": "folder-open",
     "📄": "file-text",

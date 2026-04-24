@@ -1,13 +1,8 @@
 
 
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# Prototipo de sistema de gestion documental seguro | 2FA | encriptacion AES-256-GCM | UI actualizada|
- # --.-.-.-.-.-.-.-.-.-.-.--.-.-.-.-.-.
-"""
-main.py - aplicacion Principal
-DatenJäger v.2.0. - Sistema de Gestion Documental
-
-"""
+# sistema de gestion documental | 2FA | aes-256 |
+# main.py - aplicacion principal datenjager v2
 
 import customtkinter as ctk
 import tkinter as tk
@@ -23,7 +18,7 @@ import qrcode
 from PIL import ImageTk, Image
 from io import BytesIO
 
-#  módulos locales
+# modulos del proyecto
 from config import Config
 from encryption import EncryptionManager
 from database import (conectar_db, hash_contrasena, verify_contrasena,
@@ -40,13 +35,13 @@ from icons import get_icon
 
 
 
-# Config global de CustomTkinter
+# config customtkinter
 
 
 ctk.set_default_color_theme("blue")
 
 
-# Colores definidos
+# colores
 
 COLOR_BG_LIGHT   = "#f0f4ff"
 COLOR_BG_DARK    = "#1a1a2e"
@@ -59,14 +54,14 @@ COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK  = "#e0e0e0"
 
 
-# clase principal actualizada  |V.2.0
+# clase principal
 
 
 class AppDBPDF:
-    """v.2.0 con 2FA + Encriptación + UI Moderna"""
+    
 
     def __init__(self, root):
-        """inicializa la aplicacion"""
+        # init
         self.root = root
         self.root.title("DatenJäger v.2.0 – Gestión Documental Segura")
         self.root.geometry("1100x760")
@@ -75,42 +70,42 @@ class AppDBPDF:
         window_size = self.config.get("window_size", "1100x760")
         self.root.geometry(window_size)
 
-        # Verifica si los colorees dinamicos estan guardadosa
+        # tema guardado
         theme = self.config.get("theme", "System")
         ctk.set_appearance_mode(theme)
 
         self.conn, self.cursor = conectar_db()
-        self._db_lock = threading.Lock()  
+        self._db_lock = threading.Lock()
         self.usuario_actual = None
         self.usuario_nombre = None
-        self._session_key   = None   # clave AES-256 derivada en login; nunca la contraseña plana
+        self._session_key   = None
         self.animating = False
-        self._search_timer = None                   # busqueda con debounce
-        self._configure_timer = None                    # guarda con debounce
-        self._idle_timer = None                     # logout automático por inactividad
-        self._idle_warning_timer = None             # advertencia previa al logout
-        self._idle_bind_ids = []                    # IDs de bindings de actividad
+        self._search_timer = None
+        self._configure_timer = None
+        self._idle_timer = None
+        self._idle_warning_timer = None
+        self._idle_bind_ids = []
 
         self._setup_atajos()
         self._crear_frames()
         self._apply_treeview_style()
         self._setup_treeview_sorting()
         self.root.minsize(900, 650)
-        # frame_intro ya está visible desde _crear_frames() — espera interacción del usuario
+        
 
         self.root.bind("<F11>", self.toggle_fullscreen)
         self.root.bind("<Configure>", self._on_window_configure)
 
-        # restaura el estado inicial de la ventana (maximizada o tamaño guardado)
+        # restaurar ventana
         if self.config.get("window_maximized", False):
             self.root.after(100, self._maximize_window)
 
     def get_colors(self):
-        """colores dinmicos"""
+        # colores segun tema
         return get_dynamic_colors()
 
     def _show_modal_window(self, window, delay_ms=0):
-        """Muestra una ventana y aplica grab de forma segura sin lanzar TclError."""
+        # mostrar ventana modal
         def _activate():
             if not window.winfo_exists():
                 return
@@ -122,20 +117,20 @@ class AppDBPDF:
                 if window.winfo_viewable():
                     window.grab_set()
             except tk.TclError:
-                # Si el gestor de ventanas aún no la muestra, se abre sin modal.
+                # si falla el grab
                 pass
 
         window.after(delay_ms, _activate)
 
     def _setup_atajos(self):
-                #"""Configura atajos de teclado"""
+                # atajos
         self.root.bind("<Control-q>", lambda e: self.cerrar_conexion_y_salir())
         self.root.bind("<Control-f>", lambda e: self.entry_busqueda.focus() if hasattr(self, 'entry_busqueda') else None)
         self.root.bind("<Control-n>", lambda e: self.mostrar_agregar_pdf() if self.usuario_actual else None)
         self.root.bind("<Delete>", lambda e: self.eliminar_pdf() if self.usuario_actual else None)
 
     def toggle_fullscreen(self, event=None):
-                        # alterna fullscreen  (F11) de forma multiplataforma
+                        # toggle fullscreen
         try:
             if os.name == 'nt':                 # Windows
                 state = self.root.state()
@@ -150,7 +145,7 @@ class AppDBPDF:
             pass
 
     def _maximize_window(self):
-                                        # maximiza la ventana de forma multiplataforma"""
+                                        # maximizar ventana
         try:
             if os.name == 'nt':
                 self.root.state('zoomed')
@@ -160,16 +155,16 @@ class AppDBPDF:
             pass
 
     def _on_window_configure(self, event=None):
-                        # Persiste el tamaño/estado de ventana cuando cambia | con debounce
+                        # guardar tamaño
         if event is None or event.widget is not self.root:
             return
-                        # cancela cualquier guardado pendiente para evitar múltiples escrituras rápidas
+                        # cancelar guardado pendiente
         if self._configure_timer:
             self.root.after_cancel(self._configure_timer)
         self._configure_timer = self.root.after(500, self._save_window_state)
 
     def _save_window_state(self):
-                        # guarda el tamaño y el estado maximizado de la ventana             
+                        # guardar estado
         self._configure_timer = None
         try:
             maximized = False
@@ -187,14 +182,14 @@ class AppDBPDF:
             pass
 
     def _crear_frames(self):
-                    # Crea todos los frames de la aplicación
+                    # crear frames
         colors = self.get_colors()
 
-        # ── INTRO — Pantalla cósmica con fade-in (improvement #13) ──
+        # pantalla intro
         self.frame_intro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
         self.frame_intro.pack(expand=True, fill="both")
 
-        # Fondo cósmico con estrellas y nebulosas
+        # fondo cosmico
         self._intro_bg = CosmicBackground(self.frame_intro, num_stars=70)
         self._intro_bg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
@@ -205,7 +200,7 @@ class AppDBPDF:
         )
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
 
-        # ── Typewriter label principal ──
+        # typewriter
         self.intro_text = ctk.CTkLabel(
             intro_card,
             text="",
@@ -231,7 +226,7 @@ class AppDBPDF:
         self._intro_tech.pack(pady=(0, 16))
         self._intro_tech.configure(text_color=COLOR_BG_DARK)  # oculto al inicio
 
-        # Hint pulsante
+        # hint
         self._intro_hint = ctk.CTkLabel(
             intro_card,
             text="Presiona cualquier tecla o haz clic para continuar",
@@ -240,7 +235,7 @@ class AppDBPDF:
         )
         self._intro_hint.pack(pady=(8, 36))
 
-        # ── Motor Typewriter ──
+        # motor typewriter
         self._tw_phrases = [
             "DatenJäger",
             "Seguridad Inquebrantable",
@@ -270,15 +265,15 @@ class AppDBPDF:
                 return
 
             if not self._tw_deleting:
-                # Escribiendo
+                # escribir
                 self._tw_char_idx += 1
                 display = phrase[:self._tw_char_idx]
                 self.intro_text.configure(text=display)
 
                 if self._tw_char_idx >= len(phrase):
-                    # Frase completa — pausa antes de borrar
+                    # pausa
                     self._tw_paused = True
-                    # Mostrar sub-elementos después de la primera frase
+                    # mostrar subtitulo
                     if self._tw_idx == 0:
                         self.root.after(600, lambda: (
                             self._intro_subtitle.configure(
@@ -293,13 +288,13 @@ class AppDBPDF:
                 speed = 65 if self._tw_char_idx > 2 else 120
                 self.root.after(speed, _typewriter_tick)
             else:
-                # Borrando
+                # borrar
                 self._tw_char_idx -= 1
                 display = phrase[:max(0, self._tw_char_idx)]
                 self.intro_text.configure(text=display if display else " ")
 
                 if self._tw_char_idx <= 0:
-                    # Cambiar a siguiente frase
+                    # siguiente frase
                     self._tw_deleting = False
                     self._tw_idx = (self._tw_idx + 1) % len(self._tw_phrases)
                     self._tw_char_idx = 0
@@ -308,10 +303,10 @@ class AppDBPDF:
 
                 self.root.after(35, _typewriter_tick)
 
-        # Iniciar la animación con delay
+        # delay inicial
         self.root.after(500, _typewriter_tick)
 
-        # Pulso suave del hint
+        # pulso hint
         def _pulse_hint(visible=True):
             try:
                 if self.frame_intro.winfo_ismapped():
@@ -322,20 +317,20 @@ class AppDBPDF:
                 pass
         self.root.after(4000, _pulse_hint)
 
-        # ── Binds globales: clic o tecla → avanzar ──
+        # binds para avanzar
         self._intro_active = True
 
         def _intro_trigger(event=None):
             if self._intro_active:
                 self._intro_active = False
-                # Limpiar bindings
+                # limpiar binds
                 self.root.unbind("<Key>")
                 self.root.unbind("<Button-1>")
                 self.on_intro_click()
 
         self.root.bind("<Key>", _intro_trigger)
         self.root.bind("<Button-1>", _intro_trigger)
-        # También bind en el frame intro y todos sus hijos
+        # bind en hijos
         self.frame_intro.bind("<Button-1>", _intro_trigger)
         intro_card.bind("<Button-1>", _intro_trigger)
         self.intro_text.bind("<Button-1>", _intro_trigger)
@@ -343,7 +338,7 @@ class AppDBPDF:
         self._intro_tech.bind("<Button-1>", _intro_trigger)
         self._intro_hint.bind("<Button-1>", _intro_trigger)
 
-        # ─ INICIAL ─
+        # pantalla inicial
         self.frame_inicial = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_inicial = CosmicBackground(
@@ -411,7 +406,7 @@ class AppDBPDF:
             text_color=("#9E9E9E", "#666666")
         ).pack(pady=(16, 28))
 
-        # ── LOGIN ───
+        # pantalla login
         self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_login = GradientBackground(
@@ -496,7 +491,7 @@ class AppDBPDF:
             corner_radius=8, width=320, height=38
         ).pack(pady=(0, 28))
 
-                         # ── 2FA ───
+                         # pantalla 2fa
         self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_2fa = GradientBackground(
@@ -533,7 +528,7 @@ class AppDBPDF:
         self.entry_2fa_code.pack(pady=(0, 6))
         self.entry_2fa_code.bind("<Return>", lambda e: self.verificar_2fa())
 
-                     # TOTP countdown ring 
+                     # countdown ring totp
         self._totp_timer_label = ctk.CTkLabel(
             card_2fa, text="30s", font=("Arial", 10),
             text_color=colors["text_secondary"]
@@ -577,7 +572,7 @@ class AppDBPDF:
             corner_radius=8, width=280, height=36
         ).pack(pady=(0, 28))
 
-        # REGISTER --_-
+        # pantalla registro
         self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_reg = GradientBackground(
@@ -639,7 +634,7 @@ class AppDBPDF:
                 self.entry_contrasena_registro, "_show_pw_reg")
         ).pack(side="left", padx=(4, 0))
 
-        # password strength bar
+        # barra fortaleza
         self._pw_strength_bar = PasswordStrengthBar(card_reg)
         self._pw_strength_bar.pack(fill="x", padx=40, pady=(4, 8))
         self.entry_contrasena_registro.bind(
@@ -668,7 +663,7 @@ class AppDBPDF:
             corner_radius=8, width=340, height=36
         ).pack(pady=(0, 28))
 
-        # ── SETUP 2FA ──
+        # setup 2fa
         self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
         _bg_s2fa = GradientBackground(
@@ -678,7 +673,7 @@ class AppDBPDF:
         )
         _bg_s2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-        # Scrollable to fit QR + instructions
+        # scroll para qr
         self._setup2fa_scroll = ctk.CTkScrollableFrame(
             self.frame_setup_2fa,
             fg_color=("#fffde7", "#1e1600"),
@@ -704,7 +699,7 @@ class AppDBPDF:
             text_color=colors["text_primary"], font=("Arial", 11)
         ).pack(pady=2, anchor="w", padx=20)
 
-        # se muestra el QR con card y espacio reservado | se actualizara con el QR real al generar el secret TOTP
+        # espacio para el qr
         qr_card = ctk.CTkFrame(
             self._setup2fa_scroll, fg_color="white", corner_radius=12
         )
@@ -767,11 +762,11 @@ class AppDBPDF:
             text_color=COLOR_WARNING, font=("Arial", 10, "bold")
         ).pack(pady=(4, 16))
 
-        # ── PANEL PRINCIPAL | DASHBOARD ──
-        #   tuple en CTk automaticamente cambia entre el primer color para modo claro y el segundo para modo oscuro
+        # panel principal
+        # tuple ctk claro/oscuro
         self.frame_principal = ctk.CTkFrame(self.root, fg_color=(COLOR_BG_LIGHT, COLOR_BG_DARK))
 
-        # -- Top navbar --
+        # navbar
         navbar = ctk.CTkFrame(
             self.frame_principal,
             fg_color=("#1a237e", "#0d1b3e"),
@@ -787,7 +782,7 @@ class AppDBPDF:
             font=("Arial", 18, "bold"), text_color="white"
         ).pack(side="left", padx=16, pady=10)
 
-        # User badge
+        # badge usuario
         self._user_badge = ctk.CTkLabel(
             navbar, text="",
             font=("Arial", 11), text_color="#90caf9",
@@ -796,7 +791,7 @@ class AppDBPDF:
         )
         self._user_badge.pack(side="left", padx=8)
 
-                    # Right-side navbar buttons
+                    # botones navbar
         def _make_nav_btn(text, command, color="#2e3f8a", hover="#3a4faa"):
             return ctk.CTkButton(
                 navbar, text=text, command=command,
@@ -859,25 +854,25 @@ class AppDBPDF:
             )
         ).pack(side="right", padx=4, pady=10)
 
-                # -- Progress bar --
+                # progress bar
         self.progress_bar = ProgressBarModerno(self.frame_principal)
         self.progress_bar.pack(fill="x", pady=0)
 
-                    # -- Dashboard --
+                    # dashboard
         self.dashboard_container = ctk.CTkFrame(
             self.frame_principal, fg_color="transparent"
         )
         self.dashboard_container.pack(fill="x", padx=14)
 
-            # -- Toolbar (search row + action buttons row) --
+            # toolbar
         toolbar_container = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
         toolbar_container.pack(fill="x", padx=14, pady=(6, 0))
 
-                    # Row 1: Search bar
+                    # busqueda
         search_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
         search_row.pack(fill="x", pady=(0, 4))
 
-                        # Search
+
         search_card = ctk.CTkFrame(search_row, fg_color=("#e8f0fe", "#1e2a4a"), corner_radius=10)
         search_card.pack(side="left")
 
@@ -904,11 +899,11 @@ class AppDBPDF:
             corner_radius=7, width=70, height=30
         ).pack(side="left", padx=(2, 8), pady=6)
 
-                    # Row 2: botones de accion
+                    # botones
         actions_row = ctk.CTkFrame(toolbar_container, fg_color="transparent")
         actions_row.pack(fill="x", pady=(0, 2))
 
-                        # botones de accion
+
         actions = [
             ("  Agregar",  self.mostrar_agregar_pdf,   COLOR_PRIMARY,   "#388E3C"),
             ("  Ver Todos", self.ver_pdfs,               COLOR_SECONDARY, "#1565c0"),
@@ -925,7 +920,7 @@ class AppDBPDF:
                 corner_radius=7, height=36, width=108
             ).pack(side="left", padx=4)
 
-        # -- Toggle vista lista / mosaico --
+        # toggle lista/mosaico
         self._view_mode = "list"  # "list" | "mosaic"
         self._btn_toggle_view = ctk.CTkButton(
             actions_row, text="  Mosaico",
@@ -936,12 +931,12 @@ class AppDBPDF:
         )
         self._btn_toggle_view.pack(side="right", padx=4)
 
-                         # -- TreeView + Preview side panel --
+                         # treeview + preview
         content_area = ctk.CTkFrame(self.frame_principal, fg_color="transparent")
         content_area.pack(fill="both", expand=True, padx=14, pady=8)
         self._content_area = content_area  # referencia para toggle
 
-                              # Treeview frame
+
         tree_frame = ctk.CTkFrame(content_area, fg_color=("#ffffff", "#1e2a4a"), corner_radius=10)
         tree_frame.pack(side="left", fill="both", expand=True)
         self._tree_frame = tree_frame  # referencia para toggle
@@ -967,7 +962,7 @@ class AppDBPDF:
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
         self.tree.bind("<Button-3>", self._show_context_menu)
 
-                        # Right-click context menu
+                        # menu contextual
         self._ctx_menu = tk.Menu(self.root, tearoff=0)
         self._ctx_menu.add_command(label="Abrir / Desencriptar", command=self.abrir_pdf_doble_click)
         self._ctx_menu.add_command(label="Ver Detalles",         command=self.mostrar_detalles_pdf)
@@ -976,16 +971,16 @@ class AppDBPDF:
         self._ctx_menu.add_separator()
         self._ctx_menu.add_command(label="Eliminar",             command=self.eliminar_pdf)
 
-                        # -- Mosaic frame (hidden by default) --
+                        # mosaico
         self._mosaic_frame = ctk.CTkScrollableFrame(
             content_area, fg_color=("#f0f4ff", "#16213e"),
             corner_radius=10
         )
-        # No pack yet — starts hidden
+        
         self._mosaic_rows_cache = []  # cached data for mosaic
         self._mosaic_selected_id = None
 
-                        # Preview / detail sidebar
+                        # sidebar preview
         self._preview_panel = ctk.CTkFrame(
             content_area, fg_color=("#e8f0fe", "#1a2540"),
             corner_radius=10, width=230
@@ -1057,7 +1052,7 @@ class AppDBPDF:
             corner_radius=7, width=160, height=34
         ).pack(pady=4)
 
-                            # -- Status bar --
+                            # status bar
         self.status = ctk.CTkLabel(
             self.frame_principal,
             text="Listo",
@@ -1068,25 +1063,24 @@ class AppDBPDF:
         self.status.pack(side="bottom", fill="x", padx=16, pady=(2, 6))
 
     def actualizar_colores_dinamicos(self):
-        # actualiza los colores dinasmicos cuando cambia el tema
+        # actualizar colores del tema
         colors = self.get_colors()
 
-        # frame_principal
-        #  usa (light, dark) tuple asi CTk lo actualiza automaticamente;
-        # actualiza los colores de la barra de estado aqui.
+
+        # actualiza colores status
         self.status.configure(text_color=colors["text_primary"])
 
-        # re aplica TreeView stilos y actualiza alternando los row colors
+        # re-aplicar estilos treeview
         self._apply_treeview_style()
         if self.usuario_actual:
             self.ver_pdfs()
 
     
-    # HELPERS: NAVIGATION
+    # navegacion
   
 
     def _hide_all_frames(self):
-         #oculta todos los marcos de nivel superior y restablece el diseño
+         # ocultar frames
         for f in [self.frame_intro, self.frame_inicial, self.frame_login,
                   self.frame_2fa, self.frame_setup_2fa, self.frame_principal,
                   self.frame_registro]:
@@ -1094,21 +1088,20 @@ class AppDBPDF:
             f.place_forget()
         self.root.update()
 
-    # ── Transición fade entre pantallas (improvement #13) ──────────
-    # Usa un overlay sólido en vez de window alpha para no mostrar el escritorio
+    # transicion fade
 
     def _fade_to(self, show_callback):
-        """Transición fade con overlay sólido — sin transparencia de ventana."""
+        # fade con overlay
         if getattr(self, '_fading', False):
             return
         self._fading = True
 
-        # Overlay sólido oscuro (tk.Frame, no Canvas — Canvas tiene conflicto con lift)
+        # overlay oscuro
         overlay = tk.Frame(self.root, bg="#0a0a14")
         overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
         overlay.tkraise()
 
-        # Fase 1: mostrar overlay sólido brevemente, switch frames, luego quitar
+        # overlay → switch → quitar
         def _do_switch():
             self.root.update_idletasks()
             show_callback()
@@ -1629,7 +1622,7 @@ class AppDBPDF:
         self._fade_to(_show)
 
     def registrarse(self):
-        # registra un nuevo usuario
+        # registrar usuario
         nombre = self.entry_usuario_registro.get().strip()
         contrasena = self.entry_contrasena_registro.get().strip()
 
@@ -1699,7 +1692,7 @@ class AppDBPDF:
                 Notification(self.root, "Error", str(e), notification_type="error")
 
     def login(self):
-        # inicia sesion (paso 1: validar usuario/contraseña)
+        # login paso 1
         nombre = self.entry_usuario_login.get().strip()
         contrasena = self.entry_contrasena_login.get().strip()
 
@@ -1711,7 +1704,7 @@ class AppDBPDF:
             )
             return
 
-        # consultar bloqueo de cuenta
+        # ver si esta bloqueada
         locked, secs = check_account_locked(self.cursor, nombre)
         if locked:
             mins = secs // 60 + 1
@@ -1734,7 +1727,7 @@ class AppDBPDF:
                 ok, needs_rehash = verify_contrasena(contrasena, hash_stored)
 
                 if ok:
-                    # recalcular la contraseña SHA-256 heredada en el primer inicio de sesión exitoso.
+                    # rehash si es legacy
                     new_hash = None
                     if needs_rehash:
                         new_hash = hash_contrasena(contrasena)
@@ -1752,15 +1745,13 @@ class AppDBPDF:
 
                     reset_failed_attempts(self.cursor, self.conn, nombre)
 
-                    # derivar session key AES-256 desde el salt del hash almacenado.
-                    # si el hash acaba de migrarse usamos new_hash (ya tiene formato pbkdf2:).
+                    # derivar session key
                     ref_hash = new_hash if new_hash else hash_stored
                     ref_parts = ref_hash.split(":") if ref_hash.startswith("pbkdf2:") else []
                     user_salt = ref_parts[1] if len(ref_parts) == 3 else nombre
                     session_key = EncryptionManager.derive_session_key(contrasena, user_salt)
 
-                    # migración automática ENC: → ENCK: (datos cifrados con contraseña plana en #1).
-                    # se hace aquí porque es el único momento donde contraseña y session key coexisten.
+                    # migrar ENC: a ENCK:
                     if totp_enabled:
                         self.cursor.execute(
                             "SELECT totp_secret, backup_codes FROM Usuarios WHERE id = ?",
@@ -1785,13 +1776,13 @@ class AppDBPDF:
                                 )
                                 self.conn.commit()
 
-                    # guardar solo la clave derivada; la contraseña original no se retiene
+                    # guardar session key
                     self._session_key   = session_key
                     self.usuario_actual = usuario_id
                     self.usuario_nombre = nombre
 
                     if totp_enabled:
-                        # verificar si el dispositivo tiene un token de confianza vigente
+                        # verificar token confianza
                         trust_hours = self.config.get("2fa_trust_hours", 0)
                         if trust_hours > 0:
                             local_tokens = self.config.get("trust_tokens", {})
@@ -1799,7 +1790,7 @@ class AppDBPDF:
                             if local_token and check_trust_token(
                                 self.cursor, usuario_id, local_token
                             ):
-                                # dispositivo de confianza → omitir pantalla 2FA
+                                # skip 2fa
                                 self._audit("Login con token de confianza (2FA omitido)")
                                 self.completar_login()
                                 return
@@ -1837,7 +1828,7 @@ class AppDBPDF:
             Notification(self.root, "Error", str(e), notification_type="error")
 
     def mostrar_setup_2fa(self):
-        # muestra pantalla para configurar 2FA
+        # setup 2fa
         self.totp_secret = pyotp.random_base32()
         totp = pyotp.totp.TOTP(self.totp_secret)
         totp_uri = totp.provisioning_uri(
@@ -1863,7 +1854,7 @@ class AppDBPDF:
         self.entry_confirm_2fa.focus()
 
     def confirmar_setup_2fa(self):
-        # confirma y guarda la configuracion
+        # confirmar 2fa
         codigo = self.entry_confirm_2fa.get().strip()
 
         if not codigo or len(codigo) != 6:
@@ -1881,7 +1872,7 @@ class AppDBPDF:
                 backup_codes = [f"{random.randint(100000, 999999)}" for _ in range(5)]
                 backup_codes_str = ",".join(backup_codes)
 
-                # cifrar totp_secret y backup_codes con la session key (nunca con la contraseña plana)
+                # cifrar con session key
                 secret_enc   = EncryptionManager.encrypt_str_with_key(self.totp_secret,  self._session_key)
                 backups_enc  = EncryptionManager.encrypt_str_with_key(backup_codes_str, self._session_key)
 
@@ -1891,11 +1882,11 @@ class AppDBPDF:
                 )
                 self.conn.commit()
 
-                # mostrar coSdigos de respaldo y esperar a que el usuario cierre la ventana
+                # mostrar codigos respaldo
                 self._mostrar_codigos_respaldo(backup_codes)
                 self._audit("Configuración 2FA completada")
 
-                # La notificacion y la navegación ocurren despues de que el usuario cierra el diálogo
+                
                 Notification(
                     self.root, "2FA Configurado",
                     "Autenticación 2FA activada correctamente",
@@ -1913,7 +1904,7 @@ class AppDBPDF:
             Notification(self.root, "Error", str(e), notification_type="error")
 
     def _mostrar_codigos_respaldo(self, backup_codes):
-            # muestra los códigos de respaldo en una ventana modal, con opción para copiar al portapapeles
+            # ventana codigos respaldo
         colors = self.get_colors()
         win = ctk.CTkToplevel(self.root)
         win.title("Códigos de Respaldo")
@@ -1982,7 +1973,7 @@ class AppDBPDF:
         win.wait_window()
 
     def verificar_2fa(self):
-        # verifica codigo 2FA en login
+        # verificar 2fa
         codigo = self.entry_2fa_code.get().strip()
 
         if not codigo or len(codigo) != 6:
@@ -2002,7 +1993,7 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result:
-                # descifrar el secret con la session key (ENCK:) o devolver tal cual si es legacy plaintext
+                # descifrar secret
                 totp_secret = EncryptionManager.decrypt_str_with_key(result[0], self._session_key)
                 totp = pyotp.TOTP(totp_secret)
 
@@ -2034,7 +2025,7 @@ class AppDBPDF:
             )
 
     def usar_codigo_respaldo(self):
-        # usa un codigo de respaldo
+        # codigo de respaldo
         from tkinter.simpledialog import askstring
         codigo = askstring(
             "Código de Respaldo",
@@ -2053,7 +2044,7 @@ class AppDBPDF:
             result = self.cursor.fetchone()
 
             if result and result[0]:
-                # descifrar backup_codes con la session key (ENCK:) o plaintext legacy
+                # descifrar codigos
                 codes_raw    = EncryptionManager.decrypt_str_with_key(result[0], self._session_key)
                 backup_codes = codes_raw.split(",")
 
@@ -2061,7 +2052,7 @@ class AppDBPDF:
                     backup_codes.remove(codigo)
                     backup_codes_str = ",".join(backup_codes)
 
-                    # recifrar la lista actualizada con la session key
+                    # recifrar lista
                     backups_enc = EncryptionManager.encrypt_str_with_key(backup_codes_str, self._session_key)
                     self.cursor.execute(
                         "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
@@ -2095,12 +2086,10 @@ class AppDBPDF:
                 notification_type="error"
             )
 
-    # ══════════════════════════════════════════════════════════════
-    # PANEL DE CONFIGURACIÓN DE CUENTA
-    # ══════════════════════════════════════════════════════════════
+    # configuracion de cuenta
 
     def abrir_configuracion_cuenta(self):
-        """Abre el panel de configuración de cuenta con tres secciones."""
+        # abrir config cuenta
         if not self.usuario_actual:
             return
 
@@ -2146,13 +2135,13 @@ class AppDBPDF:
         win.after(200, _build)
 
     def _build_tab_contrasena(self, parent, win, colors):
-        """Tab: cambio de contraseña con verificación TOTP."""
+        # tab cambiar contraseña
         ctk.CTkLabel(
             parent, text="Cambiar Contraseña",
             font=("Arial", 13, "bold"), text_color=colors["text_primary"]
         ).pack(pady=(14, 10))
 
-        # Contraseña actual
+
         ctk.CTkLabel(parent, text="Contraseña actual",
                      font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
                      ).pack(anchor="w", padx=24)
@@ -2162,7 +2151,7 @@ class AppDBPDF:
         )
         entry_actual.pack(pady=(2, 8))
 
-        # Nueva contraseña
+
         ctk.CTkLabel(parent, text="Nueva contraseña",
                      font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
                      ).pack(anchor="w", padx=24)
@@ -2177,7 +2166,7 @@ class AppDBPDF:
         pw_bar.pack(fill="x", padx=24, pady=(2, 6))
         entry_nueva.bind("<KeyRelease>", lambda e: pw_bar.update(entry_nueva.get()))
 
-        # Confirmar nueva
+
         ctk.CTkLabel(parent, text="Confirmar nueva contraseña",
                      font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
                      ).pack(anchor="w", padx=24)
@@ -2187,7 +2176,7 @@ class AppDBPDF:
         )
         entry_confirm.pack(pady=(2, 8))
 
-        # Código TOTP del autenticador
+        # codigo totp
         ctk.CTkLabel(parent, text="Código 2FA del autenticador",
                      font=("Arial", 10, "bold"), text_color=colors["text_secondary"]
                      ).pack(anchor="w", padx=24)
@@ -2204,7 +2193,7 @@ class AppDBPDF:
             pw_confirm = entry_confirm.get()
             totp_code  = entry_totp.get().strip()
 
-            # validaciones básicas
+
             if not all([pw_actual, pw_nueva, pw_confirm, totp_code]):
                 Notification(win, "Campos incompletos",
                              "Completa todos los campos", notification_type="warning")
@@ -2221,7 +2210,7 @@ class AppDBPDF:
                 return
 
             try:
-                # 1. verificar contraseña actual
+                # verificar actual
                 self.cursor.execute(
                     "SELECT contrasena, totp_enabled, totp_secret FROM Usuarios WHERE id = ?",
                     (self.usuario_actual,)
@@ -2236,7 +2225,7 @@ class AppDBPDF:
                                  notification_type="error")
                     return
 
-                # 2. verificar código TOTP del autenticador
+                # verificar totp
                 if not totp_enabled or not totp_enc:
                     Notification(win, "Error",
                                  "El 2FA no está configurado. Configúralo primero.",
@@ -2251,13 +2240,13 @@ class AppDBPDF:
                                  notification_type="error")
                     return
 
-                # 3. re-hashear contraseña y derivar nueva session key
+                # rehash y nueva key
                 new_hash  = hash_contrasena(pw_nueva)
                 parts     = new_hash.split(":")
                 new_salt  = parts[1] if len(parts) == 3 else self.usuario_nombre
                 new_key   = EncryptionManager.derive_session_key(pw_nueva, new_salt)
 
-                # 4. re-cifrar TOTP secret y backup codes con la nueva clave
+                # recifrar datos
                 self.cursor.execute(
                     "SELECT backup_codes FROM Usuarios WHERE id = ?",
                     (self.usuario_actual,)
@@ -2273,7 +2262,7 @@ class AppDBPDF:
                         backup_plain, new_key
                     )
 
-                # 5. guardar todo en DB e invalidar token de confianza
+                # guardar en db
                 self.cursor.execute(
                     "UPDATE Usuarios SET contrasena = ?, totp_secret = ?, backup_codes = ? "
                     "WHERE id = ?",
@@ -2282,12 +2271,12 @@ class AppDBPDF:
                 clear_trust_token(self.cursor, self.conn, self.usuario_actual)
                 self.conn.commit()
 
-                # limpiar token local del config
+                # limpiar token local
                 tokens = self.config.get("trust_tokens", {})
                 tokens.pop(self.usuario_nombre, None)
                 self.config.set("trust_tokens", tokens)
 
-                # 6. actualizar session key en memoria
+                # actualizar key
                 self._session_key = new_key
                 self._audit("Cambio de contraseña")
 
@@ -2311,7 +2300,7 @@ class AppDBPDF:
         ).pack(pady=4)
 
     def _build_tab_codigos(self, parent, colors):
-        """Tab: visualización y regeneración de códigos de respaldo 2FA."""
+        # tab codigos respaldo
         ctk.CTkLabel(
             parent, text="Códigos de Respaldo 2FA",
             font=("Arial", 13, "bold"), text_color=colors["text_primary"]
@@ -2382,7 +2371,7 @@ class AppDBPDF:
                       width=166, height=36, corner_radius=8).pack(side="left", padx=6)
 
     def _refresh_backup_codes_display(self, codes_frame, colors):
-        """Refresca la lista de códigos de respaldo en el frame dado."""
+        # refrescar codigos
         for w in codes_frame.winfo_children():
             w.destroy()
         try:
@@ -2412,7 +2401,7 @@ class AppDBPDF:
             pass
 
     def _build_tab_confianza(self, parent, colors):
-        """Tab: configuración del período de confianza de dispositivo 2FA."""
+        # tab confianza
         ctk.CTkLabel(
             parent, text="Confianza de Dispositivo",
             font=("Arial", 13, "bold"), text_color=colors["text_primary"]
@@ -2451,7 +2440,7 @@ class AppDBPDF:
             horas   = horas_map.get(elegido, 0)
             self.config.set("2fa_trust_hours", horas)
             if horas == 0:
-                # invalidar token activo si se desactiva la confianza
+                # invalidar token
                 clear_trust_token(self.cursor, self.conn, self.usuario_actual)
                 tokens = self.config.get("trust_tokens", {})
                 tokens.pop(self.usuario_nombre, None)
@@ -2480,7 +2469,7 @@ class AppDBPDF:
         ).pack(pady=(14, 0))
 
     def _save_trust_token(self):
-        """Genera y guarda un token de confianza si el usuario configuró un período."""
+        # generar token confianza
         trust_hours = self.config.get("2fa_trust_hours", 0)
         if trust_hours <= 0 or not self.usuario_actual:
             return
@@ -2492,9 +2481,7 @@ class AppDBPDF:
         self.config.set("trust_tokens", tokens)
 
     def _audit(self, accion: str, pdf_id=None, usuario_id=None):
-        # registra una acción en la tabla Auditoria.
-        # usa self.usuario_actual por defecto; acepta usuario_id explícito para eventos pre-login.
-        # silencia errores para no interrumpir flujos críticos de UI.
+        # registrar auditoria
         try:
             uid = usuario_id if usuario_id is not None else self.usuario_actual
             self.cursor.execute(
@@ -2505,24 +2492,22 @@ class AppDBPDF:
         except Exception:
             pass
 
-    # ──────────────────────────────────────────────────────────────
-    # TIMEOUT de sesion por inactividad (#7) improvement 
-    #     # ──────────────────────────────────────────────────────────────
+    # timeout inactividad
 
     def _start_idle_tracking(self):
-        """Inicia el seguimiento de inactividad; reinicia si ya estaba activo."""
+        # iniciar tracking inactividad
         self._stop_idle_tracking()
         timeout_s = self.config.get("session_timeout_minutes", 10) * 60
         self._idle_timeout_ms  = int(timeout_s * 1000)
         self._idle_warning_ms  = int(max(timeout_s - 30, 5) * 1000)
-        # bind con add="+" para no pisar otros bindings existentes
+        
         for event in ("<Motion>", "<KeyPress>", "<ButtonPress>"):
             bid = self.root.bind(event, self._reset_idle_timer, add="+")
             self._idle_bind_ids.append((event, bid))
         self._schedule_idle_timers()
 
     def _stop_idle_tracking(self):
-        """Cancela timers y desvincula eventos de actividad."""
+        # parar tracking
         if self._idle_timer:
             self.root.after_cancel(self._idle_timer)
             self._idle_timer = None
@@ -2537,7 +2522,7 @@ class AppDBPDF:
         self._idle_bind_ids = []
 
     def _schedule_idle_timers(self):
-        """(Re)programa advertencia y logout automático."""
+        # reprogramar timers
         if self._idle_warning_timer:
             self.root.after_cancel(self._idle_warning_timer)
         if self._idle_timer:
@@ -2550,13 +2535,13 @@ class AppDBPDF:
         )
 
     def _reset_idle_timer(self, event=None):
-        """Reinicia el contador de inactividad ante cualquier actividad."""
+        # reset timer
         if not self.usuario_actual:
             return
         self._schedule_idle_timers()
 
     def _idle_warning(self):
-        """Muestra advertencia de cierre de sesión inminente (30 s antes)."""
+        # warning 30s
         if not self.usuario_actual:
             return
         Notification(
@@ -2568,7 +2553,7 @@ class AppDBPDF:
         )
 
     def _idle_logout(self):
-        """Cierra la sesión automáticamente por inactividad (sin diálogo de confirmación)."""
+        # logout por inactividad
         if not self.usuario_actual:
             return
         self._stop_idle_tracking()
@@ -2588,13 +2573,13 @@ class AppDBPDF:
         )
 
     def completar_login(self):
-         # completa el proceso de login
+         # completar login
         self._hide_all_frames()
         self.frame_principal.pack(expand=True, fill="both")
         colors = self.get_colors()
         self.status.configure(text=f"Sesión activa: {self.usuario_nombre}",
                               text_color=colors["text_primary"])
-        # update user badge in navbar
+        
         if hasattr(self, '_user_badge'):
             self._user_badge.configure(text=f"  {self.usuario_nombre} ", image=get_icon("user", 14), compound="left")
         Notification(
@@ -2610,7 +2595,7 @@ class AppDBPDF:
         self._start_idle_tracking()
 
     def _logout(self):
-            # cierra la sesion del usuario actual
+            # logout
         dlg = ConfirmDialog(
             self.root,
             "  Cerrar Sesión",
@@ -2625,7 +2610,7 @@ class AppDBPDF:
             self.usuario_actual  = None
             self.usuario_nombre  = None
             self._session_key    = None
-            # Clear treeview
+            
             for item in self.tree.get_children():
                 self.tree.delete(item)
             self._reset_preview_panel()
@@ -2637,7 +2622,7 @@ class AppDBPDF:
             )
 
     def cargar_dashboard(self):
-         # carga el dashboard
+         # cargar dashboard
         for widget in self.dashboard_container.winfo_children():
             widget.destroy()
 
@@ -2645,7 +2630,7 @@ class AppDBPDF:
         dashboard.pack(fill="both", padx=20)
 
     def _obtener_datos_reporte_dashboard(self):
-        """obtiene filas y estadisticas del inventario para reporter.py."""
+        # datos para el reporte
         from database import format_size
 
         with self._db_lock:
@@ -2699,7 +2684,7 @@ class AppDBPDF:
         return rows, stats
 
     def exportar_reporte_dashboard(self, formato="pdf"):
-        """Exporta reporte del dashboard usando reporter.py."""
+        # exportar reporte
         if not self.usuario_actual:
             Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
@@ -2742,12 +2727,10 @@ class AppDBPDF:
         finally:
             self.progress_bar.stop()
 
-    # ──────────────────────────────────────────────────────────────
-    # GESTION DE PERSONAS  — improvement #10
-    # ──────────────────────────────────────────────────────────────
+    # gestion personas
 
     def mostrar_gestion_personas(self):
-        """Panel independiente para CRUD de personas (cédula, nombres, empresa)."""
+        # crud personas
         if not self.usuario_actual:
             Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
@@ -2779,7 +2762,7 @@ class AppDBPDF:
         self._show_modal_window(win)
         colors = self.get_colors()
 
-        # ── Header ────────────────────────────────────────────────
+        # header
         header = ctk.CTkFrame(win, fg_color=("#6A1B9A", "#311B92"),
                                height=52, corner_radius=0)
         header.pack(fill="x")
@@ -2795,7 +2778,7 @@ class AppDBPDF:
             font=("Arial", 10), text_color="#ce93d8"
         ).pack(side="left", padx=4)
 
-        # ── Barra de búsqueda + botones de acción ─────────────────
+        # barra busqueda
         action_bar = ctk.CTkFrame(win, fg_color=("#f3e5f5", "#1e1533"),
                                    corner_radius=10)
         action_bar.pack(fill="x", padx=14, pady=(10, 4))
@@ -2813,7 +2796,7 @@ class AppDBPDF:
                                   text_color=colors["text_secondary"])
         lbl_count.pack(side="right", padx=14)
 
-        # ── Treeview con personas ─────────────────────────────────
+        # treeview
         tree_wrapper = ctk.CTkFrame(win, fg_color=("#ffffff", "#1e2a4a"),
                                      corner_radius=10)
         tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
@@ -2847,9 +2830,9 @@ class AppDBPDF:
         tree.tag_configure("odd",  background="#1e1533" if ctk.get_appearance_mode() == "Dark" else "#f3e5f5")
         tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
 
-        # ── Carga de datos con detección de cambios ─────────────
+        # carga datos
         def _fetch_rows(filtro=""):
-            """Ejecuta la query y devuelve las filas."""
+            # query
             query = (
                 "SELECT pe.id, pe.cedula, pe.nombres, "
                 "       COALESCE(pe.empresa, '—'), "
@@ -2872,7 +2855,7 @@ class AppDBPDF:
                 return self.cursor.fetchall()
 
         def _rows_hash(rows):
-            """Hash rápido para detectar cambios en los datos."""
+            # hash rapido
             import hashlib
             return hashlib.md5(str(rows).encode()).hexdigest()
 
@@ -2903,23 +2886,20 @@ class AppDBPDF:
 
         entry_buscar.bind("<KeyRelease>", _filtrar)
 
-        # ── Auto-refresh cada 10 segundos ─────────────────────────
+        # auto refresh
         def _auto_refresh():
             try:
                 if win.winfo_exists():
                     _cargar(entry_buscar.get())
                     _auto_refresh_id[0] = win.after(10000, _auto_refresh)
             except tk.TclError:
-                pass  # ventana ya destruida
+                pass  
 
         _auto_refresh_id[0] = win.after(10000, _auto_refresh)
 
-        # ── Formulario flotante para Agregar / Editar ─────────────
+        # formulario
         def _abrir_formulario(modo="agregar", datos=None):
-            """Abre sub-ventana para agregar o editar una persona.
-            modo: 'agregar' | 'editar'
-            datos: (id, cedula, nombres, empresa) cuando modo='editar'
-            """
+            # formulario agregar/editar persona
             form = ctk.CTkToplevel(win)
             titulo = "Agregar Persona" if modo == "agregar" else "Editar Persona"
             form.title(titulo)
@@ -3037,7 +3017,7 @@ class AppDBPDF:
                 corner_radius=8, width=150, height=38
             ).pack(side="left", padx=6)
 
-            # mostrar la ventana del formulario
+            
             form.after(200, lambda: (
                 form.update_idletasks(),
                 form.deiconify(),
@@ -3047,7 +3027,7 @@ class AppDBPDF:
             ))
             form.wait_window()
 
-        # ── Acciones: Agregar / Editar / Eliminar ─────────────────
+        # acciones
         def _agregar():
             _abrir_formulario("agregar")
 
@@ -3059,7 +3039,7 @@ class AppDBPDF:
                              notification_type="warning")
                 return
             vals = tree.item(sel[0])["values"]
-            # vals: (id, cédula, nombres, empresa, docs)
+            
             _abrir_formulario("editar", datos=(vals[0], vals[1], vals[2], vals[3]))
 
         def _eliminar():
@@ -3101,7 +3081,7 @@ class AppDBPDF:
                 Notification(win, "Error", str(exc),
                              notification_type="error")
 
-        # ── Barra inferior de botones ─────────────────────────────
+        # botones
         bottom_bar = ctk.CTkFrame(win, fg_color="transparent")
         bottom_bar.pack(fill="x", padx=14, pady=(0, 10))
 
@@ -3152,17 +3132,17 @@ class AppDBPDF:
             corner_radius=8, width=120, height=38
         ).pack(side="right", padx=6)
 
-        # doble clic para editar
+        
         tree.bind("<Double-1>", lambda _e: _editar())
 
-        # carga inicial
+        
         _cargar(force=True)
 
-    # LOG para auditoria — UI imrpovement
+    # auditoria
  
 
     def mostrar_auditoria(self):
-        """abre ventana con el visor de log de auditoria con filtros."""
+        # visor auditoria
         if not self.usuario_actual:
             Notification(self.root, "Error", "No hay sesión activa.",
                          notification_type="error")
@@ -3186,7 +3166,7 @@ class AppDBPDF:
         self._show_modal_window(win)
         colors = self.get_colors()
 
-        # ── Header 
+        # header
         header = ctk.CTkFrame(win, fg_color=("#1a237e", "#0d1b3e"),
                                height=52, corner_radius=0)
         header.pack(fill="x")
@@ -3202,7 +3182,7 @@ class AppDBPDF:
             font=("Arial", 10), text_color="#90caf9"
         ).pack(side="left", padx=4)
 
-        # ── Filtros 
+        # filtros
         filter_card = ctk.CTkFrame(win, fg_color=("#e8f0fe", "#1e2a4a"),
                                     corner_radius=10)
         filter_card.pack(fill="x", padx=14, pady=(10, 4))
@@ -3228,12 +3208,12 @@ class AppDBPDF:
                                      width=200, height=30, corner_radius=6)
         entry_accion.pack(side="left", padx=(0, 10), pady=8)
 
-        # contador de registros (se actualiza al cargar)
+        
         lbl_count = ctk.CTkLabel(filter_card, text="",
                                   font=("Arial", 10), text_color=colors["text_secondary"])
         lbl_count.pack(side="right", padx=14)
 
-        # ── Treeview 
+        # treeview
         tree_wrapper = ctk.CTkFrame(win, fg_color=("#ffffff", "#1e2a4a"),
                                      corner_radius=10)
         tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
@@ -3263,11 +3243,11 @@ class AppDBPDF:
         tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
         vsb.pack(side="right", fill="y", pady=4)
 
-        # filas alternas de color
+        
         tree.tag_configure("odd",  background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#f5f7ff")
         tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
 
-        # ── Carga de datos (TODO el sistema, sin filtro de usuario) ──
+        # cargar datos
         def _cargar(desde="", hasta="", accion_txt=""):
             for row in tree.get_children():
                 tree.delete(row)
@@ -3317,15 +3297,15 @@ class AppDBPDF:
             entry_accion.delete(0, tk.END)
             _cargar()
 
-        # ── Visor de Log del Backend (archivo) ────────────────────
+        # visor log backend
         def _ver_log_backend():
-            """Abre una sub-ventana con el contenido raw del log del sistema."""
+            # ventana log sistema
             import glob
             log_paths = [
                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "datenjager.log"),
                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log"),
             ]
-            # buscar también logs rotados
+            
             log_paths += glob.glob(
                 os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.log")
             )
@@ -3342,7 +3322,7 @@ class AppDBPDF:
                     except Exception:
                         continue
 
-            # si no hay archivo de log, generar uno ahora con info del sistema
+            
             if not found_log:
                 import sys
                 import platform
@@ -3400,7 +3380,7 @@ class AppDBPDF:
             txt.pack(fill="both", expand=True, padx=0, pady=0)
             txt.insert("1.0", log_content)
             txt.configure(state="disabled")
-            # scroll al final
+            
             txt.see("end")
 
             btn_bar = ctk.CTkFrame(log_win, fg_color="transparent")
@@ -3420,7 +3400,7 @@ class AppDBPDF:
                 log_win.focus_force()
             ))
 
-        # botones de acción en filter_card (se agregan después de definir _cargar)
+        
         ctk.CTkButton(
             filter_card, text="  Filtrar",
             image=get_icon("search", 14),
@@ -3439,7 +3419,7 @@ class AppDBPDF:
             width=80, height=30
         ).pack(side="left", pady=8)
 
-        # ── Barra inferior con botón de Log del Sistema ───────────
+        
         bottom_bar = ctk.CTkFrame(win, fg_color="transparent")
         bottom_bar.pack(fill="x", padx=14, pady=(0, 8))
 
@@ -3463,15 +3443,15 @@ class AppDBPDF:
             width=110, height=34
         ).pack(side="right", padx=4)
 
-        # Enter en cualquier filtro aplica búsqueda
+        
         for e in (entry_desde, entry_hasta, entry_accion):
             e.bind("<Return>", lambda _ev: _aplicar_filtros())
 
-        # carga inicial completa (todo el log)
+        
         _cargar()
 
     def mostrar_agregar_pdf(self):
-        """Muestra ventana para agregar PDF"""
+        # ventana agregar pdf
         if not self.usuario_actual:
             Notification(
                 self.root, "Error",
@@ -3571,7 +3551,7 @@ class AppDBPDF:
         self._show_modal_window(add_window, delay_ms=250)
 
     def seleccionar_archivo(self):
-         # selecciona un archivo PDF
+         # seleccionar archivo
         self.selected_file = filedialog.askopenfilename(
             filetypes=[("PDF files", "*.pdf")]
         )
@@ -3579,7 +3559,7 @@ class AppDBPDF:
             self.label_file.configure(text=f"{os.path.basename(self.selected_file)}")
 
     def procesar_agregar_pdf(self, window):
-        # procesa la adicion de un PDF: encripta en segundo plano, guarda en BD en hilo principal
+        # encriptar en thread y guardar
         if not self.selected_file:
             Notification(self.root, "Error", "Selecciona un archivo PDF",
                          notification_type="error")
@@ -3597,9 +3577,9 @@ class AppDBPDF:
 
         self.progress_bar.start("Encriptando y agregando PDF...")
 
-        # capturar el estado para el hilo en segundo plano para evitar el cierre de atributos
+        
 
-        # esto podría cambiar mientras el hilo se ejecuta 
+        
         selected_file  = self.selected_file
         usuario_nombre = self.usuario_nombre
         usuario_actual = self.usuario_actual
@@ -3611,7 +3591,7 @@ class AppDBPDF:
                 datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
                 tamano    = len(datos_originales)
                 nombre    = os.path.basename(selected_file)
-                # transferir la escritura de la base de datos al hilo principal
+                # guardar en main thread
                 self.root.after(0, lambda: self._save_pdf_to_db(
                     datos_enc, tamano, nombre, descripcion,
                     cedula, nombres, empresa, usuario_actual, window
@@ -3623,7 +3603,7 @@ class AppDBPDF:
         threading.Thread(target=encrypt_task, daemon=True).start()
 
     def ver_pdfs(self):
-        # muestra todos los PDFs
+        # ver pdfs
         if not self.usuario_actual:
             return
 
@@ -3653,7 +3633,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def buscar_pdfs(self):
-        # busca PDFs según termino
+        # buscar pdfs
         term = self.entry_busqueda.get().strip()
 
         if not term:
@@ -3697,7 +3677,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def mostrar_detalles_pdf(self):
-        # muestra detalles de un PDF
+        # detalles pdf
         selected = self.tree.selection()
 
         if not selected:
@@ -3791,7 +3771,7 @@ class AppDBPDF:
         self._show_modal_window(details_window, delay_ms=250)
 
     def abrir_pdf_doble_click(self):
-        # abre un PDF con doble click
+        # abrir doble click
         selected = self.tree.selection()
 
         if not selected:
@@ -3802,7 +3782,7 @@ class AppDBPDF:
         self.abrir_pdf_id(pdf_id)
 
     def abrir_pdf_id(self, pdf_id, window=None):
-        # abre un PDF: consulta BD en hilo principal, desencripta en segundo plano
+        # abrir pdf, decrypt en thread
         self.progress_bar.start("Desencriptando PDF...")
 
         try:
@@ -3829,7 +3809,7 @@ class AppDBPDF:
             try:
                 datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
                          if encriptado else bytes(datos_enc))
-                # pasar bytes directamente al visor — el PDF descifrado nunca toca el disco
+                # mostrar sin guardar
                 self.root.after(0, lambda d=datos: self._abrir_visor_pdf(d, nombre, window))
             except Exception as e:
                 self.root.after(
@@ -3846,7 +3826,7 @@ class AppDBPDF:
         threading.Thread(target=decrypt_task, daemon=True).start()
 
     def eliminar_pdf(self):
-         # Elimina un PDF seleccionado usando el dialogo 
+        # eliminar pdf
         selected = self.tree.selection()
 
         if not selected:
@@ -3903,7 +3883,7 @@ class AppDBPDF:
             self.progress_bar.stop()
 
     def editar_pdf(self):
-        # abre dialogo para editar los metadatos de un PDF
+        # editar metadatos
         selected = self.tree.selection()
 
         if not selected:
@@ -4018,7 +3998,7 @@ class AppDBPDF:
         self._show_modal_window(edit_win, delay_ms=250)
 
     def exportar_pdf(self):
-         # exporta (guarda) el PDF desencriptado a una ruta elegida por el usuario
+        # exportar pdf
         selected = self.tree.selection()
 
         if not selected:
@@ -4090,7 +4070,7 @@ class AppDBPDF:
         threading.Thread(target=export_task, daemon=True).start()
 
     def slide_in_frame(self, frame, start_relx=1.0, end_relx=0.0, steps=20, callback=None):
-         # anima el deslizamiento de un frame
+        # animacion slide
         frame.place(relx=start_relx, rely=0.0, relwidth=1.0, relheight=1.0)
 
         def animate(step=0):
@@ -4107,17 +4087,17 @@ class AppDBPDF:
         animate()
 
     def cerrar_conexion_y_salir(self):
-         # c ierra la conexion y sale
+        # cerrar y salir
         self.cerrar_conexion()
         self.root.destroy()
 
     def cerrar_conexion(self):
-        # cierra la conexion a la BD
+        # cerrar bd
         if hasattr(self, 'conn') and self.conn:
             self.conn.close()
 
     def on_intro_click(self, event=None):
-        # evento al hacer clic en intro — transición fade al panel inicial
+        # clic en intro
         def _show():
             self.frame_intro.pack_forget()
             self._hide_all_frames()

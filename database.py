@@ -1,9 +1,6 @@
 
 
-"""
-database.py - Modulo de Base de Datos
-Gestion de toda la conexion y operaciones con SQLite
-"""
+# database.py - conexion y operaciones con sqlite
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 
 import sqlite3
@@ -14,7 +11,7 @@ import secrets
 from datetime import datetime
 
 def conectar_db():
-    # conecta a la base de datos SQLite
+    # conectar bd
     if getattr(sys, 'frozen', False):
         basepath = sys.MEIPASS
     else:
@@ -24,11 +21,11 @@ def conectar_db():
     conn = sqlite3.connect(dbpath, check_same_thread=False)
     cursor = conn.cursor()
 
-    # pragmas de rendimiento: WAL para una mejor concurrencia, sincronización NORMAL para mayor velocidad.
+    # pragmas para rendimiento
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
 
-    #  tabla de usuarios con 2FA y seguimiento de intentos fallidos
+    # tabla usuarios
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,7 +59,7 @@ def conectar_db():
     if 'trust_expires' not in columns:
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN trust_expires TEXT")
 
-    #  tabla de Personas
+    # tabla personas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Personas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,7 +74,7 @@ def conectar_db():
     if 'empresa' not in personas_columns:
         cursor.execute("ALTER TABLE Personas ADD COLUMN empresa TEXT")
 
-    #  tabla de PDFs con encriptación
+    # tabla pdfs
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS PDFs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +98,7 @@ def conectar_db():
     if 'persona_id' not in columns:
         cursor.execute("ALTER TABLE PDFs ADD COLUMN persona_id INTEGER REFERENCES Personas(id) ON DELETE SET NULL")
 
-    #  tabla de Etiquetas
+    # tabla etiquetas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Etiquetas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +106,7 @@ def conectar_db():
         )
     ''')
 
-    #  tabla de PDF_Etiquetas
+    # relacion pdf-etiquetas
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS PDF_Etiquetas (
             pdf_id INTEGER,
@@ -120,7 +117,7 @@ def conectar_db():
         )
     ''')
 
-    # tabla de Auditoria
+    # tabla auditoria
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Auditoria (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,7 +128,7 @@ def conectar_db():
         )
     ''')
 
-    # índices
+    # indices
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_usuario ON PDFs(usuario_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_fecha ON PDFs(fecha_subida)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_pdfs_persona ON PDFs(persona_id)")
@@ -141,9 +138,7 @@ def conectar_db():
     return conn, cursor
 
 def hash_contrasena(contrasena):
-    # Hashea una contraseña usando PBKDF2-HMAC-SHA256 con salt aleatorio
-    # Retorna una cadena 'pbkdf2:salt_hex:hash_hex' para almacenamiento seguro
-    # Mantiene compatiblidad retroactiva con hashes SHA256 legacy 
+    # hashea contraseña con pbkdf2
     
     salt = secrets.token_hex(16)
     dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
@@ -151,9 +146,8 @@ def hash_contrasena(contrasena):
 
 
 def verify_contrasena(contrasena, stored_hash):
-    # verifica una contraseña contra el hash almacenado.
-    # soporta tanto el formato moderno PBKDF2 como el legacy SHA256 sin salt.
-    # retorna (ok: bool, needs_rehash: bool).
+    # verifica contraseña contra el hash guardado
+    # soporta pbkdf2 y legacy sha256
     
     if stored_hash.startswith("pbkdf2:"):
         parts = stored_hash.split(":")
@@ -164,13 +158,13 @@ def verify_contrasena(contrasena, stored_hash):
         ok = dk.hex() == expected
         return ok, False
     else:
-        # SHA-256 heredado: migrar en el próximo inicio de sesión exitoso.
+        # sha256 viejo, hay que migrar
         legacy = hashlib.sha256(contrasena.encode()).hexdigest()
         ok = legacy == stored_hash
         return ok, ok  # needs_rehash=True cuando la contraseña coincide
 
 def format_size(bytes_size):
-    # convierte bytes a formato legible
+    # formato legible de bytes
     if bytes_size is None:
         return "0 B"
 
@@ -182,7 +176,7 @@ def format_size(bytes_size):
     return f"{bytes_size:.1f} TB"
 
 def format_date_friendly(iso_date):
-    # convierte fecha ISO a formato amigable
+    # fecha amigable
     if not iso_date:
         return "Desconocida"
 
@@ -218,19 +212,18 @@ def format_date_friendly(iso_date):
         return iso_date
 
 def ease_in_out(t):
-     # f uncion de easing in-out para animaciones suaves (t en [0,1])
+     # easing para animaciones
     return t ** 2 if t < 0.5 else 1 - (-2 * t + 2) ** 2 / 2
 
 
-# Login limitante de velocidad helpers 
+# helpers de bloqueo de cuenta
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
 
 def check_account_locked(cursor, nombre):
-    # retorna (locked: bool, seconds_remaining: int).
-    # si la cuenta no existe devuelve (False, 0).
+    # verifica si la cuenta esta bloqueada
     
     cursor.execute(
         "SELECT failed_attempts, locked_until FROM Usuarios WHERE nombre = ?",
@@ -246,7 +239,7 @@ def check_account_locked(cursor, nombre):
             delta = (unlock_at - datetime.now()).total_seconds()
             if delta > 0:
                 return True, int(delta)
-            # Lock expired – reset
+            # ya expiro el bloqueo
             cursor.execute(
                 "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
                 (nombre,)
@@ -257,7 +250,7 @@ def check_account_locked(cursor, nombre):
 
 
 def record_failed_attempt(cursor, conn, nombre):
-     # incrementa el contador de intentos fallidos; bloquea la cuenta si se supera el límite
+     # incrementa intentos fallidos
     cursor.execute(
         "UPDATE Usuarios SET failed_attempts = failed_attempts + 1 WHERE nombre = ?",
         (nombre,)
@@ -275,7 +268,7 @@ def record_failed_attempt(cursor, conn, nombre):
 
 
 def reset_failed_attempts(cursor, conn, nombre):
-     # restablece el contador de intentos fallidos tras un login exitoso
+     # reset intentos fallidos
     cursor.execute(
         "UPDATE Usuarios SET failed_attempts = 0, locked_until = NULL WHERE nombre = ?",
         (nombre,)
@@ -283,11 +276,11 @@ def reset_failed_attempts(cursor, conn, nombre):
     conn.commit()
 
 
-# Trust token helpers para confianza de dispositivo 2FA
+# helpers token de confianza
 
 
 def set_trust_token(cursor, conn, usuario_id: int, token: str, expires_iso: str):
-    # guarda un token de confianza de dispositivo en la DB con su fecha de expiración
+    # guardar token confianza
     cursor.execute(
         "UPDATE Usuarios SET trust_token = ?, trust_expires = ? WHERE id = ?",
         (token, expires_iso, usuario_id)
@@ -296,8 +289,7 @@ def set_trust_token(cursor, conn, usuario_id: int, token: str, expires_iso: str)
 
 
 def check_trust_token(cursor, usuario_id: int, local_token: str) -> bool:
-    # verifica si el token local coincide con el almacenado en DB y no ha expirado.
-    # retorna True solo si el token es válido y vigente.
+    # verificar token confianza
     if not local_token:
         return False
     cursor.execute(
@@ -317,7 +309,7 @@ def check_trust_token(cursor, usuario_id: int, local_token: str) -> bool:
 
 
 def clear_trust_token(cursor, conn, usuario_id: int):
-    # invalida el token de confianza del usuario (cambio de contraseña, etc.)
+    # limpiar token confianza
     cursor.execute(
         "UPDATE Usuarios SET trust_token = NULL, trust_expires = NULL WHERE id = ?",
         (usuario_id,)
@@ -325,12 +317,10 @@ def clear_trust_token(cursor, conn, usuario_id: int):
     conn.commit()
 
 
-#  Password strength(robustes) validator 
+# validador de contraseña
 
 def password_strength(password: str) -> tuple:
-    # evalúa la fortaleza de una contraseña
-    # retorna (score: int 0-4, label: str, color: str)
-    # reglas: longitud ≥8, mayúsculas, minúsculas, dígitos, caracteres especiales
+    # evalua fortaleza y retorna score/label/color
     
     import re
     score = 0

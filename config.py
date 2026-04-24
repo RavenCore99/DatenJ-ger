@@ -1,30 +1,23 @@
 
-# 
-"""
-# Copyright (c) 2024 DatenJäger. All rights reserved.
-config.py - Módulo de Configuración
-Gestion de configuracion persistente con integridad HMAC-SHA256.
-Los valores sensibles de seguridad (2FA, cifrado) se controlan exclusivamente
-desde la base de datos — no desde este archivo.
-"""
+# config.py - configuracion del sistema
+# guarda preferencias en json con verificacion hmac
 
 import json
 import os
 import hmac
 import hashlib
 
-# clave interna para verificar integridad del config.json.
-# impide que un usuario modifique el archivo manualmente sin ser detectado.
+# clave para verificar que no manipulen el json
 _HMAC_KEY = b"DatenJager_config_integrity_2024_v2"
 
 def _compute_hmac(data: dict) -> str:
-    """Calcula HMAC-SHA256 sobre el contenido del config (excluyendo el campo _hmac)."""
+    # calcula hmac del contenido
     payload = {k: v for k, v in sorted(data.items()) if k != "_hmac"}
     raw = json.dumps(payload, sort_keys=True, separators=(',', ':'))
     return hmac.new(_HMAC_KEY, raw.encode('utf-8'), hashlib.sha256).hexdigest()
 
 def _verify_hmac(data: dict) -> bool:
-    """Verifica que el HMAC almacenado coincide con el contenido actual."""
+    # verifica hmac
     stored = data.get("_hmac")
     if not stored:
         return False
@@ -33,43 +26,43 @@ def _verify_hmac(data: dict) -> bool:
 
 
 class Config:
-    """Gestiona configuración persistente con verificación de integridad."""
+    # maneja la config con verificacion de integridad
 
     def __init__(self, config_file="config.json"):
         self.config_file = config_file
         self.data = self.load()
 
     def load(self):
-        """Carga configuracion y verifica integridad HMAC.
-        Si el archivo no existe, fue alterado o está corrupto → restaura defaults."""
+        # Carga configuracion y verifica integridad HMAC.
+        # Si el archivo no existe, fue alterado o está corrupto → restaura defaults.
         if os.path.exists(self.config_file):
             try:
                 with open(self.config_file, 'r') as f:
                     data = json.load(f)
                 if _verify_hmac(data):
-                    # eliminar el campo interno antes de exponer los datos
+                    # quitar el hmac antes de devolver
                     data.pop("_hmac", None)
                     return data
                 else:
-                    # HMAC inválido: archivo alterado o de versión anterior → defaults
+                    # hmac invalido, volver a defaults
                     print("[Config] Integridad HMAC inválida — restaurando configuración por defecto.")
             except Exception:
                 pass
         return self.default()
 
     def default(self):
-        """Configuracion por defecto. Solo preferencias de UI — nunca flags de seguridad."""
+        # valores por defecto
         return {
             "theme": "System",
             "window_size": "1100x760",
             "window_maximized": False,
-            "2fa_trust_hours": 0,         # 0 = siempre pedir; 24, 48 o 168 horas
-            "trust_tokens": {},           # {nombre_usuario: token_hex} — token del dispositivo actual
-            "session_timeout_minutes": 10, # minutos de inactividad antes de cerrar sesión automáticamente
+            "2fa_trust_hours": 0,
+            "trust_tokens": {},
+            "session_timeout_minutes": 10,
         }
 
     def save(self):
-        """Guarda configuracion con HMAC de integridad."""
+        # guarda con hmac
         try:
             payload = dict(self.data)
             payload["_hmac"] = _compute_hmac(payload)
@@ -79,11 +72,11 @@ class Config:
             print(f"Error guardando config: {e}")
 
     def get(self, key, default=None):
-        """Obtiene valor de configuración."""
+        # obtener valor
         return self.data.get(key, default)
 
     def set(self, key, value):
-        """Establece valor y persiste con HMAC actualizado."""
+        # setear valor y guardar
         self.data[key] = value
         self.save()
 
