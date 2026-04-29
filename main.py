@@ -206,6 +206,7 @@ class AppDBPDF:
             corner_radius=24, border_width=1,
             border_color=("#c8d8ff", "#1a237e")
         )
+        self._intro_card = intro_card
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
 
         # typewriter
@@ -428,6 +429,7 @@ class AppDBPDF:
             self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=20
         )
+        self._card_login = card_login
         card_login.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
@@ -513,6 +515,7 @@ class AppDBPDF:
             self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
             corner_radius=20
         )
+        self._card_2fa = card_2fa
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
@@ -594,6 +597,7 @@ class AppDBPDF:
             self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
             corner_radius=20
         )
+        self._card_reg = card_reg
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
@@ -711,6 +715,7 @@ class AppDBPDF:
         qr_card = ctk.CTkFrame(
             self._setup2fa_scroll, fg_color="white", corner_radius=12
         )
+        self._qr_card = qr_card
         qr_card.pack(pady=10)
         self.label_qr = ctk.CTkLabel(
             qr_card, text="[QR Code]",
@@ -1070,16 +1075,106 @@ class AppDBPDF:
         )
         self.status.pack(side="bottom", fill="x", padx=16, pady=(2, 6))
 
+    def _refresh_entry_theme(self, entry, colors, transparent=False):
+        # normaliza colores de campos al alternar tema
+        if not entry or not entry.winfo_exists():
+            return
+        kwargs = {
+            "text_color": colors["text_primary"],
+            "placeholder_text_color": colors["text_secondary"],
+        }
+        if not transparent:
+            kwargs["fg_color"] = colors["bg_secondary"]
+            kwargs["border_color"] = colors["secondary"]
+        try:
+            entry.configure(**kwargs)
+        except Exception:
+            pass
+
+    def _refresh_intro_theme(self, colors):
+        # refresco visual de pantalla intro
+        is_dark = ctk.get_appearance_mode() == "Dark"
+        hint_active = "#5c6bc0" if is_dark else "#3f51b5"
+        hint_inactive = "#2a2a5e" if is_dark else "#90a4ae"
+
+        if hasattr(self, "_intro_card") and self._intro_card.winfo_exists():
+            self._intro_card.configure(
+                fg_color=("#e8eeff", "#0d0d2b"),
+                border_color=("#c8d8ff", "#1a237e")
+            )
+        if hasattr(self, "intro_text") and self.intro_text.winfo_exists():
+            self.intro_text.configure(text_color=colors["text_primary"])
+        if hasattr(self, "_intro_subtitle") and self._intro_subtitle.winfo_exists():
+            self._intro_subtitle.configure(text_color=colors["text_secondary"])
+        if hasattr(self, "_intro_tech") and self._intro_tech.winfo_exists():
+            self._intro_tech.configure(text_color=hint_active)
+        if hasattr(self, "_intro_hint") and self._intro_hint.winfo_exists():
+            current = self._intro_hint.cget("text_color")
+            self._intro_hint.configure(
+                text_color=hint_active if current in ("#5c6bc0", "#3f51b5") else hint_inactive
+            )
+
     def actualizar_colores_dinamicos(self):
         # actualizar colores del tema
         colors = self.get_colors()
 
+        self._refresh_intro_theme(colors)
+
+        # colores de cards de acceso
+        for card_attr, fg_color in [
+            ("_card_login", ("#f5f7ff", "#1e2a4a")),
+            ("_card_2fa", ("#f5f0ff", "#1e1a2e")),
+            ("_card_reg", ("#f0fff4", "#142e1e")),
+        ]:
+            if hasattr(self, card_attr):
+                card = getattr(self, card_attr)
+                if card and card.winfo_exists():
+                    card.configure(fg_color=fg_color)
+
+        if hasattr(self, "_qr_card") and self._qr_card.winfo_exists():
+            self._qr_card.configure(fg_color=("#ffffff", "#1a1a1a"))
+
+        # refresco de entries principales
+        for entry_name in [
+            "entry_usuario_login",
+            "entry_contrasena_login",
+            "entry_2fa_code",
+            "entry_usuario_registro",
+            "entry_contrasena_registro",
+            "entry_confirm_2fa",
+        ]:
+            self._refresh_entry_theme(getattr(self, entry_name, None), colors)
+        self._refresh_entry_theme(getattr(self, "entry_busqueda", None), colors, transparent=True)
 
         # actualiza colores status
         self.status.configure(text_color=colors["text_primary"])
+        if hasattr(self, "_totp_timer_label") and self._totp_timer_label.winfo_exists():
+            self._totp_timer_label.configure(text_color=colors["text_secondary"])
+        if hasattr(self, "label_secret") and self.label_secret.winfo_exists():
+            self.label_secret.configure(text_color=colors["warning"])
+        if hasattr(self, "label_qr") and self.label_qr.winfo_exists():
+            self.label_qr.configure(text_color=colors["text_primary"])
+
+        if hasattr(self, "frame_principal") and self.frame_principal.winfo_exists():
+            self.frame_principal.configure(fg_color=(COLOR_BG_LIGHT, COLOR_BG_DARK))
+        if hasattr(self, "_preview_name") and self._preview_name.winfo_exists():
+            self._preview_name.configure(text_color=colors["secondary"])
+        if hasattr(self, "_preview_info") and self._preview_info.winfo_exists():
+            self._preview_info.configure(text_color=colors["text_secondary"])
+        if hasattr(self, "_preview_panel") and self._preview_panel.winfo_exists():
+            self._preview_panel.configure(fg_color=("#e8f0fe", "#1a2540"))
+        if hasattr(self, "_tree_frame") and self._tree_frame.winfo_exists():
+            self._tree_frame.configure(fg_color=("#ffffff", "#1e2a4a"))
+        if hasattr(self, "_mosaic_frame") and self._mosaic_frame.winfo_exists():
+            self._mosaic_frame.configure(fg_color=("#f0f4ff", "#16213e"))
 
         # re-aplicar estilos treeview
         self._apply_treeview_style()
+        if hasattr(self, "tree"):
+            try:
+                self.tree.update_idletasks()
+            except Exception:
+                pass
         if self.usuario_actual:
             self.ver_pdfs()
 
