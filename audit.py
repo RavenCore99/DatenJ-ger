@@ -66,16 +66,18 @@ class GestorAuditoria:
                                height=52, corner_radius=0)
         header.pack(fill="x")
         header.pack_propagate(False)
-        ctk.CTkLabel(
+        title_lbl = ctk.CTkLabel(
             header, text="  Log de Auditoría",
             image=get_icon("clipboard", 18),
             compound="left",
             font=("Arial", 16, "bold"), text_color="white"
-        ).pack(side="left", padx=16, pady=14)
-        ctk.CTkLabel(
+        )
+        title_lbl.pack(side="left", padx=16, pady=14)
+        subtitle_lbl = ctk.CTkLabel(
             header, text="Historial de acciones del sistema",
             font=("Arial", 10), text_color="#90caf9"
-        ).pack(side="left", padx=4)
+        )
+        subtitle_lbl.pack(side="left", padx=4)
 
         # filtros
         filter_card = ctk.CTkFrame(win, fg_color=("#e8f0fe", "#1e2a4a"),
@@ -113,15 +115,6 @@ class GestorAuditoria:
         tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
 
         style = ttk.Style()
-        style.configure("Audit.Treeview",
-                         rowheight=26, font=("Arial", 10),
-                         background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff",
-                         foreground="#e0e0e0" if ctk.get_appearance_mode() == "Dark" else "#1a237e",
-                         fieldbackground="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
-        style.configure("Audit.Treeview.Heading",
-                         font=("Arial", 10, "bold"),
-                         background="#1a237e", foreground="white")
-        style.map("Audit.Treeview", background=[("selected", "#2196F3")])
 
         cols = ("Fecha", "Acción", "PDF_ID", "Usuario")
         tree = ttk.Treeview(tree_wrapper, columns=cols, show="headings",
@@ -137,8 +130,35 @@ class GestorAuditoria:
         tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
         vsb.pack(side="right", fill="y", pady=4)
 
-        tree.tag_configure("odd",  background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#f5f7ff")
-        tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+        def _apply_theme():
+            local_colors = get_dynamic_colors()
+            is_dark = ctk.get_appearance_mode() == "Dark"
+            header.configure(fg_color=("#1a237e", "#0d1b3e"))
+            title_lbl.configure(text_color="white")
+            subtitle_lbl.configure(text_color="#90caf9" if is_dark else "#5c6bc0")
+            filter_card.configure(fg_color=("#e8f0fe", "#1e2a4a"))
+            tree_wrapper.configure(fg_color=("#ffffff", "#1e2a4a"))
+            lbl_count.configure(text_color=local_colors["text_secondary"])
+
+            for entry in (entry_desde, entry_hasta, entry_accion):
+                entry.configure(
+                    text_color=local_colors["text_primary"],
+                    placeholder_text_color=local_colors["text_secondary"],
+                    fg_color=local_colors["bg_secondary"],
+                    border_color=local_colors["secondary"],
+                )
+
+            style.configure("Audit.Treeview",
+                            rowheight=26, font=("Arial", 10),
+                            background="#1e2a4a" if is_dark else "#ffffff",
+                            foreground="#e0e0e0" if is_dark else "#1a237e",
+                            fieldbackground="#1e2a4a" if is_dark else "#ffffff")
+            style.configure("Audit.Treeview.Heading",
+                            font=("Arial", 10, "bold"),
+                            background="#1a237e", foreground="white")
+            style.map("Audit.Treeview", background=[("selected", "#2196F3")])
+            tree.tag_configure("odd",  background="#1e2a4a" if is_dark else "#f5f7ff")
+            tree.tag_configure("even", background="#16213e" if is_dark else "#ffffff")
 
         # cargar datos
         def _cargar(desde="", hasta="", accion_txt=""):
@@ -335,6 +355,23 @@ class GestorAuditoria:
         for e in (entry_desde, entry_hasta, entry_accion):
             e.bind("<Return>", lambda _ev: _aplicar_filtros())
 
+        def _on_theme_changed(_event=None):
+            if win.winfo_exists():
+                _apply_theme()
+
+        theme_bind_id = self.app.root.bind("<<ThemeChanged>>", _on_theme_changed, add="+")
+
+        original_close = _close_audit_win
+
+        def _close_with_unbind():
+            try:
+                self.app.root.unbind("<<ThemeChanged>>", theme_bind_id)
+            except Exception:
+                pass
+            original_close()
+
+        win.protocol("WM_DELETE_WINDOW", _close_with_unbind)
+        _apply_theme()
         _cargar()
 
 # Copyright (c) 2024 DatenJäger. All rights reserved.

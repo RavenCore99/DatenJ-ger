@@ -63,16 +63,18 @@ class GestorPersonas:
                                height=52, corner_radius=0)
         header.pack(fill="x")
         header.pack_propagate(False)
-        ctk.CTkLabel(
+        title_lbl = ctk.CTkLabel(
             header, text="  Gestión de Personas",
             image=get_icon("users", 18),
             compound="left",
             font=("Arial", 16, "bold"), text_color="white"
-        ).pack(side="left", padx=16, pady=14)
-        ctk.CTkLabel(
+        )
+        title_lbl.pack(side="left", padx=16, pady=14)
+        subtitle_lbl = ctk.CTkLabel(
             header, text="Administración de titulares de documentos",
             font=("Arial", 10), text_color="#ce93d8"
-        ).pack(side="left", padx=4)
+        )
+        subtitle_lbl.pack(side="left", padx=4)
 
         # barra busqueda
         action_bar = ctk.CTkFrame(win, fg_color=("#f3e5f5", "#1e1533"),
@@ -98,15 +100,6 @@ class GestorPersonas:
         tree_wrapper.pack(fill="both", expand=True, padx=14, pady=(4, 6))
 
         style = ttk.Style()
-        style.configure("Persona.Treeview",
-                         rowheight=28, font=("Arial", 10),
-                         background="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff",
-                         foreground="#e0e0e0" if ctk.get_appearance_mode() == "Dark" else "#1a237e",
-                         fieldbackground="#1e2a4a" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
-        style.configure("Persona.Treeview.Heading",
-                         font=("Arial", 10, "bold"),
-                         background="#6A1B9A", foreground="white")
-        style.map("Persona.Treeview", background=[("selected", "#9C27B0")])
 
         cols = ("ID", "Cédula", "Nombres", "Empresa", "Documentos")
         tree = ttk.Treeview(tree_wrapper, columns=cols, show="headings",
@@ -123,8 +116,34 @@ class GestorPersonas:
         tree.pack(side="left", fill="both", expand=True, padx=4, pady=4)
         vsb.pack(side="right", fill="y", pady=4)
 
-        tree.tag_configure("odd",  background="#1e1533" if ctk.get_appearance_mode() == "Dark" else "#f3e5f5")
-        tree.tag_configure("even", background="#16213e" if ctk.get_appearance_mode() == "Dark" else "#ffffff")
+        def _apply_theme():
+            local_colors = get_dynamic_colors()
+            is_dark = ctk.get_appearance_mode() == "Dark"
+            header.configure(fg_color=("#6A1B9A", "#311B92"))
+            title_lbl.configure(text_color="white")
+            subtitle_lbl.configure(text_color="#ce93d8" if is_dark else "#8e24aa")
+            action_bar.configure(fg_color=("#f3e5f5", "#1e1533"))
+            tree_wrapper.configure(fg_color=("#ffffff", "#1e2a4a"))
+            lbl_count.configure(text_color=local_colors["text_secondary"])
+            lbl_refresh.configure(text_color=local_colors["text_secondary"])
+            entry_buscar.configure(
+                text_color=local_colors["text_primary"],
+                placeholder_text_color=local_colors["text_secondary"],
+                fg_color=local_colors["bg_secondary"],
+                border_color=local_colors["secondary"],
+            )
+
+            style.configure("Persona.Treeview",
+                            rowheight=28, font=("Arial", 10),
+                            background="#1e2a4a" if is_dark else "#ffffff",
+                            foreground="#e0e0e0" if is_dark else "#1a237e",
+                            fieldbackground="#1e2a4a" if is_dark else "#ffffff")
+            style.configure("Persona.Treeview.Heading",
+                            font=("Arial", 10, "bold"),
+                            background="#6A1B9A", foreground="white")
+            style.map("Persona.Treeview", background=[("selected", "#9C27B0")])
+            tree.tag_configure("odd",  background="#1e1533" if is_dark else "#f3e5f5")
+            tree.tag_configure("even", background="#16213e" if is_dark else "#ffffff")
 
         # carga datos
         def _fetch_rows(filtro=""):
@@ -425,4 +444,21 @@ class GestorPersonas:
 
         tree.bind("<Double-1>", lambda _e: _editar())
 
+        def _on_theme_changed(_event=None):
+            if win.winfo_exists():
+                _apply_theme()
+
+        theme_bind_id = self.app.root.bind("<<ThemeChanged>>", _on_theme_changed, add="+")
+
+        original_close = _close_win
+
+        def _close_with_unbind():
+            try:
+                self.app.root.unbind("<<ThemeChanged>>", theme_bind_id)
+            except Exception:
+                pass
+            original_close()
+
+        win.protocol("WM_DELETE_WINDOW", _close_with_unbind)
+        _apply_theme()
         _cargar(force=True)
