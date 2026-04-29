@@ -214,14 +214,14 @@ class AppDBPDF:
             intro_card,
             text="",
             font=("Arial", 48, "bold"),
-            text_color="white"
+            text_color=colors["text_primary"]
         )
         self.intro_text.pack(padx=80, pady=(44, 4))
 
         self._intro_subtitle = ctk.CTkLabel(
             intro_card,
             text="",
-            text_color="#a0b4ff",
+            text_color=colors["text_secondary"],
             font=("Arial", 13)
         )
         self._intro_subtitle.pack(pady=(0, 2))
@@ -229,7 +229,7 @@ class AppDBPDF:
         self._intro_tech = ctk.CTkLabel(
             intro_card,
             text="AES-256-GCM  ·  2FA  ·  PBKDF2",
-            text_color=("#7986cb", "#5c6bc0"),
+            text_color=colors["text_secondary"],
             font=("Arial", 11)
         )
         self._intro_tech.pack(pady=(0, 16))
@@ -285,11 +285,16 @@ class AppDBPDF:
                     # mostrar subtitulo
                     if self._tw_idx == 0:
                         self.root.after(600, lambda: (
+                            setattr(self, "_intro_revealed", True),
                             self._intro_subtitle.configure(
                                 text="Sistema de Gestión Documental Seguro",
-                                text_color="#a0b4ff"),
-                            self._intro_tech.configure(text_color="#5c6bc0"),
-                            self._intro_hint.configure(text_color="#5c6bc0")
+                                text_color=self.get_colors()["text_secondary"]),
+                            self._intro_tech.configure(
+                                text_color="#5c6bc0" if ctk.get_appearance_mode() == "Dark" else "#3f51b5"
+                            ),
+                            self._intro_hint.configure(
+                                text_color="#5c6bc0" if ctk.get_appearance_mode() == "Dark" else "#3f51b5"
+                            )
                         ))
                     self.root.after(2200, _typewriter_tick)
                     return
@@ -319,7 +324,10 @@ class AppDBPDF:
         def _pulse_hint(visible=True):
             try:
                 if self.frame_intro.winfo_ismapped():
-                    col = "#5c6bc0" if visible else "#2a2a5e"
+                    if ctk.get_appearance_mode() == "Dark":
+                        col = "#5c6bc0" if visible else "#2a2a5e"
+                    else:
+                        col = "#3f51b5" if visible else "#90a4ae"
                     self._intro_hint.configure(text_color=col)
                     self.root.after(800, lambda: _pulse_hint(not visible))
             except tk.TclError:
@@ -496,7 +504,7 @@ class AppDBPDF:
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_inicial,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=320, height=38
         ).pack(pady=(0, 28))
@@ -578,7 +586,7 @@ class AppDBPDF:
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_login,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=280, height=36
         ).pack(pady=(0, 28))
@@ -670,7 +678,7 @@ class AppDBPDF:
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_inicial,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=340, height=36
         ).pack(pady=(0, 28))
