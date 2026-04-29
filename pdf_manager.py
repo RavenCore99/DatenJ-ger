@@ -34,6 +34,15 @@ class GestorPDF:
         self.entry_nombres = None
         self.entry_empresa = None
 
+    def _theme_entry(self, entry, colors):
+        if entry and entry.winfo_exists():
+            entry.configure(
+                text_color=colors["text_primary"],
+                placeholder_text_color=colors["text_secondary"],
+                fg_color=colors["bg_secondary"],
+                border_color=colors["secondary"]
+            )
+
     # ---- helpers internos (callbacks de threads) ----
 
     def _save_to_db(self, datos_enc, tamano, nombre, descripcion,
@@ -140,7 +149,7 @@ class GestorPDF:
             add_window,
             text="El archivo se encriptará con AES-256-GCM antes de guardarse",
             font=("Arial", 10),
-            text_color=COLOR_SECONDARY
+            text_color=colors["secondary"]
         ).pack(pady=(0, 12))
 
         self.selected_file = None
@@ -185,6 +194,8 @@ class GestorPDF:
         self.entry_cedula       = add_labeled_entry(add_window, "Cédula:", "Número de cédula")
         self.entry_nombres      = add_labeled_entry(add_window, "Nombres completos:", "Nombres del titular")
         self.entry_empresa      = add_labeled_entry(add_window, "Empresa:", "Nombre de la empresa")
+        for entry in (self.entry_descripcion, self.entry_cedula, self.entry_nombres, self.entry_empresa):
+            self._theme_entry(entry, colors)
 
         ctk.CTkButton(
             add_window,
@@ -203,7 +214,7 @@ class GestorPDF:
         ctk.CTkButton(
             add_window, text="Cancelar",
             command=add_window.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=180, height=34
         ).pack(pady=(0, 16))
@@ -571,7 +582,7 @@ class GestorPDF:
 
         ctk.CTkLabel(
             edit_win, text=f"Editando: {pdf_nombre}",
-            font=("Arial", 10), text_color=COLOR_SECONDARY
+            font=("Arial", 10), text_color=colors["secondary"]
         ).pack(pady=(0, 16))
 
         def add_field(label, current, placeholder=""):
@@ -595,6 +606,8 @@ class GestorPDF:
         e_cedula  = add_field("Cédula:", cedula or "")
         e_nombres = add_field("Nombres:", nombres or "")
         e_empresa = add_field("Empresa:", empresa or "", "Nombre de la empresa")
+        for entry in (e_nombre, e_desc, e_cedula, e_nombres, e_empresa):
+            self._theme_entry(entry, colors)
 
         def guardar():
             nuevo_nombre   = e_nombre.get().strip()
@@ -647,7 +660,7 @@ class GestorPDF:
         ctk.CTkButton(
             edit_win, text="Cancelar",
             command=edit_win.destroy,
-            fg_color="#9E9E9E", hover_color="#757575",
+            fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=8, width=260, height=36
         ).pack(pady=(0, 20))
