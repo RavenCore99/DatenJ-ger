@@ -825,6 +825,7 @@ class AppDBPDF:
                 text="  Claro" if new_mode == "Dark" else "  Oscuro"
             )
             self.actualizar_colores_dinamicos()
+            self.root.event_generate("<<ThemeChanged>>", when="tail")
 
         current_theme = ctk.get_appearance_mode()
         btn_theme = _make_nav_btn(
