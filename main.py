@@ -88,6 +88,8 @@ class AppDBPDF:
         self._idle_timer = None
         self._idle_warning_timer = None
         self._idle_bind_ids = []
+        self._theme_refresh_job = None
+        self._last_theme_mode = ctk.get_appearance_mode()
 
         # modulos externos
         self.personas = GestorPersonas(self)
@@ -98,6 +100,7 @@ class AppDBPDF:
         self._crear_frames()
         self._apply_treeview_style()
         self._setup_treeview_sorting()
+        self._start_theme_autorefresh()
         self.root.minsize(900, 650)
         
 
@@ -111,6 +114,47 @@ class AppDBPDF:
     def get_colors(self):
         # colores segun tema
         return get_dynamic_colors()
+
+    def _get_auth_palette(self):
+        # paleta de pantallas de acceso (fuera de dashboard)
+        if ctk.get_appearance_mode() == "Dark":
+            return {
+                "card_border": "#2a3f72",
+                "btn_primary_fg": "#2e7d32",
+                "btn_primary_hover": "#1b5e20",
+                "btn_secondary_fg": "#1565c0",
+                "btn_secondary_hover": "#0d47a1",
+                "btn_warning_fg": "#ef6c00",
+                "btn_warning_hover": "#e65100",
+                "btn_neutral_fg": "#546e7a",
+                "btn_neutral_hover": "#455a64",
+            }
+        return {
+            "card_border": "#b6c8f7",
+            "btn_primary_fg": "#2e7d32",
+            "btn_primary_hover": "#1b5e20",
+            "btn_secondary_fg": "#1565c0",
+            "btn_secondary_hover": "#0d47a1",
+            "btn_warning_fg": "#f57c00",
+            "btn_warning_hover": "#ef6c00",
+            "btn_neutral_fg": "#607d8b",
+            "btn_neutral_hover": "#546e7a",
+        }
+
+    def _start_theme_autorefresh(self):
+        # refresco periodico para asegurar consistencia visual sin reiniciar app
+        def _tick():
+            try:
+                current_mode = ctk.get_appearance_mode()
+                self.actualizar_colores_dinamicos(refresh_data=False)
+                self.root.event_generate("<<ThemeChanged>>", when="tail")
+                self._last_theme_mode = current_mode
+            except Exception:
+                pass
+            self._theme_refresh_job = self.root.after(1400, _tick)
+
+        if self._theme_refresh_job is None:
+            self._theme_refresh_job = self.root.after(1400, _tick)
 
     def _show_modal_window(self, window, delay_ms=0):
         # mostrar ventana modal
@@ -204,7 +248,8 @@ class AppDBPDF:
         intro_card = ctk.CTkFrame(
             self.frame_intro, fg_color=("#e8eeff", "#0d0d2b"),
             corner_radius=24, border_width=1,
-            border_color=("#c8d8ff", "#1a237e")
+            border_color=("#c8d8ff", "#1a237e"),
+            bg_color="transparent"
         )
         self._intro_card = intro_card
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
@@ -214,14 +259,14 @@ class AppDBPDF:
             intro_card,
             text="",
             font=("Arial", 48, "bold"),
-            text_color=colors["text_primary"]
+            text_color="#e0e0e0"
         )
         self.intro_text.pack(padx=80, pady=(44, 4))
 
         self._intro_subtitle = ctk.CTkLabel(
             intro_card,
             text="",
-            text_color=colors["text_secondary"],
+            text_color="#a0b4ff",
             font=("Arial", 13)
         )
         self._intro_subtitle.pack(pady=(0, 2))
@@ -229,18 +274,18 @@ class AppDBPDF:
         self._intro_tech = ctk.CTkLabel(
             intro_card,
             text="AES-256-GCM  ·  2FA  ·  PBKDF2",
-            text_color=colors["text_secondary"],
+            text_color="#5c6bc0",
             font=("Arial", 11)
         )
         self._intro_tech.pack(pady=(0, 16))
-        self._intro_tech.configure(text_color=COLOR_BG_DARK)  # oculto al inicio
+        self._intro_tech.configure(text_color="#0d0d2b")  # oculto al inicio dark-only
 
         # hint
         self._intro_hint = ctk.CTkLabel(
             intro_card,
             text="Presiona cualquier tecla o haz clic para continuar",
             font=("Arial", 11),
-            text_color=COLOR_BG_DARK
+            text_color="#0d0d2b"
         )
         self._intro_hint.pack(pady=(8, 36))
 
@@ -257,6 +302,7 @@ class AppDBPDF:
         self._tw_char_idx = 0  # posición del carácter
         self._tw_deleting = False
         self._tw_paused = False
+        self._intro_revealed = False
 
         def _typewriter_tick():
             try:
@@ -288,13 +334,9 @@ class AppDBPDF:
                             setattr(self, "_intro_revealed", True),
                             self._intro_subtitle.configure(
                                 text="Sistema de Gestión Documental Seguro",
-                                text_color=self.get_colors()["text_secondary"]),
-                            self._intro_tech.configure(
-                                text_color="#5c6bc0" if ctk.get_appearance_mode() == "Dark" else "#3f51b5"
-                            ),
-                            self._intro_hint.configure(
-                                text_color="#5c6bc0" if ctk.get_appearance_mode() == "Dark" else "#3f51b5"
-                            )
+                                text_color="#a0b4ff"),
+                            self._intro_tech.configure(text_color="#5c6bc0"),
+                            self._intro_hint.configure(text_color="#5c6bc0")
                         ))
                     self.root.after(2200, _typewriter_tick)
                     return
@@ -324,10 +366,7 @@ class AppDBPDF:
         def _pulse_hint(visible=True):
             try:
                 if self.frame_intro.winfo_ismapped():
-                    if ctk.get_appearance_mode() == "Dark":
-                        col = "#5c6bc0" if visible else "#2a2a5e"
-                    else:
-                        col = "#3f51b5" if visible else "#90a4ae"
+                    col = "#5c6bc0" if visible else "#2a2a5e"
                     self._intro_hint.configure(text_color=col)
                     self.root.after(800, lambda: _pulse_hint(not visible))
             except tk.TclError:
@@ -368,8 +407,11 @@ class AppDBPDF:
 
         card_inicial = ctk.CTkFrame(
             self.frame_inicial, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=20
+            corner_radius=24, border_width=1,
+            border_color=("#b6c8f7", "#2a3f72"),
+            bg_color="transparent"
         )
+        self._card_inicial = card_inicial
         card_inicial.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
@@ -381,14 +423,15 @@ class AppDBPDF:
             text_color=colors["text_primary"]
         ).pack(pady=(30, 4))
 
-        ctk.CTkLabel(
+        self._initial_subtitle = ctk.CTkLabel(
             card_inicial,
             text="Seguridad · Privacidad · Control",
             font=("Arial", 11),
             text_color=COLOR_SECONDARY
-        ).pack(pady=(0, 24))
+        )
+        self._initial_subtitle.pack(pady=(0, 24))
 
-        ctk.CTkButton(
+        self._btn_initial_login = ctk.CTkButton(
             card_inicial,
             text="  Iniciar Sesión",
             image=get_icon("unlock", 20),
@@ -398,11 +441,12 @@ class AppDBPDF:
             hover_color="#388E3C",
             text_color="white",
             font=("Arial", 13, "bold"),
-            corner_radius=10,
+            corner_radius=12,
             width=280, height=48
-        ).pack(pady=8)
+        )
+        self._btn_initial_login.pack(pady=8)
 
-        ctk.CTkButton(
+        self._btn_initial_register = ctk.CTkButton(
             card_inicial,
             text="  Crear Usuario",
             image=get_icon("pen-line", 20),
@@ -412,16 +456,18 @@ class AppDBPDF:
             hover_color="#1976D2",
             text_color="white",
             font=("Arial", 13, "bold"),
-            corner_radius=10,
+            corner_radius=12,
             width=280, height=48
-        ).pack(pady=8)
+        )
+        self._btn_initial_register.pack(pady=8)
 
-        ctk.CTkLabel(
+        self._initial_footer = ctk.CTkLabel(
             card_inicial,
             text="v.2.0 – AES-256-GCM + PBKDF2 + 2FA",
             font=("Arial", 9),
-            text_color=("#9E9E9E", "#666666")
-        ).pack(pady=(16, 28))
+            text_color=colors["text_secondary"]
+        )
+        self._initial_footer.pack(pady=(16, 28))
 
         # pantalla login
         self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -435,7 +481,9 @@ class AppDBPDF:
 
         card_login = ctk.CTkFrame(
             self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=20
+            corner_radius=24, border_width=1,
+            border_color=("#b6c8f7", "#2a3f72"),
+            bg_color="transparent"
         )
         self._card_login = card_login
         card_login.place(relx=0.5, rely=0.5, anchor="center")
@@ -489,25 +537,27 @@ class AppDBPDF:
 
         self.entry_contrasena_login.bind("<Return>", lambda e: self.login())
 
-        ctk.CTkButton(
+        self._btn_login_next = ctk.CTkButton(
             card_login, text="  Siguiente",
             image=get_icon("check-circle", 18),
             compound="left",
             command=self.login,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=320, height=44
-        ).pack(pady=(16, 8))
+            corner_radius=10, width=320, height=44
+        )
+        self._btn_login_next.pack(pady=(16, 8))
 
-        ctk.CTkButton(
+        self._btn_login_back = ctk.CTkButton(
             card_login, text="  Volver",
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_inicial,
             fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=320, height=38
-        ).pack(pady=(0, 28))
+            corner_radius=10, width=320, height=38
+        )
+        self._btn_login_back.pack(pady=(0, 28))
 
                          # pantalla 2fa
         self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -521,7 +571,9 @@ class AppDBPDF:
 
         card_2fa = ctk.CTkFrame(
             self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
-            corner_radius=20
+            corner_radius=24, border_width=1,
+            border_color=("#d2c2f8", "#3b2a5f"),
+            bg_color="transparent"
         )
         self._card_2fa = card_2fa
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
@@ -555,41 +607,45 @@ class AppDBPDF:
         self._totp_timer_label.pack()
         self._start_totp_timer()
 
-        ctk.CTkButton(
+        self._btn_2fa_verify = ctk.CTkButton(
             card_2fa, text="  Verificar",
             image=get_icon("check-circle", 18),
             compound="left",
             command=self.verificar_2fa,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=280, height=44
-        ).pack(pady=(12, 6))
+            corner_radius=10, width=280, height=44
+        )
+        self._btn_2fa_verify.pack(pady=(12, 6))
 
-        ctk.CTkLabel(
+        self._backup_hint_2fa = ctk.CTkLabel(
             card_2fa,
             text="¿Sin acceso al teléfono? Usa un código de respaldo",
             text_color=COLOR_WARNING, font=("Arial", 10)
-        ).pack(pady=(4, 0))
+        )
+        self._backup_hint_2fa.pack(pady=(4, 0))
 
-        ctk.CTkButton(
+        self._btn_2fa_backup = ctk.CTkButton(
             card_2fa, text="  Código de Respaldo",
             image=get_icon("refresh-cw", 16),
             compound="left",
             command=self.usar_codigo_respaldo,
-            fg_color=COLOR_WARNING, hover_color="#F57C00",
+            fg_color=COLOR_WARNING, hover_color=("#FB8C00", "#F57C00"),
             text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=280, height=36
-        ).pack(pady=6)
+            corner_radius=10, width=280, height=36
+        )
+        self._btn_2fa_backup.pack(pady=6)
 
-        ctk.CTkButton(
+        self._btn_2fa_back = ctk.CTkButton(
             card_2fa, text="  Volver",
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_login,
             fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=280, height=36
-        ).pack(pady=(0, 28))
+            corner_radius=10, width=280, height=36
+        )
+        self._btn_2fa_back.pack(pady=(0, 28))
 
         # pantalla registro
         self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -603,7 +659,9 @@ class AppDBPDF:
 
         card_reg = ctk.CTkFrame(
             self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
-            corner_radius=20
+            corner_radius=24, border_width=1,
+            border_color=("#bfe6c9", "#255036"),
+            bg_color="transparent"
         )
         self._card_reg = card_reg
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
@@ -663,25 +721,27 @@ class AppDBPDF:
                 self.entry_contrasena_registro.get())
         )
 
-        ctk.CTkButton(
+        self._btn_reg_submit = ctk.CTkButton(
             card_reg, text="  Registrar",
             image=get_icon("check-circle", 18),
             compound="left",
             command=self.registrarse,
             fg_color=COLOR_SECONDARY, hover_color="#1976D2",
             text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=340, height=44
-        ).pack(pady=(8, 8))
+            corner_radius=10, width=340, height=44
+        )
+        self._btn_reg_submit.pack(pady=(8, 8))
 
-        ctk.CTkButton(
+        self._btn_reg_back = ctk.CTkButton(
             card_reg, text="  Volver",
             image=get_icon("arrow-left", 16),
             compound="left",
             command=self.mostrar_inicial,
             fg_color=("#90a4ae", "#546e7a"), hover_color=("#78909c", "#455a64"),
             text_color="white", font=("Arial", 11, "bold"),
-            corner_radius=8, width=340, height=36
-        ).pack(pady=(0, 28))
+            corner_radius=10, width=340, height=36
+        )
+        self._btn_reg_back.pack(pady=(0, 28))
 
         # setup 2fa
         self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -697,7 +757,10 @@ class AppDBPDF:
         self._setup2fa_scroll = ctk.CTkScrollableFrame(
             self.frame_setup_2fa,
             fg_color=("#fffde7", "#1e1600"),
-            corner_radius=20, width=460, height=520
+            corner_radius=22, border_width=1,
+            border_color=("#e5d8ab", "#4a3a17"),
+            bg_color="transparent",
+            width=460, height=520
         )
         self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
 
@@ -721,7 +784,8 @@ class AppDBPDF:
 
         # espacio para el qr
         qr_card = ctk.CTkFrame(
-            self._setup2fa_scroll, fg_color="white", corner_radius=12
+            self._setup2fa_scroll, fg_color=("#ffffff", "#1a1a1a"),
+            corner_radius=12, bg_color="transparent"
         )
         self._qr_card = qr_card
         qr_card.pack(pady=10)
@@ -744,7 +808,7 @@ class AppDBPDF:
             text_color=COLOR_WARNING, font=("Arial", 13, "bold")
         )
         self.label_secret.pack(side="left", padx=(0, 8))
-        ctk.CTkButton(
+        self._btn_copy_secret = ctk.CTkButton(
             secret_row, text="  Copiar",
             image=get_icon("clipboard", 14),
             compound="left",
@@ -752,7 +816,8 @@ class AppDBPDF:
             fg_color=COLOR_SECONDARY, hover_color="#1565c0",
             font=("Arial", 10, "bold"), corner_radius=6,
             command=self._copy_totp_secret
-        ).pack(side="left")
+        )
+        self._btn_copy_secret.pack(side="left")
 
         ctk.CTkLabel(
             self._setup2fa_scroll,
@@ -767,21 +832,23 @@ class AppDBPDF:
         )
         self.entry_confirm_2fa.pack(pady=6)
 
-        ctk.CTkButton(
+        self._btn_setup_confirm = ctk.CTkButton(
             self._setup2fa_scroll, text="  Confirmar y Activar 2FA",
             image=get_icon("check-circle", 18),
             compound="left",
             command=self.confirmar_setup_2fa,
             fg_color=COLOR_PRIMARY, hover_color="#388E3C",
             text_color="white", font=("Arial", 12, "bold"),
-            corner_radius=8, width=320, height=44
-        ).pack(pady=(10, 6))
+            corner_radius=10, width=320, height=44
+        )
+        self._btn_setup_confirm.pack(pady=(10, 6))
 
-        ctk.CTkLabel(
+        self._setup_warning_label = ctk.CTkLabel(
             self._setup2fa_scroll,
             text="Guarda tus códigos de respaldo en un lugar seguro",
             text_color=COLOR_WARNING, font=("Arial", 10, "bold")
-        ).pack(pady=(4, 16))
+        )
+        self._setup_warning_label.pack(pady=(4, 16))
 
         # panel principal
         # tuple ctk claro/oscuro
@@ -1101,36 +1168,44 @@ class AppDBPDF:
             pass
 
     def _refresh_intro_theme(self, colors):
-        # refresco visual de pantalla intro
-        is_dark = ctk.get_appearance_mode() == "Dark"
-        hint_active = "#5c6bc0" if is_dark else "#3f51b5"
-        hint_inactive = "#2a2a5e" if is_dark else "#90a4ae"
+        # intro siempre dark, independiente del tema elegido
+        hint_active = "#5c6bc0"
+        hint_inactive = "#2a2a5e"
+        hidden_hint = "#0d0d2b"
 
         if hasattr(self, "_intro_card") and self._intro_card.winfo_exists():
             self._intro_card.configure(
                 fg_color=("#e8eeff", "#0d0d2b"),
-                border_color=("#c8d8ff", "#1a237e")
+                border_color=("#c8d8ff", "#1a237e"),
+                bg_color="transparent"
             )
         if hasattr(self, "intro_text") and self.intro_text.winfo_exists():
-            self.intro_text.configure(text_color=colors["text_primary"])
+            self.intro_text.configure(text_color="#e0e0e0")
         if hasattr(self, "_intro_subtitle") and self._intro_subtitle.winfo_exists():
-            self._intro_subtitle.configure(text_color=colors["text_secondary"])
+            self._intro_subtitle.configure(text_color="#a0b4ff")
         if hasattr(self, "_intro_tech") and self._intro_tech.winfo_exists():
-            self._intro_tech.configure(text_color=hint_active)
-        if hasattr(self, "_intro_hint") and self._intro_hint.winfo_exists():
-            current = self._intro_hint.cget("text_color")
-            self._intro_hint.configure(
-                text_color=hint_active if current in ("#5c6bc0", "#3f51b5") else hint_inactive
+            self._intro_tech.configure(
+                text_color=hint_active if getattr(self, "_intro_revealed", False) else hidden_hint
             )
+        if hasattr(self, "_intro_hint") and self._intro_hint.winfo_exists():
+            if getattr(self, "_intro_revealed", False):
+                current = self._intro_hint.cget("text_color")
+                self._intro_hint.configure(
+                    text_color=hint_active if current in ("#5c6bc0", "#3f51b5") else hint_inactive
+                )
+            else:
+                self._intro_hint.configure(text_color=hidden_hint)
 
-    def actualizar_colores_dinamicos(self):
+    def actualizar_colores_dinamicos(self, refresh_data=True):
         # actualizar colores del tema
         colors = self.get_colors()
+        auth_palette = self._get_auth_palette()
 
         self._refresh_intro_theme(colors)
 
         # colores de cards de acceso
         for card_attr, fg_color in [
+            ("_card_inicial", ("#f5f7ff", "#1e2a4a")),
             ("_card_login", ("#f5f7ff", "#1e2a4a")),
             ("_card_2fa", ("#f5f0ff", "#1e1a2e")),
             ("_card_reg", ("#f0fff4", "#142e1e")),
@@ -1139,9 +1214,17 @@ class AppDBPDF:
                 card = getattr(self, card_attr)
                 if card and card.winfo_exists():
                     card.configure(fg_color=fg_color)
+                    if card_attr in ("_card_inicial", "_card_login"):
+                        card.configure(border_color=auth_palette["card_border"], bg_color="transparent")
+                    elif card_attr == "_card_2fa":
+                        card.configure(border_color=("#d2c2f8", "#3b2a5f"), bg_color="transparent")
+                    elif card_attr == "_card_reg":
+                        card.configure(border_color=("#bfe6c9", "#255036"), bg_color="transparent")
 
         if hasattr(self, "_qr_card") and self._qr_card.winfo_exists():
             self._qr_card.configure(fg_color=("#ffffff", "#1a1a1a"))
+        if hasattr(self, "_setup2fa_scroll") and self._setup2fa_scroll.winfo_exists():
+            self._setup2fa_scroll.configure(border_color=("#e5d8ab", "#4a3a17"), bg_color="transparent")
 
         # refresco de entries principales
         for entry_name in [
@@ -1159,10 +1242,42 @@ class AppDBPDF:
         self.status.configure(text_color=colors["text_primary"])
         if hasattr(self, "_totp_timer_label") and self._totp_timer_label.winfo_exists():
             self._totp_timer_label.configure(text_color=colors["text_secondary"])
+        if hasattr(self, "_initial_subtitle") and self._initial_subtitle.winfo_exists():
+            self._initial_subtitle.configure(text_color=colors["secondary"])
+        if hasattr(self, "_initial_footer") and self._initial_footer.winfo_exists():
+            self._initial_footer.configure(text_color=colors["text_secondary"])
         if hasattr(self, "label_secret") and self.label_secret.winfo_exists():
             self.label_secret.configure(text_color=colors["warning"])
+        if hasattr(self, "_backup_hint_2fa") and self._backup_hint_2fa.winfo_exists():
+            self._backup_hint_2fa.configure(text_color=colors["warning"] if ctk.get_appearance_mode() == "Dark" else colors["secondary"])
+        if hasattr(self, "_setup_warning_label") and self._setup_warning_label.winfo_exists():
+            self._setup_warning_label.configure(text_color=colors["warning"] if ctk.get_appearance_mode() == "Dark" else colors["secondary"])
         if hasattr(self, "label_qr") and self.label_qr.winfo_exists():
             self.label_qr.configure(text_color=colors["text_primary"])
+
+        # botones de pantallas de acceso
+        button_specs = [
+            ("_btn_initial_login", "btn_primary_fg", "btn_primary_hover"),
+            ("_btn_login_next", "btn_primary_fg", "btn_primary_hover"),
+            ("_btn_2fa_verify", "btn_primary_fg", "btn_primary_hover"),
+            ("_btn_setup_confirm", "btn_primary_fg", "btn_primary_hover"),
+            ("_btn_initial_register", "btn_secondary_fg", "btn_secondary_hover"),
+            ("_btn_reg_submit", "btn_secondary_fg", "btn_secondary_hover"),
+            ("_btn_copy_secret", "btn_secondary_fg", "btn_secondary_hover"),
+            ("_btn_2fa_backup", "btn_warning_fg", "btn_warning_hover"),
+            ("_btn_login_back", "btn_neutral_fg", "btn_neutral_hover"),
+            ("_btn_2fa_back", "btn_neutral_fg", "btn_neutral_hover"),
+            ("_btn_reg_back", "btn_neutral_fg", "btn_neutral_hover"),
+        ]
+        for btn_attr, fg_key, hover_key in button_specs:
+            if hasattr(self, btn_attr):
+                btn = getattr(self, btn_attr)
+                if btn and btn.winfo_exists():
+                    btn.configure(
+                        fg_color=auth_palette[fg_key],
+                        hover_color=auth_palette[hover_key],
+                        text_color="white",
+                    )
 
         if hasattr(self, "frame_principal") and self.frame_principal.winfo_exists():
             self.frame_principal.configure(fg_color=(COLOR_BG_LIGHT, COLOR_BG_DARK))
@@ -1184,7 +1299,7 @@ class AppDBPDF:
                 self.tree.update_idletasks()
             except Exception:
                 pass
-        if self.usuario_actual:
+        if self.usuario_actual and refresh_data:
             self.ver_pdfs()
 
     
