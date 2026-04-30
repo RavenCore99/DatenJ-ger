@@ -254,6 +254,7 @@ class GradientBackground(tk.Canvas):
     def __init__(self, parent, colors_dark=None, colors_light=None, **kwargs):
         super().__init__(parent, highlightthickness=0, **kwargs)
         self._phase = 0.0
+        self._offset_x = 0.0  # drift lateral para subclases
         self._colors_dark  = colors_dark  or [("#0d0d2b", "#1a237e"), ("#1a237e", "#0d47a1")]
         self._colors_light = colors_light or [("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         self.bind("<Configure>", self._on_resize)
@@ -295,6 +296,7 @@ class GradientBackground(tk.Canvas):
 
     def _animate(self):
         self._phase += 0.012
+        self._offset_x += 0.0004  # drift lateral lento
         self._draw()
         self.after(60, self._animate)
 
@@ -371,7 +373,7 @@ class CosmicBackground(GradientBackground):
             "brightness": rnd.uniform(0.6, 1.0),
             "delay": delay,
             "active": False,
-            "color": rnd.choice(["white", "#a0c4ff", "#c8b4ff"]),
+            "color_idx": rnd.randint(0, 2),  # resuelve en draw segun tema
         }
 
     def _new_sparkle(self, initial=False):
@@ -426,7 +428,8 @@ class CosmicBackground(GradientBackground):
             color_fn = palette[star["color_idx"]]
             color = color_fn(alpha)
 
-            x = star["x"] * w
+            # drift lateral con wrap-around
+            x = ((star["x"] + self._offset_x) % 1.0) * w
             y = star["y"] * h
             s = star["size"] * (0.6 + 0.4 * twinkle)
             self.create_oval(x - s, y - s, x + s, y + s,
@@ -440,10 +443,10 @@ class CosmicBackground(GradientBackground):
                     comet["active"] = True
                 continue
 
-            # mover
+            # mover con drift lateral sutil
             dx = math.cos(comet["angle"]) * comet["speed"]
             dy = math.sin(comet["angle"]) * comet["speed"]
-            comet["x"] += dx
+            comet["x"] += dx + 0.0002
             comet["y"] += dy
 
             # cola
@@ -470,11 +473,15 @@ class CosmicBackground(GradientBackground):
                 self.create_line(sx, sy, ex, ey,
                                  fill=seg_color, width=line_w)
 
-            # cabeza
+            # cabeza — color adaptado al tema
+            comet_colors_dark = ["white", "#a0c4ff", "#c8b4ff"]
+            comet_colors_light = ["#90a4ae", "#5c6bc0", "#7e57c2"]
+            comet_palette = comet_colors_dark if is_dark else comet_colors_light
+            head_color = comet_palette[comet["color_idx"]]
             head_size = 2.5 * comet["brightness"]
             self.create_oval(cx - head_size, cy - head_size,
                              cx + head_size, cy + head_size,
-                             fill=comet["color"], outline="")
+                             fill=head_color, outline="")
 
             # relanzar
             if comet["x"] > 1.3 or comet["y"] > 1.3:
@@ -517,7 +524,8 @@ class CosmicBackground(GradientBackground):
             if sz < 0.5:
                 continue
 
-            sx = sp["x"] * w
+            # drift lateral suave (mitad de velocidad que estrellas)
+            sx = ((sp["x"] + self._offset_x * 0.5) % 1.0) * w
             sy = sp["y"] * h
 
             color_fn = s_palette[sp["color_idx"]]
