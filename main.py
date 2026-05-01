@@ -474,17 +474,18 @@ class AppDBPDF:
         # pantalla login
         self.frame_login = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        _bg_login = GradientBackground(
+        _bg_login = CosmicBackground(
             self.frame_login,
-            colors_dark=[("#1a1a2e", "#0d47a1"), ("#0d47a1", "#1a1a2e")],
-            colors_light=[("#e8f5e9", "#c8e6c9"), ("#c8e6c9", "#e8f5e9")]
+            num_stars=30, num_comets=2, num_sparkles=0,
+            colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
+            colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         )
         _bg_login.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_login = ctk.CTkFrame(
             self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=18,
-            bg_color=("#d8edda", "#0d2a54")
+            bg_color=("#e3f2fd", "#1a1a2e")
         )
         self._card_login = card_login
         card_login.place(relx=0.5, rely=0.5, anchor="center")
@@ -563,17 +564,18 @@ class AppDBPDF:
                          # pantalla 2fa
         self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        _bg_2fa = GradientBackground(
+        _bg_2fa = CosmicBackground(
             self.frame_2fa,
-            colors_dark=[("#1a1a2e", "#4a0072"), ("#4a0072", "#1a1a2e")],
-            colors_light=[("#f3e5f5", "#e1bee7"), ("#e1bee7", "#f3e5f5")]
+            num_stars=30, num_comets=2, num_sparkles=0,
+            colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
+            colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         )
         _bg_2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_2fa = ctk.CTkFrame(
-            self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
+            self.frame_2fa, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=18,
-            bg_color=("#ead5f5", "#30004e")
+            bg_color=("#e3f2fd", "#1a1a2e")
         )
         self._card_2fa = card_2fa
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
@@ -650,17 +652,18 @@ class AppDBPDF:
         # pantalla registro
         self.frame_registro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        _bg_reg = GradientBackground(
+        _bg_reg = CosmicBackground(
             self.frame_registro,
-            colors_dark=[("#1a2e1a", "#0d3b2e"), ("#0d3b2e", "#1a2e1a")],
-            colors_light=[("#e8f5e9", "#c8e6c9"), ("#c8e6c9", "#a5d6a7")]
+            num_stars=30, num_comets=2, num_sparkles=0,
+            colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
+            colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         )
         _bg_reg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         card_reg = ctk.CTkFrame(
-            self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
+            self.frame_registro, fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=18,
-            bg_color=("#d8edda", "#122e22")
+            bg_color=("#e3f2fd", "#1a1a2e")
         )
         self._card_reg = card_reg
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
@@ -745,19 +748,20 @@ class AppDBPDF:
         # setup 2fa
         self.frame_setup_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
 
-        _bg_s2fa = GradientBackground(
+        _bg_s2fa = CosmicBackground(
             self.frame_setup_2fa,
-            colors_dark=[("#2e1a00", "#5d2d00"), ("#5d2d00", "#2e1a00")],
-            colors_light=[("#fff8e1", "#ffe082"), ("#ffe082", "#fff8e1")]
+            num_stars=30, num_comets=2, num_sparkles=0,
+            colors_dark=[("#1a1a2e", "#16213e"), ("#16213e", "#0f3460")],
+            colors_light=[("#e3f2fd", "#bbdefb"), ("#bbdefb", "#e8f5e9")]
         )
         _bg_s2fa.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         # scroll para qr
         self._setup2fa_scroll = ctk.CTkScrollableFrame(
             self.frame_setup_2fa,
-            fg_color=("#fffde7", "#1e1600"),
+            fg_color=("#f5f7ff", "#1e2a4a"),
             corner_radius=18,
-            bg_color=("#ffe082", "#3a2200"),
+            bg_color=("#e3f2fd", "#1a1a2e"),
             width=460, height=520
         )
         self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
@@ -1204,12 +1208,14 @@ class AppDBPDF:
 
         self._refresh_intro_theme(colors)
 
-        # colores de cards de acceso (bg_color coincide con gradiente padre)
+        # colores de cards de acceso (todos unificados, cosmos bg)
+        _unified_fg = ("#f5f7ff", "#1e2a4a")
+        _unified_bg = ("#e3f2fd", "#1a1a2e")
         card_theme_map = [
-            ("_card_inicial", ("#f5f7ff", "#1e2a4a"), ("#e3f2fd", "#1a1a2e")),
-            ("_card_login",   ("#f5f7ff", "#1e2a4a"), ("#d8edda", "#0d2a54")),
-            ("_card_2fa",     ("#f5f0ff", "#1e1a2e"), ("#ead5f5", "#30004e")),
-            ("_card_reg",     ("#f0fff4", "#142e1e"), ("#d8edda", "#122e22")),
+            ("_card_inicial", _unified_fg, _unified_bg),
+            ("_card_login",   _unified_fg, _unified_bg),
+            ("_card_2fa",     _unified_fg, _unified_bg),
+            ("_card_reg",     _unified_fg, _unified_bg),
         ]
         for card_attr, fg_color, bg_color in card_theme_map:
             if hasattr(self, card_attr):
@@ -1220,7 +1226,7 @@ class AppDBPDF:
         if hasattr(self, "_qr_card") and self._qr_card.winfo_exists():
             self._qr_card.configure(fg_color=("#ffffff", "#1a1a1a"))
         if hasattr(self, "_setup2fa_scroll") and self._setup2fa_scroll.winfo_exists():
-            self._setup2fa_scroll.configure(bg_color=("#ffe082", "#3a2200"))
+            self._setup2fa_scroll.configure(fg_color=_unified_fg, bg_color=_unified_bg)
 
         # refresco de entries principales
         for entry_name in [
