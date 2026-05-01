@@ -29,7 +29,7 @@ from database import (conectar_db, hash_contrasena, verify_contrasena,
 from ui_components import (Notification, ProgressBarModerno, DashboardWidget,
                            GradientBackground, CosmicBackground,
                            PasswordStrengthBar, ConfirmDialog,
-                           PDFViewerWindow, get_dynamic_colors)
+                           PDFViewerWindow, get_dynamic_colors, shake_widget)
 from reporter import ReporteInventario
 from icons import get_icon
 from personas import GestorPersonas
@@ -2097,6 +2097,14 @@ class AppDBPDF:
                     record_failed_attempt(self.cursor, self.conn, nombre)
                     self._audit("Login fallido: contraseña incorrecta", usuario_id=usuario_id)
 
+                    # aplicar efecto shake a los campos de entrada
+                    shake_widget(self.entry_usuario_login, distance=5, duration=400, repeats=5)
+                    shake_widget(self.entry_contrasena_login, distance=5, duration=400, repeats=5)
+                    
+                    # limpiar campo de contraseña
+                    self.entry_contrasena_login.delete(0, tk.END)
+                    self.entry_contrasena_login.focus()
+
                     # contador local para sugerir reset
                     self._login_fail_count += 1
                     if self._login_fail_count >= 3 and hasattr(self, '_btn_forgot_pw'):
@@ -2121,10 +2129,19 @@ class AppDBPDF:
                             notification_type="error"
                         )
             else:
+                # aplicar shake de advertencia cuando usuario no existe
+                shake_widget(self.entry_usuario_login, distance=6, duration=500, repeats=4)
+                
+                # limpiar ambos campos para seguridad
+                self.entry_usuario_login.delete(0, tk.END)
+                self.entry_contrasena_login.delete(0, tk.END)
+                self.entry_usuario_login.focus()
+                
                 Notification(
-                    self.root, "Error",
-                    "Usuario no encontrado",
-                    notification_type="error"
+                    self.root, "Usuario no registrado",
+                    f"El usuario '{nombre}' no existe en el sistema.\n"
+                    "¿Deseas registrarte como nuevo usuario?",
+                    notification_type="warning", duration=4000
                 )
         except Exception as e:
             Notification(self.root, "Error", str(e), notification_type="error")
