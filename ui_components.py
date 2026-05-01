@@ -62,6 +62,67 @@ COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK = "#e0e0e0"
 
 
+# efecto shake para campos de error
+
+
+def shake_widget(widget, distance=6, duration=500, repeats=6):
+    
+    
+    try:
+        if not widget.winfo_exists():
+            return
+    except Exception:
+        return
+    
+    original_x = widget.winfo_x()
+    original_y = widget.winfo_y()
+    
+    step_duration = duration // (repeats * 2)
+    current_repeat = 0
+    direction = 1
+    
+    def _shake_step(repeat, dir_val):
+        try:
+            if not widget.winfo_exists():
+                return
+            
+            if repeat >= repeats:
+                # restaurar posición original
+                widget.place(x=original_x, y=original_y)
+                return
+            
+            offset = distance * dir_val
+            widget.place(x=original_x + offset, y=original_y)
+            
+            # siguiente paso
+            next_dir = -dir_val
+            next_repeat = repeat + (1 if next_dir == 1 else 0)
+            
+            widget.after(step_duration, _shake_step, next_repeat, next_dir)
+        except Exception:
+            pass
+    
+    # convertir a place si está usando pack o grid
+    widget_parent = widget.master
+    try:
+        # primero, actualizar idletasks para obtener posición actual
+        widget.update_idletasks()
+        
+        # obtener la geometría relativa
+        x = widget.winfo_x()
+        y = widget.winfo_y()
+        width = widget.winfo_width()
+        height = widget.winfo_height()
+        
+        # convertir a place
+        widget.place(x=x, y=y, width=width, height=height)
+        
+        # iniciar shake
+        _shake_step(0, 1)
+    except Exception:
+        pass
+
+
 # notificaciones
 
 
