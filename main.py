@@ -57,6 +57,27 @@ COLOR_TEXT_LIGHT = "#1a237e"
 COLOR_TEXT_DARK  = "#e0e0e0"
 
 
+def _bind_mousewheel(scrollable_frame):
+    # scroll con rueda/touchpad en Linux (Button-4/5)
+    def _on_mousewheel(event):
+        try:
+            canvas = scrollable_frame._parent_canvas
+            if event.num == 4:
+                canvas.yview_scroll(-3, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(3, "units")
+        except Exception:
+            pass
+
+    def _bind_all(widget):
+        widget.bind("<Button-4>", _on_mousewheel, add="+")
+        widget.bind("<Button-5>", _on_mousewheel, add="+")
+        for child in widget.winfo_children():
+            _bind_all(child)
+
+    scrollable_frame.after(100, lambda: _bind_all(scrollable_frame))
+
+
 # clase principal
 
 
@@ -83,6 +104,7 @@ class AppDBPDF:
         self.usuario_nombre = None
         self._session_key   = None
         self.animating = False
+        self._login_fail_count = 0
         self._search_timer = None
         self._configure_timer = None
         self._idle_timer = None
@@ -559,7 +581,19 @@ class AppDBPDF:
             text_color="white", font=("Arial", 11, "bold"),
             corner_radius=10, width=320, height=38
         )
-        self._btn_login_back.pack(pady=(0, 28))
+        self._btn_login_back.pack(pady=(0, 8))
+
+        # boton reset pwd (oculto hasta 3 fallos)
+        self._btn_forgot_pw = ctk.CTkButton(
+            card_login, text="  ¿Olvidaste tu contraseña?",
+            image=get_icon("key", 14),
+            compound="left",
+            command=self._abrir_reset_password,
+            fg_color=("#ef6c00", "#e65100"), hover_color=("#d84315", "#bf360c"),
+            text_color="white", font=("Arial", 10, "bold"),
+            corner_radius=10, width=320, height=34
+        )
+        # no se hace pack hasta que se necesite
 
                          # pantalla 2fa
         self.frame_2fa = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
@@ -602,11 +636,28 @@ class AppDBPDF:
         self.entry_2fa_code.bind("<Return>", lambda e: self.verificar_2fa())
 
                      # countdown ring totp
-        self._totp_timer_label = ctk.CTkLabel(
-            card_2fa, text="30s", font=("Arial", 10),
-            text_color=colors["text_secondary"]
+        timer_frame = ctk.CTkFrame(card_2fa, fg_color="transparent", width=60, height=60)
+        timer_frame.pack(pady=(4, 6))
+        timer_frame.pack_propagate(False)
+
+        self._totp_ring = tk.Canvas(
+            timer_frame, width=56, height=56,
+            bg="#1e2a4a", highlightthickness=0, bd=0
         )
-        self._totp_timer_label.pack()
+        self._totp_ring.pack(expand=True)
+        # fondo del ring
+        self._totp_ring.create_oval(4, 4, 52, 52, outline="#2a3f72", width=3, tags="bg_ring")
+        # arco progreso
+        self._totp_ring.create_arc(
+            4, 4, 52, 52, start=90, extent=360,
+            outline="#4CAF50", width=3, style="arc", tags="arc_ring"
+        )
+        # texto central
+        self._totp_ring.create_text(
+            28, 28, text="30", fill="#e0e0e0",
+            font=("Arial", 12, "bold"), tags="timer_text"
+        )
+        self._totp_timer_label = None  # ya no se usa label aparte
         self._start_totp_timer()
 
         self._btn_2fa_verify = ctk.CTkButton(
@@ -765,6 +816,7 @@ class AppDBPDF:
             width=460, height=520
         )
         self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
+        _bind_mousewheel(self._setup2fa_scroll)
 
         ctk.CTkLabel(
             self._setup2fa_scroll,
@@ -1743,19 +1795,28 @@ class AppDBPDF:
                          notification_type="success", duration=2000)
 
     def _start_totp_timer(self):
-        # atualiza la etiqueta de cuenta regresiva TOTP cada segundo mientras el marco de 2FA esté visible
+        # countdown ring circular en el panel 2FA
         import time
 
         def tick():
             if not self.root.winfo_exists():
                 return
             remaining = 30 - (int(time.time()) % 30)
-            if hasattr(self, '_totp_timer_label') and self._totp_timer_label.winfo_exists():
+            if hasattr(self, '_totp_ring') and self._totp_ring.winfo_exists():
+                # color progresivo
                 color = "#4CAF50" if remaining > 10 else "#FF9800" if remaining > 5 else "#F44336"
-                self._totp_timer_label.configure(
-                    text=f"Código válido: {remaining}s",
-                    text_color=color
-                )
+                extent = (remaining / 30.0) * 360
+
+                # adaptar fondo al tema
+                is_dark = ctk.get_appearance_mode() == "Dark"
+                bg = "#1e2a4a" if is_dark else "#f5f7ff"
+                ring_bg = "#2a3f72" if is_dark else "#c5cae9"
+                txt_color = "#e0e0e0" if is_dark else "#1a237e"
+
+                self._totp_ring.configure(bg=bg)
+                self._totp_ring.itemconfigure("bg_ring", outline=ring_bg)
+                self._totp_ring.itemconfigure("arc_ring", outline=color, extent=extent)
+                self._totp_ring.itemconfigure("timer_text", text=str(remaining), fill=txt_color)
             self.root.after(1000, tick)
 
         tick()
@@ -1826,6 +1887,9 @@ class AppDBPDF:
 
     def mostrar_inicial(self):
         # muestra la pantalla inicial con fade
+        self._login_fail_count = 0
+        if hasattr(self, '_btn_forgot_pw'):
+            self._btn_forgot_pw.pack_forget()
         def _show():
             self._hide_all_frames()
             self.frame_inicial.pack(expand=True, fill="both")
@@ -2032,6 +2096,13 @@ class AppDBPDF:
                 else:
                     record_failed_attempt(self.cursor, self.conn, nombre)
                     self._audit("Login fallido: contraseña incorrecta", usuario_id=usuario_id)
+
+                    # contador local para sugerir reset
+                    self._login_fail_count += 1
+                    if self._login_fail_count >= 3 and hasattr(self, '_btn_forgot_pw'):
+                        if not self._btn_forgot_pw.winfo_ismapped():
+                            self._btn_forgot_pw.pack(pady=(4, 20))
+
                     locked2, secs2 = check_account_locked(self.cursor, nombre)
                     if locked2:
                         Notification(
@@ -2041,9 +2112,12 @@ class AppDBPDF:
                             notification_type="error", duration=5000
                         )
                     else:
+                        remaining = 3 - self._login_fail_count
+                        msg = "Contraseña incorrecta"
+                        if remaining > 0 and self._login_fail_count >= 2:
+                            msg += f"\n({remaining} intento{'s' if remaining != 1 else ''} antes de sugerir reseteo)"
                         Notification(
-                            self.root, "Error",
-                            "Contraseña incorrecta",
+                            self.root, "Error", msg,
                             notification_type="error"
                         )
             else:
@@ -2054,6 +2128,370 @@ class AppDBPDF:
                 )
         except Exception as e:
             Notification(self.root, "Error", str(e), notification_type="error")
+
+    def _abrir_reset_password(self):
+        # modal para restablecer contraseña via 2FA
+        colors = get_dynamic_colors()
+        win = ctk.CTkToplevel(self.root)
+        win.title("Restablecer Contraseña — DatenJäger")
+        win.geometry("460x420")
+        win.resizable(False, False)
+        win.transient(self.root)
+        win.configure(fg_color=colors["bg_secondary"])
+        win.withdraw()
+
+        # header
+        ctk.CTkLabel(
+            win, text="  Restablecer Contraseña",
+            image=get_icon("key", 20),
+            compound="left",
+            font=("Arial", 18, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(pady=(20, 4))
+        ctk.CTkLabel(
+            win, text="Verifica tu identidad con 2FA para continuar",
+            font=("Arial", 10),
+            text_color=colors["text_secondary"]
+        ).pack(pady=(0, 16))
+
+        # container para pasos (se reutiliza)
+        step_frame = ctk.CTkFrame(win, fg_color="transparent")
+        step_frame.pack(fill="both", expand=True, padx=30)
+
+        state = {"usuario_id": None, "nombre": None, "totp_secret_enc": None}
+
+        def _clear_step():
+            for w in step_frame.winfo_children():
+                w.destroy()
+
+        def _step1_usuario():
+            _clear_step()
+            ctk.CTkLabel(
+                step_frame, text="Nombre de usuario:",
+                font=("Arial", 11, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(anchor="w", pady=(10, 4))
+
+            entry_user = ctk.CTkEntry(
+                step_frame, width=380, height=42,
+                corner_radius=8, border_width=2,
+                font=("Arial", 12),
+                placeholder_text="Ingresa tu usuario"
+            )
+            entry_user.pack(pady=(0, 10))
+
+            # pre-rellenar si ya escribio en login
+            login_user = self.entry_usuario_login.get().strip()
+            if login_user:
+                entry_user.insert(0, login_user)
+
+            def _validar_usuario():
+                nombre = entry_user.get().strip()
+                if not nombre:
+                    Notification(win, "Error", "Ingresa tu usuario",
+                                 notification_type="error")
+                    return
+                try:
+                    self.cursor.execute(
+                        "SELECT id, totp_enabled, totp_secret FROM Usuarios WHERE nombre = ?",
+                        (nombre,)
+                    )
+                    row = self.cursor.fetchone()
+                    if not row:
+                        Notification(win, "Error", "Usuario no encontrado",
+                                     notification_type="error")
+                        return
+                    uid, totp_enabled, totp_enc = row
+                    if not totp_enabled:
+                        Notification(win, "Error",
+                                     "Este usuario no tiene 2FA activo.\n"
+                                     "No es posible restablecer la contraseña sin 2FA.",
+                                     notification_type="error", duration=5000)
+                        return
+                    state["usuario_id"] = uid
+                    state["nombre"] = nombre
+                    state["totp_secret_enc"] = totp_enc
+                    _step2_2fa()
+                except Exception as ex:
+                    Notification(win, "Error", str(ex), notification_type="error")
+
+            ctk.CTkButton(
+                step_frame, text="  Siguiente",
+                image=get_icon("arrow-right", 16),
+                compound="left",
+                command=_validar_usuario,
+                fg_color=COLOR_SECONDARY, hover_color="#1565c0",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=10, width=320, height=42
+            ).pack(pady=(8, 4))
+            entry_user.bind("<Return>", lambda e: _validar_usuario())
+
+        def _step2_2fa():
+            _clear_step()
+            ctk.CTkLabel(
+                step_frame, text=f"Usuario: {state['nombre']}",
+                font=("Arial", 11), text_color=colors["secondary"]
+            ).pack(pady=(6, 10))
+            ctk.CTkLabel(
+                step_frame, text="Ingresa el código de 6 dígitos de tu autenticador:",
+                font=("Arial", 11, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(anchor="w", pady=(0, 4))
+
+            entry_code = ctk.CTkEntry(
+                step_frame, width=300, height=48,
+                corner_radius=8, border_width=2,
+                font=("Arial", 22, "bold"),
+                justify="center",
+                placeholder_text="000000"
+            )
+            entry_code.pack(pady=(0, 10))
+            entry_code.focus()
+
+            def _validar_2fa():
+                code = entry_code.get().strip()
+                if not code or len(code) != 6:
+                    Notification(win, "Error", "Ingresa un código de 6 dígitos",
+                                 notification_type="error")
+                    return
+                try:
+                    totp_enc = state["totp_secret_enc"]
+                    # intentar descifrar el secret
+                    totp_plain = None
+
+                    # probar descifrado ENCK: (necesita session key que no tenemos)
+                    # probar descifrado legacy ENC: con contraseña (tampoco tenemos)
+                    # fallback: verificar directamente si es plaintext o usar pyotp
+                    if totp_enc and totp_enc.startswith("ENCK:"):
+                        # no podemos descifrar sin session key
+                        # pero podemos intentar con backup codes
+                        Notification(win, "Info",
+                                     "Verificación alternativa necesaria.\n"
+                                     "Ingresa uno de tus códigos de respaldo:",
+                                     notification_type="warning", duration=4000)
+                        _step2b_backup()
+                        return
+                    elif totp_enc and totp_enc.startswith("ENC:"):
+                        # legacy — tampoco tenemos la contraseña
+                        Notification(win, "Info",
+                                     "Verificación alternativa necesaria.\n"
+                                     "Ingresa uno de tus códigos de respaldo:",
+                                     notification_type="warning", duration=4000)
+                        _step2b_backup()
+                        return
+                    else:
+                        # plaintext secret
+                        totp_plain = totp_enc
+
+                    if totp_plain:
+                        totp = pyotp.TOTP(totp_plain)
+                        if totp.verify(code, valid_window=1):
+                            _step3_new_password()
+                        else:
+                            Notification(win, "Error", "Código 2FA inválido",
+                                         notification_type="error")
+                    else:
+                        Notification(win, "Error", "No se pudo verificar el código",
+                                     notification_type="error")
+                except Exception as ex:
+                    Notification(win, "Error", str(ex), notification_type="error")
+
+            ctk.CTkButton(
+                step_frame, text="  Verificar",
+                image=get_icon("check-circle", 16),
+                compound="left",
+                command=_validar_2fa,
+                fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=10, width=300, height=42
+            ).pack(pady=(8, 4))
+            entry_code.bind("<Return>", lambda e: _validar_2fa())
+
+        def _step2b_backup():
+            # paso alternativo: validar con backup code
+            _clear_step()
+            ctk.CTkLabel(
+                step_frame, text="Verificación con Código de Respaldo",
+                font=("Arial", 13, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(pady=(10, 4))
+            ctk.CTkLabel(
+                step_frame, text="Ingresa uno de tus códigos de respaldo (8 caracteres):",
+                font=("Arial", 10),
+                text_color=colors["text_secondary"]
+            ).pack(pady=(0, 8))
+
+            entry_backup = ctk.CTkEntry(
+                step_frame, width=300, height=48,
+                corner_radius=8, border_width=2,
+                font=("Arial", 18, "bold"),
+                justify="center",
+                placeholder_text="XXXXXXXX"
+            )
+            entry_backup.pack(pady=(0, 10))
+            entry_backup.focus()
+
+            def _validar_backup():
+                code = entry_backup.get().strip().upper()
+                if not code:
+                    Notification(win, "Error", "Ingresa un código de respaldo",
+                                 notification_type="error")
+                    return
+                try:
+                    self.cursor.execute(
+                        "SELECT backup_codes FROM Usuarios WHERE id = ?",
+                        (state["usuario_id"],)
+                    )
+                    row = self.cursor.fetchone()
+                    if not row or not row[0]:
+                        Notification(win, "Error", "No hay códigos de respaldo registrados",
+                                     notification_type="error")
+                        return
+
+                    backup_enc = row[0]
+                    # intentar descifrar
+                    backup_plain = None
+                    if backup_enc.startswith("ENCK:") or backup_enc.startswith("ENC:"):
+                        # no podemos descifrar sin key
+                        Notification(win, "Error",
+                                     "No es posible verificar sin la sesión activa.\n"
+                                     "Contacta al administrador del sistema.",
+                                     notification_type="error", duration=5000)
+                        return
+                    else:
+                        backup_plain = backup_enc
+
+                    if backup_plain:
+                        codes = [c.strip() for c in backup_plain.split(",")]
+                        if code in codes:
+                            # codigo valido, consumirlo
+                            codes.remove(code)
+                            self.cursor.execute(
+                                "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
+                                (",".join(codes), state["usuario_id"])
+                            )
+                            self.conn.commit()
+                            _step3_new_password()
+                        else:
+                            Notification(win, "Error", "Código de respaldo inválido",
+                                         notification_type="error")
+                except Exception as ex:
+                    Notification(win, "Error", str(ex), notification_type="error")
+
+            ctk.CTkButton(
+                step_frame, text="  Verificar Código",
+                image=get_icon("check-circle", 16),
+                compound="left",
+                command=_validar_backup,
+                fg_color=COLOR_WARNING, hover_color="#e65100",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=10, width=300, height=42
+            ).pack(pady=(8, 4))
+            entry_backup.bind("<Return>", lambda e: _validar_backup())
+
+        def _step3_new_password():
+            _clear_step()
+            win.geometry("460x520")
+            ctk.CTkLabel(
+                step_frame, text="Identidad verificada",
+                font=("Arial", 11), text_color=COLOR_PRIMARY
+            ).pack(pady=(6, 8))
+            ctk.CTkLabel(
+                step_frame, text="Nueva contraseña:",
+                font=("Arial", 11, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(anchor="w", pady=(0, 4))
+
+            entry_new = ctk.CTkEntry(
+                step_frame, width=380, height=42,
+                corner_radius=8, border_width=2,
+                font=("Arial", 12), show="●",
+                placeholder_text="Mínimo 8 caracteres"
+            )
+            entry_new.pack(pady=(0, 4))
+
+            strength_bar = PasswordStrengthBar(step_frame, width=380)
+            strength_bar.pack(pady=(0, 10))
+
+            def _on_pw_change(*_):
+                score, label, color = password_strength(entry_new.get())
+                strength_bar.set_strength(score, label, color)
+            entry_new.bind("<KeyRelease>", _on_pw_change)
+
+            ctk.CTkLabel(
+                step_frame, text="Confirmar contraseña:",
+                font=("Arial", 11, "bold"),
+                text_color=colors["text_primary"]
+            ).pack(anchor="w", pady=(0, 4))
+
+            entry_confirm = ctk.CTkEntry(
+                step_frame, width=380, height=42,
+                corner_radius=8, border_width=2,
+                font=("Arial", 12), show="●",
+                placeholder_text="Repite la contraseña"
+            )
+            entry_confirm.pack(pady=(0, 10))
+
+            def _guardar():
+                pw = entry_new.get()
+                pw2 = entry_confirm.get()
+                if not pw or len(pw) < 8:
+                    Notification(win, "Error", "La contraseña debe tener al menos 8 caracteres",
+                                 notification_type="error")
+                    return
+                if pw != pw2:
+                    Notification(win, "Error", "Las contraseñas no coinciden",
+                                 notification_type="error")
+                    return
+                score, _, _ = password_strength(pw)
+                if score < 2:
+                    Notification(win, "Advertencia",
+                                 "La contraseña es muy débil. Usa mayúsculas, números y símbolos.",
+                                 notification_type="warning")
+                    return
+                try:
+                    new_hash = hash_contrasena(pw)
+                    self.cursor.execute(
+                        "UPDATE Usuarios SET contrasena = ? WHERE id = ?",
+                        (new_hash, state["usuario_id"])
+                    )
+                    reset_failed_attempts(self.cursor, self.conn, state["nombre"])
+                    self.cursor.execute(
+                        "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) "
+                        "VALUES (?, NULL, ?, ?)",
+                        ("Contraseña restablecida (vía 2FA/backup)",
+                         state["usuario_id"], datetime.now().isoformat())
+                    )
+                    self.conn.commit()
+
+                    # resetear contador y ocultar boton
+                    self._login_fail_count = 0
+                    self._btn_forgot_pw.pack_forget()
+
+                    win.destroy()
+                    Notification(self.root, "Contraseña Actualizada",
+                                 "Tu contraseña ha sido restablecida exitosamente.\n"
+                                 "Ya puedes iniciar sesión con la nueva contraseña.",
+                                 notification_type="success", duration=5000)
+                    # limpiar campos de login
+                    self.entry_contrasena_login.delete(0, tk.END)
+                except Exception as ex:
+                    Notification(win, "Error", str(ex), notification_type="error")
+
+            ctk.CTkButton(
+                step_frame, text="  Guardar Nueva Contraseña",
+                image=get_icon("save", 18),
+                compound="left",
+                command=_guardar,
+                fg_color=COLOR_PRIMARY, hover_color="#388E3C",
+                text_color="white", font=("Arial", 12, "bold"),
+                corner_radius=10, width=380, height=44
+            ).pack(pady=(8, 4))
+            entry_confirm.bind("<Return>", lambda e: _guardar())
+
+        # iniciar en paso 1
+        _step1_usuario()
+        self._show_modal_window(win, delay_ms=100)
 
     def mostrar_setup_2fa(self):
         # setup 2fa
@@ -3024,7 +3462,21 @@ class AppDBPDF:
         animate()
 
     def cerrar_conexion_y_salir(self):
-        # cerrar y salir
+        # confirmar cierre si hay sesion activa
+        if self.usuario_actual:
+            dlg = ConfirmDialog(
+                self.root,
+                "  Salir de DatenJäger",
+                f"Hay una sesión activa ({self.usuario_nombre}).\n"
+                "¿Deseas cerrar la sesión y salir de la aplicación?",
+                confirm_text="Cerrar y Salir",
+                cancel_text="Cancelar",
+                danger=True
+            )
+            if not dlg.result:
+                return
+            self._stop_idle_tracking()
+            self._audit("Logout (cierre de ventana)")
         self.cerrar_conexion()
         self.root.destroy()
 
@@ -3049,6 +3501,7 @@ if __name__ == "__main__":
     root = ctk.CTk()
     app = AppDBPDF(root)
     root.protocol("WM_DELETE_WINDOW", app.cerrar_conexion_y_salir)
+    root.bind("<Alt-F4>", lambda e: app.cerrar_conexion_y_salir())
     root.mainloop()
 
 
