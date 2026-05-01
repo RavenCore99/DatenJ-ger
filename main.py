@@ -241,15 +241,18 @@ class AppDBPDF:
         self.frame_intro = ctk.CTkFrame(self.root, fg_color=COLOR_BG_DARK)
         self.frame_intro.pack(expand=True, fill="both")
 
-        # fondo cosmico
-        self._intro_bg = CosmicBackground(self.frame_intro, num_stars=70)
+        # fondo cosmico (siempre dark, no cambia con tema)
+        self._intro_bg = CosmicBackground(
+            self.frame_intro, num_stars=70,
+            colors_dark=[("#050510", "#0d1b3e"), ("#0d1b3e", "#1a0a2e")],
+            colors_light=[("#050510", "#0d1b3e"), ("#0d1b3e", "#1a0a2e")]
+        )
         self._intro_bg.place(relx=0, rely=0, relwidth=1, relheight=1)
 
         intro_card = ctk.CTkFrame(
-            self.frame_intro, fg_color=("#e8eeff", "#0d0d2b"),
-            corner_radius=24, border_width=1,
-            border_color=("#c8d8ff", "#1a237e"),
-            bg_color="transparent"
+            self.frame_intro, fg_color="#0d0d2b",
+            corner_radius=18,
+            bg_color="#050510"
         )
         self._intro_card = intro_card
         intro_card.place(relx=0.5, rely=0.5, anchor="center")
@@ -407,9 +410,8 @@ class AppDBPDF:
 
         card_inicial = ctk.CTkFrame(
             self.frame_inicial, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=24, border_width=1,
-            border_color=("#b6c8f7", "#2a3f72"),
-            bg_color="transparent"
+            corner_radius=18,
+            bg_color=("#e3f2fd", "#1a1a2e")
         )
         self._card_inicial = card_inicial
         card_inicial.place(relx=0.5, rely=0.5, anchor="center")
@@ -481,9 +483,8 @@ class AppDBPDF:
 
         card_login = ctk.CTkFrame(
             self.frame_login, fg_color=("#f5f7ff", "#1e2a4a"),
-            corner_radius=24, border_width=1,
-            border_color=("#b6c8f7", "#2a3f72"),
-            bg_color="transparent"
+            corner_radius=18,
+            bg_color=("#d8edda", "#0d2a54")
         )
         self._card_login = card_login
         card_login.place(relx=0.5, rely=0.5, anchor="center")
@@ -571,9 +572,8 @@ class AppDBPDF:
 
         card_2fa = ctk.CTkFrame(
             self.frame_2fa, fg_color=("#f5f0ff", "#1e1a2e"),
-            corner_radius=24, border_width=1,
-            border_color=("#d2c2f8", "#3b2a5f"),
-            bg_color="transparent"
+            corner_radius=18,
+            bg_color=("#ead5f5", "#30004e")
         )
         self._card_2fa = card_2fa
         card_2fa.place(relx=0.5, rely=0.5, anchor="center")
@@ -659,9 +659,8 @@ class AppDBPDF:
 
         card_reg = ctk.CTkFrame(
             self.frame_registro, fg_color=("#f0fff4", "#142e1e"),
-            corner_radius=24, border_width=1,
-            border_color=("#bfe6c9", "#255036"),
-            bg_color="transparent"
+            corner_radius=18,
+            bg_color=("#d8edda", "#122e22")
         )
         self._card_reg = card_reg
         card_reg.place(relx=0.5, rely=0.5, anchor="center")
@@ -757,9 +756,8 @@ class AppDBPDF:
         self._setup2fa_scroll = ctk.CTkScrollableFrame(
             self.frame_setup_2fa,
             fg_color=("#fffde7", "#1e1600"),
-            corner_radius=22, border_width=1,
-            border_color=("#e5d8ab", "#4a3a17"),
-            bg_color="transparent",
+            corner_radius=18,
+            bg_color=("#ffe082", "#3a2200"),
             width=460, height=520
         )
         self._setup2fa_scroll.place(relx=0.5, rely=0.5, anchor="center")
@@ -1173,11 +1171,14 @@ class AppDBPDF:
         hint_inactive = "#2a2a5e"
         hidden_hint = "#0d0d2b"
 
+        # forzar frame intro a dark
+        if hasattr(self, "frame_intro") and self.frame_intro.winfo_exists():
+            self.frame_intro.configure(fg_color=COLOR_BG_DARK)
+
         if hasattr(self, "_intro_card") and self._intro_card.winfo_exists():
             self._intro_card.configure(
-                fg_color=("#e8eeff", "#0d0d2b"),
-                border_color=("#c8d8ff", "#1a237e"),
-                bg_color="transparent"
+                fg_color="#0d0d2b",
+                bg_color="#050510"
             )
         if hasattr(self, "intro_text") and self.intro_text.winfo_exists():
             self.intro_text.configure(text_color="#e0e0e0")
@@ -1203,28 +1204,23 @@ class AppDBPDF:
 
         self._refresh_intro_theme(colors)
 
-        # colores de cards de acceso
-        for card_attr, fg_color in [
-            ("_card_inicial", ("#f5f7ff", "#1e2a4a")),
-            ("_card_login", ("#f5f7ff", "#1e2a4a")),
-            ("_card_2fa", ("#f5f0ff", "#1e1a2e")),
-            ("_card_reg", ("#f0fff4", "#142e1e")),
-        ]:
+        # colores de cards de acceso (bg_color coincide con gradiente padre)
+        card_theme_map = [
+            ("_card_inicial", ("#f5f7ff", "#1e2a4a"), ("#e3f2fd", "#1a1a2e")),
+            ("_card_login",   ("#f5f7ff", "#1e2a4a"), ("#d8edda", "#0d2a54")),
+            ("_card_2fa",     ("#f5f0ff", "#1e1a2e"), ("#ead5f5", "#30004e")),
+            ("_card_reg",     ("#f0fff4", "#142e1e"), ("#d8edda", "#122e22")),
+        ]
+        for card_attr, fg_color, bg_color in card_theme_map:
             if hasattr(self, card_attr):
                 card = getattr(self, card_attr)
                 if card and card.winfo_exists():
-                    card.configure(fg_color=fg_color)
-                    if card_attr in ("_card_inicial", "_card_login"):
-                        card.configure(border_color=auth_palette["card_border"], bg_color="transparent")
-                    elif card_attr == "_card_2fa":
-                        card.configure(border_color=("#d2c2f8", "#3b2a5f"), bg_color="transparent")
-                    elif card_attr == "_card_reg":
-                        card.configure(border_color=("#bfe6c9", "#255036"), bg_color="transparent")
+                    card.configure(fg_color=fg_color, bg_color=bg_color)
 
         if hasattr(self, "_qr_card") and self._qr_card.winfo_exists():
             self._qr_card.configure(fg_color=("#ffffff", "#1a1a1a"))
         if hasattr(self, "_setup2fa_scroll") and self._setup2fa_scroll.winfo_exists():
-            self._setup2fa_scroll.configure(border_color=("#e5d8ab", "#4a3a17"), bg_color="transparent")
+            self._setup2fa_scroll.configure(bg_color=("#ffe082", "#3a2200"))
 
         # refresco de entries principales
         for entry_name in [
@@ -1300,9 +1296,62 @@ class AppDBPDF:
             except Exception:
                 pass
         if self.usuario_actual and refresh_data:
+            self.cargar_dashboard()
             self.ver_pdfs()
 
+        # refrescar labels de pantallas de acceso
+        self._refresh_auth_labels(colors)
+
     
+    def _refresh_auth_labels(self, colors):
+        # recorrer labels de auth cards y actualizar text_color segun tema
+        for card_attr in ("_card_inicial", "_card_login", "_card_2fa", "_card_reg"):
+            card = getattr(self, card_attr, None)
+            if not card or not card.winfo_exists():
+                continue
+            for child in card.winfo_children():
+                if isinstance(child, ctk.CTkLabel):
+                    try:
+                        current = child.cget("text_color")
+                        # no tocar labels con colores especiales (white, warning, fixed)
+                        if current in ("white", "#FF9800", "#c8e6c9"):
+                            continue
+                        font_val = str(child.cget("font"))
+                        if "bold" in font_val:
+                            child.configure(text_color=colors["text_primary"])
+                        else:
+                            child.configure(text_color=colors["text_secondary"])
+                    except Exception:
+                        pass
+                # recorrer subframes (ej: pw_row)
+                elif isinstance(child, ctk.CTkFrame):
+                    for sub in child.winfo_children():
+                        if isinstance(sub, ctk.CTkLabel):
+                            try:
+                                font_val = str(sub.cget("font"))
+                                if "bold" in font_val:
+                                    sub.configure(text_color=colors["text_primary"])
+                                else:
+                                    sub.configure(text_color=colors["text_secondary"])
+                            except Exception:
+                                pass
+
+        # setup 2fa scroll labels
+        if hasattr(self, "_setup2fa_scroll") and self._setup2fa_scroll.winfo_exists():
+            for child in self._setup2fa_scroll.winfo_children():
+                if isinstance(child, ctk.CTkLabel):
+                    try:
+                        current = child.cget("text_color")
+                        if current in ("white", "#FF9800", "#c8e6c9"):
+                            continue
+                        font_val = str(child.cget("font"))
+                        if "bold" in font_val:
+                            child.configure(text_color=colors["text_primary"])
+                        else:
+                            child.configure(text_color=colors["text_secondary"])
+                    except Exception:
+                        pass
+
     # navegacion
   
 
@@ -1519,7 +1568,7 @@ class AppDBPDF:
             r, c = divmod(i, COLS)
             color_accent = icon_colors[i % len(icon_colors)]
 
-            card_bg = ("#ffffff", "#1e2a4a") if not is_dark else ("#1e2a4a", "#1e2a4a")
+            card_bg = ("#ffffff", "#1e2a4a")  # CTk resuelve por tema
             card = ctk.CTkFrame(
                 grid, fg_color=card_bg,
                 corner_radius=12, border_width=2,
@@ -2102,7 +2151,9 @@ class AppDBPDF:
                 justify="center"
             ).pack(padx=20)
 
-            codes_frame = ctk.CTkFrame(win, fg_color=("#f5f5f5", "#1e1e1e"), corner_radius=10)
+            codes_frame = ctk.CTkFrame(win, fg_color=("#f5f5f5", "#1e1e1e"),
+                                        corner_radius=10, border_width=1,
+                                        border_color=("#d0d8e8", "#2a3a5e"))
             codes_frame.pack(padx=30, pady=12, fill="x")
 
             for code in backup_codes:
