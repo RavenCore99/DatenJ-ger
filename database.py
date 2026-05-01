@@ -149,19 +149,34 @@ def verify_contrasena(contrasena, stored_hash):
     # verifica contraseña contra el hash guardado
     # soporta pbkdf2 y legacy sha256
     
+    # validación de seguridad: si el hash está corrompido o NULL
+    if not stored_hash or not isinstance(stored_hash, str):
+        return False, False
+    
     if stored_hash.startswith("pbkdf2:"):
         parts = stored_hash.split(":")
         if len(parts) != 3:
             return False, False
         _, salt, expected = parts
-        dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
-        ok = dk.hex() == expected
-        return ok, False
+        
+        # validar que salt y expected no estén vacíos
+        if not salt or not expected:
+            return False, False
+        
+        try:
+            dk = hashlib.pbkdf2_hmac('sha256', contrasena.encode(), salt.encode(), 260_000)
+            ok = dk.hex() == expected
+            return ok, False
+        except Exception:
+            return False, False
     else:
         # sha256 viejo, hay que migrar
-        legacy = hashlib.sha256(contrasena.encode()).hexdigest()
-        ok = legacy == stored_hash
-        return ok, ok  # needs_rehash=True cuando la contraseña coincide
+        try:
+            legacy = hashlib.sha256(contrasena.encode()).hexdigest()
+            ok = legacy == stored_hash
+            return ok, ok  # needs_rehash=True cuando la contraseña coincide
+        except Exception:
+            return False, False
 
 def format_size(bytes_size):
     # formato legible de bytes
