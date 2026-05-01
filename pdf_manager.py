@@ -177,7 +177,7 @@ class GestorPDF:
         )
         self.label_file.pack(pady=4)
 
-        sep = ctk.CTkFrame(add_window, height=1, fg_color=("#cccccc", "#3a3a3a"))
+        sep = ctk.CTkFrame(add_window, height=1, fg_color=("#c8d8ff", "#2a3f72"))
         sep.pack(fill="x", padx=40, pady=8)
 
         def add_labeled_entry(parent, label, placeholder, width=360):
@@ -374,12 +374,13 @@ class GestorPDF:
             text_color=colors["text_primary"]
         ).pack(pady=(20, 4))
 
-        sep = ctk.CTkFrame(details_window, height=1, fg_color=COLOR_SECONDARY)
+        sep = ctk.CTkFrame(details_window, height=1, fg_color=("#c8d8ff", "#2a3f72"))
         sep.pack(fill="x", padx=30)
 
         info_frame = ctk.CTkFrame(
             details_window, fg_color=("#f0f4ff", "#1a2540"),
-            corner_radius=10
+            corner_radius=10, border_width=1,
+            border_color=("#d0d8e8", "#2a3a5e")
         )
         info_frame.pack(padx=30, pady=14, fill="x")
 
