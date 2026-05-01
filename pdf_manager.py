@@ -20,6 +20,28 @@ COLOR_WARNING   = "#FF9800"
 COLOR_ERROR     = "#F44336"
 
 
+def _bind_mousewheel(scrollable_frame):
+    # habilitar scroll con rueda/touchpad en Linux (Button-4/5)
+    def _on_mousewheel(event):
+        try:
+            canvas = scrollable_frame._parent_canvas
+            if event.num == 4:
+                canvas.yview_scroll(-3, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(3, "units")
+        except Exception:
+            pass
+
+    def _bind_all(widget):
+        widget.bind("<Button-4>", _on_mousewheel, add="+")
+        widget.bind("<Button-5>", _on_mousewheel, add="+")
+        for child in widget.winfo_children():
+            _bind_all(child)
+
+    # bind despues de que se renderice
+    scrollable_frame.after(100, lambda: _bind_all(scrollable_frame))
+
+
 class GestorPDF:
     # maneja las operaciones crud de pdfs
 
@@ -569,7 +591,7 @@ class GestorPDF:
         colors = get_dynamic_colors()
         edit_win = ctk.CTkToplevel(self.app.root)
         edit_win.title("Editar Metadatos del PDF")
-        edit_win.geometry("480x520")
+        edit_win.geometry("480x560")
         edit_win.resizable(False, False)
         edit_win.transient(self.app.root)
         edit_win.configure(fg_color=colors["bg_secondary"])
@@ -584,16 +606,26 @@ class GestorPDF:
         ctk.CTkLabel(
             edit_win, text=f"Editando: {pdf_nombre}",
             font=("Arial", 10), text_color=colors["secondary"]
-        ).pack(pady=(0, 16))
+        ).pack(pady=(0, 10))
+
+        # contenedor scrollable para campos + botones
+        scroll_container = ctk.CTkScrollableFrame(
+            edit_win, fg_color="transparent",
+            corner_radius=0
+        )
+        scroll_container.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        # habilitar scroll en Linux
+        _bind_mousewheel(scroll_container)
 
         def add_field(label, current, placeholder=""):
             ctk.CTkLabel(
-                edit_win, text=label,
+                scroll_container, text=label,
                 text_color=colors["text_primary"],
                 font=("Arial", 11, "bold")
-            ).pack(anchor="w", padx=40)
+            ).pack(anchor="w", padx=30)
             e = ctk.CTkEntry(
-                edit_win, width=380, height=40,
+                scroll_container, width=380, height=40,
                 corner_radius=8, border_width=2,
                 font=("Arial", 11),
                 placeholder_text=placeholder
@@ -649,7 +681,7 @@ class GestorPDF:
                 Notification(edit_win, "Error", str(exc), notification_type="error")
 
         ctk.CTkButton(
-            edit_win, text="  Guardar Cambios",
+            scroll_container, text="  Guardar Cambios",
             image=get_icon("save", 18),
             compound="left",
             command=guardar,
@@ -659,7 +691,7 @@ class GestorPDF:
         ).pack(pady=(8, 4))
 
         ctk.CTkButton(
-            edit_win, text="Cancelar",
+            scroll_container, text="Cancelar",
             command=edit_win.destroy,
             fg_color=("#78909c", "#546e7a"), hover_color="#455a64",
             text_color="white", font=("Arial", 11, "bold"),
