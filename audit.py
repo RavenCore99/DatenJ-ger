@@ -4,12 +4,13 @@
 
 
 import os
+import threading
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
 from datetime import datetime
 
-from ui_components import Notification, get_dynamic_colors
+from ui_components import Notification, ConfirmDialog, get_dynamic_colors
 from icons import get_icon
 
 
@@ -53,12 +54,11 @@ class GestorAuditoria:
         def _close_audit_win():
             try:
                 win.grab_release()
-            except tk.TclError:
+            except (tk.TclError, Exception):
                 pass
-            win.destroy()
+            win.after(10, win.destroy)
 
         win.protocol("WM_DELETE_WINDOW", _close_audit_win)
-        self.app._show_modal_window(win)
         colors = get_dynamic_colors()
 
         # header
@@ -160,46 +160,74 @@ class GestorAuditoria:
             tree.tag_configure("odd",  background="#1e2a4a" if is_dark else "#f5f7ff")
             tree.tag_configure("even", background="#16213e" if is_dark else "#ffffff")
 
-        # cargar datos
+        # cargar datos en hilo secundario con insercion batch
         def _cargar(desde="", hasta="", accion_txt=""):
+            lbl_count.configure(text="Cargando...")
+
+            def _query():
+                try:
+                    query = (
+                        "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
+                        "       COALESCE(u.nombre,'—') "
+                        "FROM Auditoria a "
+                        "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
+                        "WHERE 1=1 "
+                    )
+                    params = []
+                    if desde.strip():
+                        query += "AND a.fecha >= ? "
+                        params.append(desde.strip())
+                    if hasta.strip():
+                        query += "AND a.fecha <= ? "
+                        params.append(hasta.strip() + "T23:59:59")
+                    if accion_txt.strip():
+                        query += "AND a.accion LIKE ? "
+                        params.append(f"%{accion_txt.strip()}%")
+                    query += "ORDER BY a.fecha DESC LIMIT 2000"
+
+                    with self.app._db_lock:
+                        self.app.cursor.execute(query, params)
+                        rows = self.app.cursor.fetchall()
+
+                    # insertar en el main thread via after, por lotes
+                    if win.winfo_exists():
+                        win.after(0, lambda: _insertar_batch(rows))
+                except Exception as e:
+                    if win.winfo_exists():
+                        win.after(0, lambda: Notification(
+                            self.app.root, "Error al cargar auditoría",
+                            str(e), notification_type="error"))
+
+            threading.Thread(target=_query, daemon=True).start()
+
+        def _insertar_batch(rows, batch_size=200):
+            # limpiar tree
             for row in tree.get_children():
                 tree.delete(row)
-            try:
-                query = (
-                    "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
-                    "       COALESCE(u.nombre,'—') "
-                    "FROM Auditoria a "
-                    "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
-                    "WHERE 1=1 "
-                )
-                params = []
-                if desde.strip():
-                    query += "AND a.fecha >= ? "
-                    params.append(desde.strip())
-                if hasta.strip():
-                    query += "AND a.fecha <= ? "
-                    params.append(hasta.strip() + "T23:59:59")
-                if accion_txt.strip():
-                    query += "AND a.accion LIKE ? "
-                    params.append(f"%{accion_txt.strip()}%")
-                query += "ORDER BY a.fecha DESC LIMIT 5000"
 
-                with self.app._db_lock:
-                    self.app.cursor.execute(query, params)
-                    rows = self.app.cursor.fetchall()
+            total = len(rows)
+            idx = [0]
 
-                for i, (fecha, accion, pdf_id, usuario) in enumerate(rows):
+            def _insert_chunk():
+                start = idx[0]
+                end = min(start + batch_size, total)
+                for i in range(start, end):
+                    fecha, accion, pdf_id, usuario = rows[i]
                     fecha_fmt = fecha[:19].replace("T", "  ") if fecha else "—"
                     tag = "odd" if i % 2 == 0 else "even"
                     tree.insert("", "end",
                                 values=(fecha_fmt, accion, pdf_id, usuario),
                                 tags=(tag,))
-                lbl_count.configure(
-                    text=f"{len(rows)} registro{'s' if len(rows) != 1 else ''}"
-                )
-            except Exception as e:
-                Notification(self.app.root, "Error al cargar auditoría",
-                             str(e), notification_type="error")
+                idx[0] = end
+                if end < total and win.winfo_exists():
+                    lbl_count.configure(text=f"Cargando... {end}/{total}")
+                    win.after(5, _insert_chunk)
+                else:
+                    lbl_count.configure(
+                        text=f"{total} registro{'s' if total != 1 else ''}"
+                    )
+
+            _insert_chunk()
 
         def _aplicar_filtros():
             _cargar(entry_desde.get(), entry_hasta.get(), entry_accion.get())
@@ -210,55 +238,62 @@ class GestorAuditoria:
             entry_accion.delete(0, tk.END)
             _cargar()
 
-        # visor log backend
+        # visor log backend (carga en hilo)
         def _ver_log_backend():
-            import glob
-            log_paths = [
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "datenjager.log"),
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log"),
-            ]
-
-            log_paths += glob.glob(
-                os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.log")
-            )
-
-            log_content = ""
-            found_log = None
-            for lp in log_paths:
-                if os.path.isfile(lp):
-                    try:
-                        with open(lp, "r", encoding="utf-8", errors="replace") as f:
-                            log_content = f.read()
-                        found_log = lp
-                        break
-                    except Exception:
-                        continue
-
-            if not found_log:
-                import sys
-                import platform
-                log_content = (
-                    "═══ DatenJäger — Información del Sistema ═══\n\n"
-                    f"Python:     {sys.version}\n"
-                    f"Plataforma: {platform.platform()}\n"
-                    f"SQLite:     {__import__('sqlite3').sqlite_version}\n\n"
-                    "═══ Log de Auditoría exportado ═══\n\n"
+            def _load_log():
+                import glob
+                log_paths = [
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "datenjager.log"),
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log"),
+                ]
+                log_paths += glob.glob(
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.log")
                 )
-                try:
-                    with self.app._db_lock:
-                        self.app.cursor.execute(
-                            "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
-                            "COALESCE(u.nombre,'—') FROM Auditoria a "
-                            "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
-                            "ORDER BY a.fecha DESC LIMIT 500"
-                        )
-                        for r in self.app.cursor.fetchall():
-                            fecha_f = r[0][:19].replace('T', ' ') if r[0] else '—'
-                            log_content += f"[{fecha_f}] {r[1]} | PDF={r[2]} | User={r[3]}\n"
-                except Exception as ex:
-                    log_content += f"Error leyendo BD: {ex}\n"
-                found_log = "(generado en memoria)"
 
+                log_content = ""
+                found_log = None
+                for lp in log_paths:
+                    if os.path.isfile(lp):
+                        try:
+                            with open(lp, "r", encoding="utf-8", errors="replace") as f:
+                                log_content = f.read()
+                            found_log = lp
+                            break
+                        except Exception:
+                            continue
+
+                if not found_log:
+                    import sys
+                    import platform
+                    log_content = (
+                        "═══ DatenJäger — Información del Sistema ═══\n\n"
+                        f"Python:     {sys.version}\n"
+                        f"Plataforma: {platform.platform()}\n"
+                        f"SQLite:     {__import__('sqlite3').sqlite_version}\n\n"
+                        "═══ Log de Auditoría exportado ═══\n\n"
+                    )
+                    try:
+                        with self.app._db_lock:
+                            self.app.cursor.execute(
+                                "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
+                                "COALESCE(u.nombre,'—') FROM Auditoria a "
+                                "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
+                                "ORDER BY a.fecha DESC LIMIT 500"
+                            )
+                            for r in self.app.cursor.fetchall():
+                                fecha_f = r[0][:19].replace('T', ' ') if r[0] else '—'
+                                log_content += f"[{fecha_f}] {r[1]} | PDF={r[2]} | User={r[3]}\n"
+                    except Exception as ex:
+                        log_content += f"Error leyendo BD: {ex}\n"
+                    found_log = "(generado en memoria)"
+
+                # mostrar en main thread
+                if win.winfo_exists():
+                    win.after(0, lambda: _mostrar_log_win(log_content, found_log))
+
+            threading.Thread(target=_load_log, daemon=True).start()
+
+        def _mostrar_log_win(log_content, found_log):
             log_win = ctk.CTkToplevel(win)
             log_win.title("Log del Sistema — Backend")
             log_win.geometry("820x540")
@@ -291,7 +326,6 @@ class GestorAuditoria:
             txt.pack(fill="both", expand=True, padx=0, pady=0)
             txt.insert("1.0", log_content)
             txt.configure(state="disabled")
-
             txt.see("end")
 
             btn_bar = ctk.CTkFrame(log_win, fg_color="transparent")
@@ -304,8 +338,7 @@ class GestorAuditoria:
                 font=("Arial", 10, "bold")
             ).pack(side="right")
 
-            log_win.after(200, lambda: (
-                log_win.update_idletasks(),
+            log_win.after(50, lambda: (
                 log_win.deiconify(),
                 log_win.lift(),
                 log_win.focus_force()
@@ -352,6 +385,60 @@ class GestorAuditoria:
             width=110, height=34
         ).pack(side="right", padx=4)
 
+        # limpiar historial
+        def _limpiar_historial():
+            try:
+                with self.app._db_lock:
+                    self.app.cursor.execute("SELECT COUNT(*) FROM Auditoria")
+                    total = self.app.cursor.fetchone()[0]
+                if total == 0:
+                    Notification(win, "Info", "El historial ya está vacío.",
+                                 notification_type="warning")
+                    return
+                dlg = ConfirmDialog(
+                    win, "  Limpiar Historial",
+                    f"¿Eliminar todos los registros de auditoría?\n"
+                    f"Se borrarán {total} registro{'s' if total != 1 else ''}.\n\n"
+                    "Esta acción no se puede deshacer.",
+                    confirm_text="Eliminar Todo",
+                    cancel_text="Cancelar",
+                    danger=True
+                )
+                if not dlg.result:
+                    return
+                with self.app._db_lock:
+                    self.app.cursor.execute("DELETE FROM Auditoria")
+                    # dejar evidencia
+                    self.app.cursor.execute(
+                        "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) "
+                        "VALUES (?, NULL, ?, ?)",
+                        (f"Historial de auditoría limpiado ({total} registros eliminados)",
+                         self.app.usuario_actual,
+                         __import__('datetime').datetime.now().isoformat())
+                    )
+                    self.app.conn.commit()
+                    # vacuum para liberar espacio (fuera del lock)
+                try:
+                    self.app.cursor.execute("VACUUM")
+                except Exception:
+                    pass
+                _cargar()
+                Notification(win, "Historial Limpio",
+                             f"Se eliminaron {total} registros de auditoría.",
+                             notification_type="success")
+            except Exception as ex:
+                Notification(win, "Error", str(ex), notification_type="error")
+
+        ctk.CTkButton(
+            bottom_bar, text="  Limpiar Historial",
+            image=get_icon("trash", 16),
+            compound="left",
+            command=_limpiar_historial,
+            fg_color=("#c62828", "#b71c1c"), hover_color=("#b71c1c", "#880e4f"),
+            text_color="white", font=("Arial", 10, "bold"),
+            corner_radius=8, width=160, height=34
+        ).pack(side="right", padx=(0, 8))
+
         for e in (entry_desde, entry_hasta, entry_accion):
             e.bind("<Return>", lambda _ev: _aplicar_filtros())
 
@@ -372,6 +459,9 @@ class GestorAuditoria:
 
         win.protocol("WM_DELETE_WINDOW", _close_with_unbind)
         _apply_theme()
-        _cargar()
+
+        # mostrar ventana primero, cargar datos despues (evita lag)
+        self.app._show_modal_window(win, delay_ms=50)
+        win.after(100, _cargar)
 
 # Copyright (c) 2024 DatenJäger. All rights reserved.
