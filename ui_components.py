@@ -108,7 +108,7 @@ def shake_widget(widget, distance=6, duration=500, repeats=6):
         # primero, actualizar idletasks para obtener posición actual
         widget.update_idletasks()
         
-        # obtener la geometría relativa
+        #  geometria relativa
         x = widget.winfo_x()
         y = widget.winfo_y()
         width = widget.winfo_width()
