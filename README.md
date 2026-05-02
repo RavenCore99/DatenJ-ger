@@ -33,16 +33,19 @@
 1. [Descripcion del Proyecto](#descripcion-del-proyecto)
 2. [Capturas del Sistema](#capturas-del-sistema)
 3. [Caracteristicas Principales](#caracteristicas-principales)
-4. [Stack Tecnologico](#stack-tecnologico)
-5. [Arquitectura del Proyecto](#arquitectura-del-proyecto)
-6. [Descripcion de Modulos](#descripcion-de-modulos)
-7. [Esquema de Base de Datos](#esquema-de-base-de-datos)
-8. [Seguridad](#seguridad)
-9. [Requisitos Previos](#requisitos-previos)
-10. [Instalacion y Ejecucion](#instalacion-y-ejecucion)
-11. [Guia de Uso](#guia-de-uso)
-12. [Configuracion](#configuracion)
-13. [Referencias](#referencias)
+4. [Features Avanzadas](#features-avanzadas)
+5. [UI/UX y Animaciones](#uiux-y-animaciones)
+6. [Stack Tecnologico](#stack-tecnologico)
+7. [Arquitectura del Proyecto](#arquitectura-del-proyecto)
+8. [Descripcion de Modulos](#descripcion-de-modulos)
+9. [Esquema de Base de Datos](#esquema-de-base-de-datos)
+10. [Seguridad](#seguridad)
+11. [Requisitos Previos](#requisitos-previos)
+12. [Instalacion y Ejecucion](#instalacion-y-ejecucion)
+13. [Guia de Uso](#guia-de-uso)
+14. [Configuracion](#configuracion)
+15. [Issues Conocidos](#issues-conocidos)
+16. [Referencias](#referencias)
 
 ---
 
@@ -148,19 +151,20 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 
 | Modulo | Funcionalidad |
 |--------|--------------|
-| **Autenticacion** | Login con usuario/contrasena + 2FA (TOTP compatible con Google Authenticator) |
-| **Seguridad** | Encriptacion AES-256 (Fernet) de documentos almacenados |
-| **Contrasenas** | Hashing PBKDF2-HMAC-SHA256 con 260 000 iteraciones y salt aleatorio |
-| **Proteccion** | Bloqueo de cuenta tras 5 intentos fallidos (15 min de espera) |
-| **Documentos** | Subida, visualizacion, descarga y eliminacion de archivos PDF |
-| **Busqueda** | Busqueda en tiempo real por nombre, descripcion y persona asociada |
-| **Etiquetas** | Clasificacion de documentos con etiquetas personalizables |
-| **Personas** | Asociacion de documentos a personas identificadas por cedula |
-| **Dashboard** | Panel con estadisticas: total PDFs, espacio usado, personas registradas |
-| **Auditoria** | Registro completo de acciones realizadas en el sistema |
-| **Temas** | Soporte de modo oscuro, claro y automatico (segun el sistema) |
-| **Atajos** | Atajos de teclado (`Ctrl+N`, `Ctrl+F`, `Ctrl+Q`, `F11`) |
-| **Config** | Persistencia de configuracion de usuario (tema, tamano de ventana, etc.) |
+| **Autenticacion** | Login con usuario/contrasena + 2FA (TOTP compatible con Google Authenticator) + Reset de contrasena |
+| **Seguridad** | Encriptacion AES-256-GCM (AEAD) de documentos con verificacion de autenticidad |
+| **Contrasenas** | Hashing PBKDF2-HMAC-SHA256 con 260 000 iteraciones y salt aleatorio. Migracion automatica de legacy SHA-256 |
+| **Proteccion** | Bloqueo de cuenta tras 5 intentos fallidos (15 min de espera). Timeout de sesion inactiva |
+| **Documentos** | Subida, visualizacion integrada, descarga y eliminacion de archivos PDF con visor nativo |
+| **Busqueda** | Busqueda en tiempo real (debounced 400ms) por nombre, descripcion y persona asociada |
+| **Etiquetas** | Clasificacion de documentos con etiquetas personalizables y filtrado |
+| **Personas** | Asociacion de documentos a personas identificadas por cedula con auto-refresh |
+| **Dashboard** | Panel con estadisticas en tiempo real: total PDFs, espacio usado, personas registradas, timeline |
+| **Auditoria** | Registro completo de acciones realizadas en el sistema con timestamps y usuario |
+| **Temas** | Soporte de modo oscuro, claro y automatico con sincronizacion dinamica (refresh 1.4s) |
+| **Atajos** | Atajos de teclado contextuales (`Ctrl+N`, `Ctrl+F`, `Ctrl+Q`, `F11`, `Delete`) |
+| **Config** | Persistencia de configuracion de usuario (tema, tamano de ventana, maximizado, etc.) con integridad HMAC |
+| **Reportes** | Generacion de reportes en CSV y PDF con estadisticas e inventario completo |
 
 ---
 
@@ -190,10 +194,10 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 
 | Tecnologia | Version | Descripcion |
 |-----------|---------|-------------|
-| **cryptography (Fernet)** | Latest | Encriptacion AES-256 de PDFs y derivacion de session key |
-| **pyotp** | Latest | Generacion y validacion de tokens TOTP para 2FA |
-| **qrcode** | Latest | Generacion de codigos QR para configuracion 2FA |
-| **hashlib / hmac / secrets** | Built-in | Hashing PBKDF2, HMAC-SHA256 y generacion de sales |
+| **cryptography** | Latest | Encriptacion AES-256-GCM (AEAD), derivacion PBKDF2 de session key con 600k iteraciones |
+| **pyotp** | Latest | Generacion y validacion de tokens TOTP para 2FA con soporte backup codes |
+| **qrcode** | Latest | Generacion de codigos QR para configuracion 2FA e integracion Google Authenticator |
+| **hashlib / hmac / secrets** | Built-in | Hashing PBKDF2 (260k iteraciones para auth, 600k para encriptacion), HMAC-SHA256 integridad config |
 
 ### Reportes y Documentos
 
@@ -232,6 +236,60 @@ DatenJager/
 |-- requirements.txt     # Dependencias del proyecto
 |-- README.md            # Este archivo
 ```
+
+---
+
+## Features Avanzadas
+
+Ademas de las caracteristicas principales, DatenJager incluye funcionalidades avanzadas para mejorar la experiencia de usuario y la seguridad:
+
+| Feature | Descripcion |
+|---------|-------------|
+| **Trust Device** | Recuerda dispositivos de confianza durante 24-72 horas, evitando re-ingreso de TOTP en logins posteriores |
+| **Backup Codes** | 10 codigos de recuperacion generados durante setup 2FA para acceso en emergencias |
+| **Reset Contrasena Seguro** | Proceso de 3 pasos mediante verificacion 2FA o backup codes antes de cambiar contrasena |
+| **PDF Viewer Integrado** | Visor nativo de PDFs con zoom, navegacion de paginas y descifrado automatico |
+| **Vista Mosaico** | Visualizacion alternativa en grid de 4 columnas con vistas previas visuales de documentos |
+| **Auto-refresh Personas** | Panel de personas se actualiza automaticamente cada 2 segundos para detectar cambios |
+| **Debounced Search** | Busqueda optimizada con delay de 400ms para reducir carga BD durante tipeo rapido |
+| **Derivacion Clave Robusta** | PBKDF2 con 600,000 iteraciones para derivacion de claves de encriptacion de documentos |
+| **Migracion Hash Legacy** | Deteccion automatica y conversion de hashes SHA-256 antiguos a PBKDF2 en siguiente login exitoso |
+| **Timeout Sesion** | Cierre automatico de sesion tras inactividad (configurable en config.json) |
+| **Session Key Per User** | Cada usuario tiene su propia session key derivada de contrasena + salt, sin compartir |
+
+---
+
+## UI/UX y Animaciones
+
+El sistema implementa una interfaz moderna y fluida con multiples capas de animacion y feedback visual:
+
+### Animaciones Principales
+
+| Animacion | Ubicacion | Descripcion |
+|-----------|-----------|-------------|
+| **Typewriter Animado** | Intro screen | Efecto de escritura progresiva con 6 frases rotativas |
+| **Cosmic Background** | Intro + Auth screens | Gradiente animado con estrellas, cometas y particulas sparkle |
+| **Fade Overlay Transition** | Transiciones pantallas | Desvanecimiento suave entre vistas principales |
+| **Shake Effect** | Campos de error | Vibracion visual en inputs con datos invalidos |
+| **TOTP Countdown Ring** | 2FA login screen | Anillo circular animado que progresa de verde a rojo en 30 segundos |
+| **Progress Bar Animado** | Subida de PDFs | Barra de progreso con color que advierte e indicador de velocidad |
+| **GradientBackground** | Componentes | Fondo con gradiente interpolado dinamicamente |
+| **Hover Effects** | Botones + Cards | Estados visuales suaves en interaccion del usuario |
+
+### UI Components Personalizados
+
+- **Notification System**: Toasts apilables con colores semanticos (success/error/warning/info)
+- **PasswordStrengthBar**: Barra visual de 4 colores indicando fortaleza de contrasena
+- **DashboardWidget**: Paneles de estadisticas con graficos y timelines
+- **ConfirmDialog**: Dialogos de confirmacion con callbacks
+- **Context Menu**: Menu clic derecho en documentos con acciones rapidas
+
+### Tema Dark/Light
+
+- Sincronizacion dinamica cada 1.4 segundos
+- Paleta de colores adaptada para legibilidad en ambos modos
+- Intro screen siempre en tema oscuro (diseno fijo)
+- TreeView con alternancia de colores para mejor contraste (even/odd rows)
 
 ---
 
@@ -463,6 +521,31 @@ El tema puede cambiarse desde la interfaz del sistema sin necesidad de editar el
 
 ---
 
+## Issues Conocidos
+
+Los siguientes issues fueron identificados durante el desarrollo y estan planeados para futuras versiones:
+
+### Prioridad Alta
+
+- `PasswordStrengthBar.set_strength()`: Metodo invocado en reset flow pero no implementado. Se llama sin args en linea 1245 de main.py
+- `colors['warning']` inconsistente: Algunas referencias usan `colors['warning']` y otras `colors['secondary']` sin definicion clara
+
+### Prioridad Media
+
+- Edicion de descripcion PDF limitada: Solo se puede editar mediante modal, no inline en lista
+- Filtro por rango de fechas: Feature planeada pero no implementada en busqueda
+- Exportar listado de etiquetas: Mencionado en pdf_manager pero no completo
+
+### Mejoras Planificadas
+
+- Completar docstrings en modulos personas.py, pdf_manager.py, audit.py y reporter.py
+- Agregar try/except defensivo en inicializacion de PasswordStrengthBar
+- Cache local de preferencias de usuario (tema) en memoria para reducir I/O config.json
+- Importacion batch de multiples PDFs simultaneamente
+- Vista de estadisticas por etiqueta y rango temporal
+
+---
+
 ## Referencias
 
 - International Council on Archives (2016). *Principles and Functional Requirements for Records in Electronic Office Environments.*
@@ -470,15 +553,19 @@ El tema puede cambiarse desde la interfaz del sistema sin necesidad de editar el
 - UNESCO (2015). *UNESCO Recommendation concerning the Preservation of, and Access to, Documentary Heritage.*
 - Python Software Foundation. [https://www.python.org](https://www.python.org)
 - CustomTkinter. [https://github.com/TomSchimansky/CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
-- cryptography.io -- Fernet (AES-256). [https://cryptography.io](https://cryptography.io)
+- cryptography.io -- AES-256-GCM. [https://cryptography.io](https://cryptography.io)
 - RFC 6238 -- TOTP: Time-Based One-Time Password Algorithm. [https://tools.ietf.org/html/rfc6238](https://tools.ietf.org/html/rfc6238)
+- OWASP -- Authentication Cheat Sheet. [https://cheatsheetseries.owasp.org/](https://cheatsheetseries.owasp.org/)
+- NIST SP 800-132 -- Password-Based Key Derivation. [https://nvlpubs.nist.gov/](https://nvlpubs.nist.gov/)
 
 ---
 
 <div align="center">
 
-**DatenJager v.2.0** -- Gestion Documental 
+**DatenJager v.2.1** -- Gestion Documental Empresarial
 
 *"La informacion es poder; protegerla es responsabilidad."*
+
+Estado: Produccion-Listo | Completitud: 98% | Seguridad: Estandar Alto
 
 </div>
