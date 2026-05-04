@@ -53,7 +53,7 @@
 
 **DatenJager** (del aleman: *"cazador de datos"*) es un sistema de gestion documental de escritorio disenado para optimizar el almacenamiento, organizacion y consulta de documentos en empresas del **sector minero**.
 
-### Problematica
+### Problemática
 
 Muchas organizaciones continuan realizando su gestion documental mediante archivos fisicos, lo que genera:
 
@@ -63,7 +63,7 @@ Muchas organizaciones continuan realizando su gestion documental mediante archiv
 - Costos operativos elevados por uso de papel y almacenamiento fisico
 - Riesgos en la seguridad y confidencialidad de los datos
 
-### Solucion Propuesta
+### Solución Propuesta
 
 DatenJager digitaliza los documentos e implementa un sistema de gestion documental centralizado con:
 
@@ -99,7 +99,7 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 
 ---
 
-### Configuracion de Autenticacion de Dos Factores (2FA)
+### Configuración de Autenticacion de Dos Factores (2FA)
 
 ```
 [Imagen: Configuracion del codigo QR para Google Authenticator]
@@ -117,7 +117,7 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 
 ---
 
-### Gestion de Documentos
+### Gestión de Documentos
 
 ```
 [Imagen: Vista de lista de documentos con filtros y etiquetas]
@@ -293,7 +293,7 @@ El sistema implementa una interfaz moderna y fluida con multiples capas de anima
 
 ---
 
-## Descripcion de Modulos
+## Descripción de Modulos
 
 ### Modulos Core (infraestructura del sistema)
 
@@ -495,7 +495,7 @@ Al subir un documento es posible asignarlo a una persona registrada por cedula. 
 
 ---
 
-## Configuracion
+## Configuración
 
 El archivo `config.json` se genera automaticamente y almacena las preferencias del usuario:
 
@@ -562,7 +562,7 @@ Los siguientes issues fueron identificados durante el desarrollo y estan planead
 
 <div align="center">
 
-**DatenJager v.2.1** -- Gestion Documental Empresarial
+**DatenJager v.2.0** -- Gestion Documental
 
 *"La informacion es poder; protegerla es responsabilidad."*
 
