@@ -1,11 +1,35 @@
 
-# config.py - configuracion del sistema
-# guarda preferencias en json con verificacion hmac
-
 import json
 import os
 import hmac
 import hashlib
+
+
+def _load_env_file(env_path: str = ".env") -> None:
+    """Carga variables desde un archivo .env sencillo sin dependencias externas."""
+    if not os.path.exists(env_path):
+        return
+
+    try:
+        with open(env_path, "r", encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except Exception:
+        # si falla la carga del .env, la app sigue con variables ya presentes
+        pass
+
+
+_load_env_file()
+
+# config.py - configuracion del sistema
+# guarda preferencias en json con verificacion hmac
 
 # clave para verificar que no manipulen el json
 _HMAC_KEY = b"DatenJager_config_integrity_2024_v2"
