@@ -165,6 +165,7 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 | **Atajos** | Atajos de teclado contextuales (`Ctrl+N`, `Ctrl+F`, `Ctrl+Q`, `F11`, `Delete`) |
 | **Config** | Persistencia de configuracion de usuario (tema, tamano de ventana, maximizado, etc.) con integridad HMAC |
 | **Reportes** | Generacion de reportes en CSV y PDF con estadisticas e inventario completo |
+| **Asistente IA** | Chatbot integrado en dashboard con interfaz conversacional y conexion a Gemini con fallback local |
 
 ---
 
@@ -219,6 +220,8 @@ DatenJager/
 |-- ui_components.py     # Componentes UI reutilizables (notificaciones, barras, dialogos)
 |-- icons.py             # Sistema de iconos PNG (carga y cache de assets)
 |-- reporter.py          # Generacion de reportes (CSV y PDF)
+|-- chatbot.py           # Servicio de IA (Gemini) con manejo de historial y fallback local
+|-- chatbot_ui.py        # Panel visual del chatbot integrado al dashboard (CustomTkinter)
 |
 |-- pdf_manager.py       # Modulo de operaciones CRUD de PDFs
 |-- personas.py          # Modulo de gestion de personas (CRUD titular)
@@ -324,6 +327,13 @@ El sistema implementa una interfaz moderna y fluida con multiples capas de anima
 |---------|------|----------------|
 | `ui_components.py` | UI | Componentes visuales reutilizables: `Notification` (toasts apilables), `PasswordStrengthBar`, `GradientBackground` animado, `ProgressBarModerno`, `DashboardWidget`, `ConfirmDialog` y `PDFViewerWindow` |
 | `icons.py` | UI | Sistema de carga y cache de iconos PNG desde `assets/icons/`. Provee la funcion `get_icon()` utilizada en toda la interfaz |
+| `chatbot_ui.py` | UI | Clase `ChatbotPanel`: panel conversacional embebido en el dashboard, envio asincrono de mensajes, burbujas de chat y gestion de sesion del asistente |
+
+### Modulos de IA (Chatbot)
+
+| Archivo | Tipo | Responsabilidad |
+|---------|------|----------------|
+| `chatbot.py` | IA | Clase `ChatbotService`: integracion con API de Gemini, mantenimiento del historial por sesion, reintentos por modelo y fallback local en errores de permisos/conectividad |
 
 ---
 
@@ -412,6 +422,11 @@ El sistema implementa multiples capas de seguridad:
 ```bash
 pip install customtkinter cryptography pyotp qrcode Pillow PyMuPDF
 ```
+
+Para el modulo de asistente IA tambien necesitas:
+
+- Variable de entorno `GEMINI_API_KEY` con una API key valida de Google AI Studio / Google Cloud
+- Conexion a internet para consumir la API de Gemini
 
 O si dispones de un archivo `requirements.txt`:
 
