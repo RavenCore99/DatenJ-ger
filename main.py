@@ -35,6 +35,7 @@ from icons import get_icon
 from personas import GestorPersonas
 from audit import GestorAuditoria
 from pdf_manager import GestorPDF
+from chatbot_ui import ChatbotPanel
 
 
 
@@ -995,6 +996,13 @@ class AppDBPDF:
                 "Encriptación AES-256-GCM · PBKDF2 · 2FA\nSeguridad Empresarial Moderna",
                 notification_type="info", duration=4000
             )
+        ).pack(side="right", padx=4, pady=10)
+
+        # botón asistente IA
+        _make_nav_btn(
+            "  Asistente IA",
+            self.abrir_chatbot,
+            color="#1a6b3c", hover="#145c32"
         ).pack(side="right", padx=4, pady=10)
 
                 # progress bar
@@ -2773,7 +2781,61 @@ class AppDBPDF:
 
     # configuracion de cuenta
 
+    def abrir_chatbot(self):
+        # abrir ventana del asistente IA
+        if not self.usuario_actual:
+            return
+
+        # si ya hay una ventana de chat abierta, traerla al frente
+        if hasattr(self, "_chatbot_window") and self._chatbot_window.winfo_exists():
+            self._chatbot_window.lift()
+            self._chatbot_window.focus_force()
+            return
+
+        colors = self.get_colors()
+        win = ctk.CTkToplevel(self.root)
+        win.title("Asistente IA — DatenJäger")
+        win.geometry("520x680")
+        win.resizable(True, True)
+        win.minsize(420, 500)
+        win.transient(self.root)
+        win.configure(fg_color=colors["bg_primary"])
+        win.withdraw()
+        self._chatbot_window = win
+
+        def _build():
+            self.chatbot_panel = ChatbotPanel(
+                win,
+                app_ref=self,
+                fg_color="transparent"
+            )
+            self.chatbot_panel.pack(fill="both", expand=True)
+
+            # inicializar sesión con contexto del usuario autenticado
+            self.chatbot_panel.init_session(
+                usuario_nombre=self.usuario_nombre,
+                context=(
+                    f"El usuario '{self.usuario_nombre}' está autenticado en DatenJäger. "
+                    "Tiene acceso a gestión de PDFs, personas, auditoría y reportes."
+                )
+            )
+
+            win.update_idletasks()
+            win.deiconify()
+            win.lift()
+            win.focus_force()
+
+        win.after(200, _build)
+        win.protocol("WM_DELETE_WINDOW", lambda: self._cerrar_chatbot(win))
+
+    def _cerrar_chatbot(self, win):
+        # limpiar sesión del chatbot al cerrar la ventana
+        if hasattr(self, "chatbot_panel") and self.chatbot_panel.winfo_exists():
+            self.chatbot_panel.end_session()
+        win.destroy()
+
     def abrir_configuracion_cuenta(self):
+
         # abrir config cuenta
         if not self.usuario_actual:
             return
@@ -3283,6 +3345,9 @@ class AppDBPDF:
         )
         if dlg.result:
             self._stop_idle_tracking()
+            # cerrar chatbot si está abierto
+            if hasattr(self, "_chatbot_window") and self._chatbot_window.winfo_exists():
+                self._cerrar_chatbot(self._chatbot_window)
             self._audit("Logout")
             self.usuario_actual  = None
             self.usuario_nombre  = None
@@ -3297,6 +3362,7 @@ class AppDBPDF:
                 "Has cerrado sesión correctamente",
                 notification_type="info", duration=2500
             )
+
 
     def cargar_dashboard(self):
          # cargar dashboard
