@@ -1,0 +1,44 @@
+# DatenJäger - Requirements
+
+# Python 3.10+
+
+# Installation: pip install -r requirements.txt
+
+#  CORE DEPENDENCIES 
+
+# UI Framework 
+customtkinter>=5.2.0
+
+# Cryptography - AES-256-GCM encryption & security
+cryptography>=41.0.0
+
+# TOTP/2FA - Google Authenticator compatibility
+pyotp>=2.9.0
+
+# QR Code generation - 2FA token backup visualization
+qrcode>=7.4.0
+
+# Image processing - Icon management and thumbnail generation
+Pillow>=10.0.0
+
+# PDF Operations - Report generation and document handling
+PyMuPDF>=1.23.0
+
+# Numerical computing 
+numpy>=1.24.0
+
+# Matplotlib - Report charting and visualization
+matplotlib>=3.7.0
+
+# DEVELOPMENT/OPTIONAL 
+
+# Testing framework 
+# pytest>=7.4.0
+
+# Code formatting 
+# black>=23.0.0
+
+# Linting 
+# pylint>=3.0.0
+
+
