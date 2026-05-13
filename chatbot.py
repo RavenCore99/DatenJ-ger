@@ -4,20 +4,38 @@ import json
 import socket
 import time
 from urllib import error, request
+from transhumano import (
+    DECLARACION_PRINCIPAL,
+    PILARES,
+    RESPUESTAS_REFLEXIVAS,
+    obtener_respuesta_reflexiva,
+    obtener_frase_aleatoria
+)
 
 
 SYSTEM_PROMPT = (
     "Eres un asistente inteligente integrado en DatenJäger, un sistema seguro "
     "de gestión documental con cifrado AES-256-GCM y autenticación 2FA.\n\n"
+    "DECLARACIÓN FUNDAMENTAL (Universidad de Cundinamarca - Innovación Tecnológica):\n"
+    f"'{DECLARACION_PRINCIPAL}'\n\n"
+    "Esta declaración guía tu interacción. Los pilares son:\n"
+    "- LIBERTAD: Autonomía informativa protegida por cifrado fuerte\n"
+    "- AUTONOMÍA: Control total del usuario sobre sus datos y sesión\n"
+    "- RESPONSABILIDAD: Auditoría completa de cada acción\n"
+    "- DIÁLOGO: Conversación reflexiva que genere crecimiento\n"
+    "- CONSTRUCCIÓN: Transformación positiva y continua\n\n"
     "Tu rol es ayudar al usuario autenticado a:\n"
     "- Encontrar y organizar sus documentos PDF\n"
     "- Entender las funciones del sistema (auditoría, personas, reportes, cifrado)\n"
-    "- Responder preguntas generales de forma concisa y directa\n\n"
+    "- Responder preguntas generales de forma concisa y directa\n"
+    "- Incluir reflexiones sobre autonomía, libertad y responsabilidad cuando sea pertinente\n\n"
     "Reglas:\n"
     "- Responde siempre en el idioma del usuario (por defecto español)\n"
     "- Sé breve y útil; evita respuestas largas a menos que se pida\n"
     "- No reveles información sensible de otros usuarios\n"
-    "- No inventes datos sobre documentos que no conoces"
+    "- No inventes datos sobre documentos que no conoces\n"
+    "- Cuando hables de seguridad, cifrado, auditoría o autonomía, conecta con la filosofía transhumana basada en la Universidad de Cundinamarca de colombia en cuanto a innovacion de persona transhumana\n"
+    "- Cultiva el bienestar digital y la responsabilidad del usuario"
 )
 
 
@@ -184,10 +202,13 @@ class ChatbotService:
         try:
             contents = self._build_contents(user_text)
             reply = self._call_gemini(contents)
+            
+            # Enriquecer respuesta con reflexión transhumana si es pertinente
+            reply_enriquecida = self._enriquecer_respuesta_con_reflexion(reply, user_text)
 
             self.history.append({"role": "user", "parts": [{"text": user_text}]})
-            self.history.append({"role": "model", "parts": [{"text": reply}]})
-            return reply
+            self.history.append({"role": "model", "parts": [{"text": reply_enriquecida}]})
+            return reply_enriquecida
         except Exception as e:
             raw_error = str(e)
             if self.enable_local_fallback and (
@@ -216,3 +237,24 @@ class ChatbotService:
     def clear_history(self):
         """Reinicia el historial de conversación."""
         self.history = []
+
+    def _detectar_palabra_clave_transhumana(self, texto: str) -> str | None:
+        """
+        Detecta palabras clave relacionadas con la filosofía transhumana.
+        Retorna la reflexión si la encuentra, sino None.
+        """
+        texto_normalizado = texto.lower()
+        for palabra in RESPUESTAS_REFLEXIVAS.keys():
+            if palabra in texto_normalizado:
+                return obtener_respuesta_reflexiva(palabra)
+        return None
+
+    def _enriquecer_respuesta_con_reflexion(self, respuesta: str, user_text: str) -> str:
+        """
+        Si la pregunta del usuario contiene palabras clave transhumanas,
+        enriquece la respuesta con una reflexión contextual.
+        """
+        reflexion = self._detectar_palabra_clave_transhumana(user_text)
+        if reflexion:
+            return f"{respuesta}\n\n💭 *Reflexión transhumana:* {reflexion}"
+        return respuesta

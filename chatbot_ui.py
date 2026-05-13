@@ -6,6 +6,11 @@ import threading
 import customtkinter as ctk
 from chatbot import ChatbotService
 from ui_components import get_dynamic_colors
+from transhumano import (
+    DECLARACION_PRINCIPAL,
+    MENSAJES_CONTEXTO,
+    obtener_frase_aleatoria
+)
 
 
 class ChatbotPanel(ctk.CTkFrame):
@@ -26,17 +31,35 @@ class ChatbotPanel(ctk.CTkFrame):
     def _build_ui(self):
         colors = get_dynamic_colors()
 
-        # cabecera
+        # cabecera principal
         header = ctk.CTkFrame(self, fg_color=(colors["bg_secondary"]), corner_radius=0)
         header.pack(fill="x", padx=0, pady=(0, 2))
 
+        # título y botones de header
+        title_frame = ctk.CTkFrame(header, fg_color="transparent")
+        title_frame.pack(side="left", fill="x", expand=True, padx=16, pady=10)
+
         ctk.CTkLabel(
-            header,
+            title_frame,
             text="  Asistente IA – DatenJäger",
             font=("Arial", 14, "bold"),
             text_color=colors["text_primary"]
-        ).pack(side="left", padx=16, pady=10)
+        ).pack(side="left")
 
+        # Botón reflexivo (info sobre Persona Transhumana)
+        ctk.CTkButton(
+            header,
+                text="🧠 Reflexión",
+            width=100, height=28,
+            fg_color=("#6A1B9A", "#9C27B0"),
+            hover_color=("#7B1FA2", "#AB47BC"),
+            text_color="white",
+            font=("Arial", 10),
+            corner_radius=8,
+            command=self._mostrar_reflexion_transhumana
+        ).pack(side="right", padx=6, pady=8)
+
+        # Botón limpiar
         ctk.CTkButton(
             header,
             text="Limpiar chat",
@@ -47,7 +70,7 @@ class ChatbotPanel(ctk.CTkFrame):
             font=("Arial", 10),
             corner_radius=8,
             command=self._clear_chat
-        ).pack(side="right", padx=12, pady=8)
+        ).pack(side="right", padx=6, pady=8)
 
         # área de mensajes (scroll)
         self._scroll = ctk.CTkScrollableFrame(
@@ -90,6 +113,26 @@ class ChatbotPanel(ctk.CTkFrame):
             command=self._send
         )
         self._btn_send.pack(side="right", padx=(0, 10), pady=8)
+
+        # Pie de página con declaración (oculto inicialmente)
+        self._footer = ctk.CTkFrame(
+            self,
+                fg_color=("#f3e5f5", "#1e1533"),
+            corner_radius=6
+        )
+        self._footer.pack(fill="x", padx=8, pady=(0, 4))
+        self._footer.pack_forget()  # Oculto por defecto
+
+        footer_text = ctk.CTkLabel(
+            self._footer,
+            text=f"✨ {DECLARACION_PRINCIPAL}",
+            font=("Arial", 9, "italic"),
+            text_color=("#6A1B9A", "#CE93D8"),
+            wraplength=450,
+            justify="center"
+        )
+        footer_text.pack(padx=12, pady=8)
+
 
     # ── burbujas de chat ───────────────────────────────────────────────────
 
@@ -180,6 +223,108 @@ class ChatbotPanel(ctk.CTkFrame):
         if self._service:
             self._service.clear_history()
 
+    def _mostrar_reflexion_transhumana(self):
+        """Muestra un mensaje reflexivo sobre la Declaración Persona Transhumana."""
+        colors = get_dynamic_colors()
+        
+        # Crear ventana modal
+        win = ctk.CTkToplevel(self.master)
+        win.title("Reflexión: Persona Transhumana")
+        win.geometry("600x500")
+        win.resizable(False, False)
+        
+        # Header
+        header = ctk.CTkFrame(win, fg_color=("#6A1B9A", "#311B92"), corner_radius=0)
+        header.pack(fill="x", padx=0, pady=0)
+        
+        ctk.CTkLabel(
+            header,
+            text="🌟 Declaración Persona Transhumana",
+            font=("Arial", 14, "bold"),
+            text_color="white"
+        ).pack(pady=12)
+        
+        ctk.CTkLabel(
+            header,
+            text="Universidad de Cundinamarca - Innovación Tecnológica",
+            font=("Arial", 9),
+            text_color="#CE93D8"
+        ).pack(pady=(0, 10))
+        
+        # Contenido scrolleable
+        scroll = ctk.CTkScrollableFrame(win, fg_color=colors["bg_primary"])
+        scroll.pack(fill="both", expand=True, padx=12, pady=12)
+        
+        # Declaración principal
+        ctk.CTkLabel(
+            scroll,
+            text="Declaración",
+            font=("Arial", 12, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(anchor="w", pady=(0, 4))
+        
+        ctk.CTkLabel(
+            scroll,
+            text=f'"{DECLARACION_PRINCIPAL}"',
+            font=("Arial", 11, "italic"),
+            text_color=("#6A1B9A", "#CE93D8"),
+            wraplength=550,
+            justify="left"
+        ).pack(anchor="w", pady=(0, 16))
+        
+        # Pilares
+        ctk.CTkLabel(
+            scroll,
+            text="Pilares Fundamentales",
+            font=("Arial", 12, "bold"),
+            text_color=colors["text_primary"]
+        ).pack(anchor="w", pady=(0, 8))
+        
+        pilares_texto = (
+            "• LIBERTAD: Autonomía informativa protegida por cifrado\n"
+            "• AUTONOMÍA: Control total sobre tus datos\n"
+            "• RESPONSABILIDAD: Auditoría completa de acciones\n"
+            "• DIÁLOGO: Conversación reflexiva y constructiva\n"
+            "• CONSTRUCCIÓN: Transformación positiva continua"
+        )
+        
+        ctk.CTkLabel(
+            scroll,
+            text=pilares_texto,
+            font=("Arial", 10),
+            text_color=colors["text_secondary"],
+            justify="left"
+        ).pack(anchor="w", pady=(0, 16))
+        
+        # Frase reflexiva
+        frase = obtener_frase_aleatoria("reflexion")
+        ctk.CTkLabel(
+            scroll,
+            text=f"💭 {frase}",
+            font=("Arial", 10, "italic"),
+            text_color=("#6A1B9A", "#AB47BC"),
+            wraplength=550,
+            justify="center"
+        ).pack(pady=12)
+        
+        # Botón cerrar
+        ctk.CTkButton(
+            win,
+            text="Cerrar",
+            command=win.destroy,
+            width=150, height=32,
+            fg_color=("#6A1B9A", "#9C27B0"),
+            hover_color=("#7B1FA2", "#AB47BC")
+        ).pack(pady=10)
+
+    def _mostrar_pie_pagina(self):
+        """Muestra/oculta el pie de página con la declaración."""
+        if self._footer.winfo_viewable():
+            self._footer.pack_forget()
+        else:
+            self._footer.pack(fill="x", padx=8, pady=(0, 4))
+
+
     # ── API pública (llamada desde main.py) ────────────────────────────────
 
     def init_session(self, usuario_nombre: str, context: str = ""):
@@ -188,11 +333,24 @@ class ChatbotPanel(ctk.CTkFrame):
             self._service = ChatbotService(usuario_nombre)
             if context:
                 self._service.set_context(context)
-            self._add_bubble(
-                f"Hola {usuario_nombre}, soy tu asistente de DatenJäger. "
-                "¿En qué puedo ayudarte hoy?",
-                "bot"
+            
+            # Mensaje de bienvenida enriquecido con filosofía transhumana
+            bienvenida = (
+                f"Hola {usuario_nombre}, soy tu asistente de DatenJäger.\n\n"
+                f"🌟 Bienvenido a tu espacio de autonomía digital.\n\n"
+                f"Aquí aplicamos la **Declaración de Persona Transhumana** "
+                f"de la Universidad de Cundinamarca:\n\n"
+                f'*\"{DECLARACION_PRINCIPAL}\"*\n\n'
+                f"Tu información está cifrada (AES-256), tu sesión protegida (2FA), "
+                f"y tus acciones auditadas.\n\n"
+                f"**Eres libre. Eres responsable. Eres el dueño.**\n\n"
+                f"¿En qué puedo ayudarte hoy?"
             )
+            self._add_bubble(bienvenida, "bot")
+            
+            # Mostrar pie de página con declaración
+            self._mostrar_pie_pagina()
+            
         except ValueError as e:
             # API key no configurada — mostrar aviso en el chat
             self._service = None
