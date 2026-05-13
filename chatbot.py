@@ -1,4 +1,4 @@
-# Copyright (c) 2024 DatenJäger. All rights reserved.
+# Copyright (c) 2024 DatenJäger. All rights reserved
 import os
 import json
 import socket
