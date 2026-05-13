@@ -43,9 +43,10 @@
 11. [Requisitos Previos](#requisitos-previos)
 12. [Instalacion y Ejecucion](#instalacion-y-ejecucion)
 13. [Guia de Uso](#guia-de-uso)
-14. [Configuracion](#configuracion)
-15. [Issues Conocidos](#issues-conocidos)
-16. [Referencias](#referencias)
+14. [Asistente IA y Declaracion de Persona Transhumana](#asistente-ia-y-declaracion-de-persona-transhumana)
+15. [Configuracion](#configuracion)
+16. [Issues Conocidos](#issues-conocidos)
+17. [Referencias](#referencias)
 
 ---
 
@@ -165,7 +166,7 @@ A continuacion podras ver un vistazo rapido de la version actual del sistema
 | **Atajos** | Atajos de teclado contextuales (`Ctrl+N`, `Ctrl+F`, `Ctrl+Q`, `F11`, `Delete`) |
 | **Config** | Persistencia de configuracion de usuario (tema, tamano de ventana, maximizado, etc.) con integridad HMAC |
 | **Reportes** | Generacion de reportes en CSV y PDF con estadisticas e inventario completo |
-| **Asistente IA** | Chatbot integrado en dashboard con interfaz conversacional y conexion a Gemini con fallback local |
+| **Asistente IA** | Chatbot integrado en dashboard con interfaz conversacional, conexion a Gemini, fallback local y capa reflexiva basada en la Declaracion de Persona Transhumana |
 
 ---
 
@@ -220,8 +221,9 @@ DatenJager/
 |-- ui_components.py     # Componentes UI reutilizables (notificaciones, barras, dialogos)
 |-- icons.py             # Sistema de iconos PNG (carga y cache de assets)
 |-- reporter.py          # Generacion de reportes (CSV y PDF)
-|-- chatbot.py           # Servicio de IA (Gemini) con manejo de historial y fallback local
+|-- chatbot.py           # Servicio de IA (Gemini) con manejo de historial, fallback local y reflexion contextual
 |-- chatbot_ui.py        # Panel visual del chatbot integrado al dashboard (CustomTkinter)
+|-- transhumano.py       # Filosofia transhumana, reflexiones y mensajes contextuales
 |
 |-- pdf_manager.py       # Modulo de operaciones CRUD de PDFs
 |-- personas.py          # Modulo de gestion de personas (CRUD titular)
@@ -333,7 +335,8 @@ El sistema implementa una interfaz moderna y fluida con multiples capas de anima
 
 | Archivo | Tipo | Responsabilidad |
 |---------|------|----------------|
-| `chatbot.py` | IA | Clase `ChatbotService`: integracion con API de Gemini, mantenimiento del historial por sesion, reintentos por modelo y fallback local en errores de permisos/conectividad |
+| `chatbot.py` | IA | Clase `ChatbotService`: integracion con API de Gemini, mantenimiento del historial por sesion, reintentos por modelo, fallback local y enriquecimiento reflexivo contextual |
+| `transhumano.py` | IA/Filosofia | Declaracion Persona Transhumana, pilares, dimensiones humanas, frases reflexivas y mensajes contextuales para el chatbot |
 
 ---
 
@@ -427,6 +430,7 @@ Para el modulo de asistente IA tambien necesitas:
 
 - Variable de entorno `GEMINI_API_KEY` con una API key valida de Google AI Studio / Google Cloud
 - Conexion a internet para consumir la API de Gemini
+- Si la API key no esta disponible, el sistema mantiene una respuesta local de apoyo para no interrumpir la interfaz
 
 O si dispones de un archivo `requirements.txt`:
 
@@ -471,6 +475,18 @@ python main.py
 ```
 
 Al primer inicio, la base de datos `base_datos_pdfs.db` y el archivo de configuracion `config.json` se crearan automaticamente en el directorio del proyecto.
+
+El chatbot integrado se mostrara dentro del dashboard. Si la variable `GEMINI_API_KEY` esta configurada, usara Gemini; si no, conservara un modo local de respaldo para mantener operativa la interfaz.
+
+### Asistente IA y Declaracion de Persona Transhumana
+
+El chatbot integrado en DatenJäger incorpora una capa reflexiva inspirada en la **Declaracion de Persona Transhumana** de la Universidad de Cundinamarca. Esta integracion se refleja en tres niveles:
+
+- **Mensaje inicial** con la declaracion institucional y un enfoque en libertad, autonomia y responsabilidad
+- **Respuestas contextuales** que agregan reflexiones sobre desarrollo humano, etica, bienestar, evolucion personal y responsabilidad social
+- **Componente visual** con acceso a una ventana reflexiva desde la interfaz del chatbot
+
+El modulo funciona con Gemini cuando la API key esta disponible, pero mantiene un fallback local para no romper la experiencia visual y de navegacion del sistema.
 
 ---
 
