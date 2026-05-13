@@ -3,7 +3,7 @@ import json
 import os
 import hmac
 import hashlib
-
+# Copyright (c) 2024 DatenJäger. All rights reserved.
 
 def _load_env_file(env_path: str = ".env") -> None:
     """Carga variables desde un archivo .env sencillo sin dependencias externas."""

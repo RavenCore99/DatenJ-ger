@@ -599,4 +599,6 @@ Los siguientes issues fueron identificados durante el desarrollo y estan planead
 
 Estado: Produccion-Listo | Completitud: 98% | Seguridad: Estandar Alto
 
+# Copyright (c) 2024 DatenJäger. All rights reserved.
+
 </div>

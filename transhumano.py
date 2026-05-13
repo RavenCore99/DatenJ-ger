@@ -260,3 +260,4 @@ def contextualizar_mensaje_sistema() -> str:
         f"Filosofía central: {DECLARACION_PRINCIPAL}\n"
         f"Ten presente los pilares de LIBERTAD, AUTONOMÍA, RESPONSABILIDAD, DIÁLOGO y CONSTRUCCIÓN."
     )
+# Copyright (c) 2024 DatenJäger. All rights reserved.

@@ -1,5 +1,4 @@
 
-
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # sistema de gestion documental | 2FA | aes-256 |
 # main.py - aplicacion principal datenjager v2
