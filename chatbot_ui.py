@@ -1,4 +1,4 @@
-
+# Copyright (c) 2024 DatenJäger. All rights reserved.
 # chatbot_ui.py
 # panel visual del chatbot - CustomTkinter
 
