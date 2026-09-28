@@ -10,6 +10,7 @@ import os
 import math
 from datetime import datetime, timedelta
 from icons import get_icon
+from backend.services import reportes
 
 
 # colores segun el tema
@@ -676,67 +677,25 @@ class DashboardWidget:
     # tendencia temporal con regresión lineal (numpy).
     # Se integra con Tkinter via matplotlib FigureCanvasTkAgg.
 
-    def __init__(self, parent, cursor, usuario_id):
+    def __init__(self, parent, conn, cursor, usuario_id):
         self.frame = ctk.CTkFrame(parent, fg_color="transparent")
+        self.conn = conn
         self.cursor = cursor
         self.usuario_id = usuario_id
         self._chart_canvases = []  # referencias para cleanup
         self.construir_dashboard()
 
     def _query_stats(self):
-        # stats del usuario
-        from database import format_size
-
-        self.cursor.execute(
-            "SELECT COUNT(*), COALESCE(SUM(tamano),0) FROM PDFs WHERE usuario_id = ?",
-            (self.usuario_id,)
-        )
-        total_pdfs, total_size = self.cursor.fetchone()
-        total_pdfs = total_pdfs or 0
-        total_size = total_size or 0
-
-        self.cursor.execute(
-            "SELECT COUNT(DISTINCT persona_id) FROM PDFs WHERE usuario_id = ?",
-            (self.usuario_id,)
-        )
-        total_personas = self.cursor.fetchone()[0] or 0
-
-        self.cursor.execute(
-            "SELECT COUNT(DISTINCT COALESCE(pe.empresa,'')) "
-            "FROM PDFs p LEFT JOIN Personas pe ON p.persona_id = pe.id "
-            "WHERE p.usuario_id = ?",
-            (self.usuario_id,)
-        )
-        total_empresas = self.cursor.fetchone()[0] or 0
-
-        return {
-            "total_pdfs": total_pdfs,
-            "total_size_str": format_size(total_size),
-            "total_personas": total_personas,
-            "total_empresas": total_empresas,
-        }
+        # stats del usuario (delegado al servicio de reportes)
+        return reportes.estadisticas(self.conn, self.cursor, self.usuario_id)
 
     def _query_empresas(self):
-        # docs por empresa
-        self.cursor.execute(
-            "SELECT COALESCE(pe.empresa, 'Sin empresa'), COUNT(*) "
-            "FROM PDFs p LEFT JOIN Personas pe ON p.persona_id = pe.id "
-            "WHERE p.usuario_id = ? "
-            "GROUP BY COALESCE(pe.empresa, 'Sin empresa') "
-            "ORDER BY COUNT(*) DESC",
-            (self.usuario_id,)
-        )
-        return self.cursor.fetchall()
+        # docs por empresa (delegado al servicio de reportes)
+        return reportes.documentos_por_empresa(self.conn, self.cursor, self.usuario_id)
 
     def _query_timeline(self):
-        # subidas por dia
-        self.cursor.execute(
-            "SELECT DATE(fecha_subida) AS dia, COUNT(*) "
-            "FROM PDFs WHERE usuario_id = ? "
-            "GROUP BY DATE(fecha_subida) ORDER BY dia ASC",
-            (self.usuario_id,)
-        )
-        return self.cursor.fetchall()
+        # subidas por dia (delegado al servicio de reportes)
+        return reportes.documentos_por_dia(self.conn, self.cursor, self.usuario_id)
 
     # construir dashboard
 

@@ -165,6 +165,7 @@ class GestorAuditoria:
                 try:
                     with self.app._db_lock:
                         rows = auditoria_service.listar_eventos(
+                            self.app.conn,
                             self.app.cursor,
                             desde=desde,
                             hasta=hasta,
@@ -230,6 +231,7 @@ class GestorAuditoria:
                 try:
                     with self.app._db_lock:
                         log_content, found_log = auditoria_service.construir_log_sistema(
+                            self.app.conn,
                             self.app.cursor,
                             os.path.dirname(os.path.abspath(__file__)),
                         )
@@ -338,7 +340,7 @@ class GestorAuditoria:
         def _limpiar_historial():
             try:
                 with self.app._db_lock:
-                    total = auditoria_service.contar_eventos(self.app.cursor)
+                    total = auditoria_service.contar_eventos(self.app.conn, self.app.cursor)
                 if total == 0:
                     Notification(win, "Info", "El historial ya está vacío.",
                                  notification_type="warning")

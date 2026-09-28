@@ -36,6 +36,8 @@ from audit import GestorAuditoria
 from pdf_manager import GestorPDF
 from chatbot_ui import ChatbotPanel
 from backend.state import AppState
+from backend.services import reportes
+from backend.commands import ComandosDatenJager
 
 
 
@@ -110,6 +112,9 @@ class AppDBPDF:
             config=self.config,
             tema=theme,
         )
+
+        # capa de comandos: punto de entrada único del backend
+        self.comandos = ComandosDatenJager(self.state)
 
         self.animating = False
         self._login_fail_count = 0
@@ -2093,9 +2098,7 @@ class AppDBPDF:
                                 self.conn.commit()
 
                     # guardar session key
-                    self._session_key   = session_key
-                    self.usuario_actual = usuario_id
-                    self.usuario_nombre = nombre
+                    self.comandos.iniciar_sesion(usuario_id, nombre, session_key)
 
                     if totp_enabled:
                         # verificar token confianza
@@ -3244,8 +3247,8 @@ class AppDBPDF:
         self.config.set("trust_tokens", tokens)
 
     def _audit(self, accion: str, pdf_id=None, usuario_id=None):
-        # delega al modulo de auditoria
-        self.auditoria.registrar(accion, pdf_id, usuario_id)
+        # delega a la capa de comandos
+        self.comandos.registrar_evento(accion, documento_id=pdf_id, usuario_id=usuario_id)
 
     # timeout inactividad
 
@@ -3314,9 +3317,7 @@ class AppDBPDF:
         self._stop_idle_tracking()
         self._audit("Logout automático por inactividad")
         nombre = self.usuario_nombre
-        self.usuario_actual = None
-        self.usuario_nombre = None
-        self._session_key   = None
+        self.comandos.cerrar_sesion()
         for item in self.tree.get_children():
             self.tree.delete(item)
         self._reset_preview_panel()
@@ -3365,10 +3366,8 @@ class AppDBPDF:
             if hasattr(self, "_chatbot_window") and self._chatbot_window.winfo_exists():
                 self._cerrar_chatbot(self._chatbot_window)
             self._audit("Logout")
-            self.usuario_actual  = None
-            self.usuario_nombre  = None
-            self._session_key    = None
-            
+            self.comandos.cerrar_sesion()
+
             for item in self.tree.get_children():
                 self.tree.delete(item)
             self._reset_preview_panel()
@@ -3385,62 +3384,13 @@ class AppDBPDF:
         for widget in self.dashboard_container.winfo_children():
             widget.destroy()
 
-        dashboard = DashboardWidget(self.dashboard_container, self.cursor, self.usuario_actual)
+        dashboard = DashboardWidget(self.dashboard_container, self.conn, self.cursor, self.usuario_actual)
         dashboard.pack(fill="both", padx=20)
 
     def _obtener_datos_reporte_dashboard(self):
-        # datos para el reporte
-        from database import format_size
-
+        # datos para el reporte (delegado al servicio de reportes)
         with self._db_lock:
-            self.cursor.execute(
-                """
-                SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ?
-                ORDER BY p.fecha_subida DESC
-                """,
-                (self.usuario_actual,)
-            )
-            rows = self.cursor.fetchall()
-
-            self.cursor.execute(
-                "SELECT COUNT(*), COALESCE(SUM(tamano), 0) FROM PDFs WHERE usuario_id = ?",
-                (self.usuario_actual,)
-            )
-            total_pdfs, total_size = self.cursor.fetchone()
-            total_pdfs = total_pdfs or 0
-            total_size = total_size or 0
-
-            self.cursor.execute(
-                "SELECT COUNT(DISTINCT persona_id) FROM PDFs WHERE usuario_id = ?",
-                (self.usuario_actual,)
-            )
-            total_personas = self.cursor.fetchone()[0] or 0
-
-            self.cursor.execute(
-                """
-                SELECT COALESCE(pe.empresa, 'Sin empresa') AS empresa, COUNT(*) AS total
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ?
-                GROUP BY COALESCE(pe.empresa, 'Sin empresa')
-                ORDER BY total DESC, empresa ASC
-                """,
-                (self.usuario_actual,)
-            )
-            empresas_data = self.cursor.fetchall()
-
-        stats = {
-            "total_pdfs": total_pdfs,
-            "total_size_str": format_size(total_size),
-            "total_personas": total_personas,
-            "total_empresas": len(empresas_data),
-            "empresas_data": empresas_data,
-        }
-        return rows, stats
+            return reportes.datos_inventario(self.conn, self.cursor, self.usuario_actual)
 
     def exportar_reporte_dashboard(self, formato="pdf"):
         # exportar reporte
@@ -3464,15 +3414,15 @@ class AppDBPDF:
 
         self.progress_bar.start(f"Generando reporte {formato.upper()}...")
         try:
-            rows, stats = self._obtener_datos_reporte_dashboard()
-            if formato == "csv":
-                ReporteInventario.generar_csv(rows, destino, self.usuario_nombre or "")
-                accion = "Generar reporte dashboard CSV"
-            else:
-                ReporteInventario.generar_pdf(rows, stats, destino, self.usuario_nombre or "")
-                accion = "Generar reporte dashboard PDF"
-
-            self._audit(accion)
+            with self._db_lock:
+                reportes.exportar_inventario(
+                    self.conn,
+                    self.cursor,
+                    usuario_id=self.usuario_actual,
+                    usuario_nombre=self.usuario_nombre or "",
+                    destino=destino,
+                    formato=formato,
+                )
             Notification(
                 self.root,
                 "Reporte generado",

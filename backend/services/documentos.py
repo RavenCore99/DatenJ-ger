@@ -152,7 +152,7 @@ def obtener_documento(conn, cursor, usuario_id: Optional[int], documento_id: int
     return _fila_a_dict(fila)
 
 
-def contar_documentos(cursor, usuario_id: Optional[int]) -> int:
+def contar_documentos(conn, cursor, usuario_id: Optional[int]) -> int:
     """Cuenta los documentos del usuario (para KPIs y dashboard)."""
     usuario_id = _validar_usuario(usuario_id)
     cursor.execute("SELECT COUNT(*) FROM PDFs WHERE usuario_id = ?", (usuario_id,))

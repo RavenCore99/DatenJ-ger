@@ -73,6 +73,7 @@ def registrar_evento(
 # --------------------------------------------------------------------------- #
 
 def listar_eventos(
+    conn,
     cursor,
     desde: str = "",
     hasta: str = "",
@@ -130,7 +131,7 @@ def listar_eventos(
     ]
 
 
-def contar_eventos(cursor) -> int:
+def contar_eventos(conn, cursor) -> int:
     """Cuenta los eventos de auditoría registrados."""
     cursor.execute("SELECT COUNT(*) FROM Auditoria")
     fila = cursor.fetchone()
@@ -151,7 +152,7 @@ def limpiar_historial(conn, cursor, usuario_id: Optional[int] = None) -> int:
         sqlite3.Error / Exception: si el borrado falla (el llamador decide
         cómo avisar).
     """
-    total = contar_eventos(cursor)
+    total = contar_eventos(conn, cursor)
     if total == 0:
         return 0
 
@@ -180,7 +181,7 @@ def limpiar_historial(conn, cursor, usuario_id: Optional[int] = None) -> int:
 # Log del sistema
 # --------------------------------------------------------------------------- #
 
-def construir_log_sistema(cursor, directorio: str, limite: int = LIMITE_LOG) -> tuple[str, str]:
+def construir_log_sistema(conn, cursor, directorio: str, limite: int = LIMITE_LOG) -> tuple[str, str]:
     """Compone el contenido del visor de log.
 
     Busca el primer archivo ``*.log`` del directorio; si no existe, genera
@@ -216,7 +217,7 @@ def construir_log_sistema(cursor, directorio: str, limite: int = LIMITE_LOG) -> 
         "═══ Log de Auditoría exportado ═══\n\n"
     )
     try:
-        for evento in reversed(listar_eventos(cursor, limite=limite)):
+        for evento in reversed(listar_eventos(conn, cursor, limite=limite)):
             fecha = evento["fecha"][:19].replace("T", " ") if evento["fecha"] else "—"
             documento = evento["documento_id"] if evento["documento_id"] is not None else "—"
             usuario = evento["usuario"] or "—"
