@@ -27,11 +27,14 @@ de contraseña (SCRUM-25).
 
 from __future__ import annotations
 
+import os
+
 from typing import Any, Optional
 
 from backend.errors import NoAutenticadoError, SegundoFactorInvalidoError
 from backend.services import auditoria as _auditoria
 from backend.services import autenticacion as _autenticacion
+from backend import tokens as _tokens
 from backend.services import documentos as _documentos
 from backend.services import personas as _personas
 from backend.services import reportes as _reportes
@@ -40,9 +43,6 @@ from chatbot import ChatbotService, crear_servicio
 #: Operaciones que todavía viven en la interfaz y su motivo.
 OPERACIONES_PENDIENTES = {
     "registro": "Alta de usuario con derivación de claves (flujo de autenticación)",
-    "setup_2fa": "Generación del secreto TOTP y códigos de respaldo",
-    "cambio_contrasena": "Re-cifrado de secretos con la nueva clave de sesión",
-    "confianza_dispositivo": "Emisión y revocación del token de confianza",
 }
 
 
@@ -381,6 +381,16 @@ class ComandosDatenJager:
     # Autenticación (SCRUM-22)
     # ------------------------------------------------------------------ #
 
+    @property
+    def _raiz(self) -> str:
+        """Raíz del proyecto, donde vive el almacén de tokens de confianza.
+
+        `DATENJAGER_TOKENS` permite apuntar el almacén a otro directorio para
+        que las pruebas y las sondas no escriban en el proyecto real.
+        """
+        return os.environ.get("DATENJAGER_TOKENS") or os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))
+
     def _horas_confianza(self) -> int:
         """Horas de validez del token de confianza, según la configuración."""
         if self.state.config is None:
@@ -399,6 +409,10 @@ class ComandosDatenJager:
         retenida hasta completar el segundo factor) y al cliente solo le llega
         el resumen de la sesión.
         """
+        if token_confianza is None:
+            # El token vive cifrado en disco: el frontend no lo maneja.
+            token_confianza = _tokens.leer(self._raiz, nombre)
+
         resultado = self._ejecutar(
             _autenticacion.autenticar,
             nombre=nombre,
@@ -468,6 +482,9 @@ class ComandosDatenJager:
             horas=self._horas_confianza(),
         )
 
+        if token:
+            _tokens.guardar(self._raiz, nombre, token)
+
         self.state.iniciar_sesion(usuario_id, nombre, clave)
         self._acceso_pendiente = None
 
@@ -485,10 +502,92 @@ class ComandosDatenJager:
                 "No hay un acceso pendiente: vuelve a ingresar tus credenciales")
         return pendiente
 
+    # ------------------------------------------------------------------ #
+    # Gestión de la propia cuenta (SCRUM-25)
+    # ------------------------------------------------------------------ #
+
+    def preparar_segundo_factor(self) -> dict:
+        """Genera un secreto TOTP nuevo y su QR, sin activarlo todavía."""
+        datos = _autenticacion.generar_secreto(self.state.usuario_nombre)
+        return {
+            "secreto": datos["secreto"],
+            "uri": datos["uri"],
+            "qr": self._qr_como_imagen(datos["uri"]),
+        }
+
+    @staticmethod
+    def _qr_como_imagen(uri: str) -> str:
+        """PNG del QR en base64, listo para un `data:` del frontend."""
+        import base64
+
+        return base64.b64encode(_autenticacion.generar_qr(uri)).decode("ascii")
+
+    def activar_segundo_factor(self, secreto: str, codigo: str) -> dict:
+        """Activa el 2FA y devuelve los códigos de respaldo (se muestran una vez)."""
+        usuario_id, clave = self._sesion_para_gestion()
+        codigos = self._ejecutar(
+            _autenticacion.activar_segundo_factor,
+            usuario_id=usuario_id, clave_sesion=clave, secreto=secreto, codigo=codigo,
+        )
+        return {"codigos_de_respaldo": codigos}
+
+    def desactivar_segundo_factor(self, codigo: str) -> dict:
+        """Desactiva el 2FA tras comprobar un código vigente."""
+        usuario_id, clave = self._sesion_para_gestion()
+        self._ejecutar(
+            _autenticacion.desactivar_segundo_factor,
+            usuario_id=usuario_id, clave_sesion=clave, codigo=codigo,
+        )
+        _tokens.borrar(self._raiz, self.state.usuario_nombre)
+        return self.estado_de_cuenta()
+
+    def regenerar_codigos_de_respaldo(self, codigo: str) -> dict:
+        """Emite códigos de respaldo nuevos, invalidando los anteriores."""
+        usuario_id, clave = self._sesion_para_gestion()
+        codigos = self._ejecutar(
+            _autenticacion.regenerar_codigos_de_respaldo,
+            usuario_id=usuario_id, clave_sesion=clave, codigo=codigo,
+        )
+        return {"codigos_de_respaldo": codigos}
+
+    def revocar_confianza(self) -> dict:
+        """Olvida este dispositivo: el próximo acceso volverá a pedir el 2FA."""
+        usuario_id = self._exigir_sesion()
+        self._ejecutar(_autenticacion.revocar_token_confianza, usuario_id=usuario_id)
+        _tokens.borrar(self._raiz, self.state.usuario_nombre)
+        return self.estado_de_cuenta()
+
+    def cambiar_contrasena(self, actual: str, nueva: str, codigo: str) -> dict:
+        """Cambia la contraseña y re-cifra los secretos con la clave nueva."""
+        usuario_id, clave = self._sesion_para_gestion()
+        nombre = self.state.usuario_nombre
+
+        clave_nueva = self._ejecutar(
+            _autenticacion.cambiar_contrasena,
+            usuario_id=usuario_id, nombre=nombre, clave_sesion=clave,
+            contrasena_actual=actual, contrasena_nueva=nueva, codigo=codigo,
+        )
+
+        # La clave anterior deja de servir: la sesión continúa con la nueva.
+        self.state.iniciar_sesion(usuario_id, nombre, clave_nueva)
+        _tokens.borrar(self._raiz, nombre)
+        return {"estado": "contrasena_cambiada", **self.sesion_actual()}
+
+    def _sesion_para_gestion(self) -> tuple:
+        """Devuelve (usuario_id, clave de sesión) para operar sobre la cuenta."""
+        usuario_id = self._exigir_sesion()
+        clave = self.state.session_key
+        if not clave:
+            raise NoAutenticadoError("La sesión no tiene clave de cifrado")
+        return usuario_id, clave
+
     def estado_de_cuenta(self) -> dict:
         """Resumen del estado de seguridad de la cuenta en sesión."""
         usuario_id = self._exigir_sesion()
-        return self._ejecutar(_autenticacion.estado_de_cuenta, usuario_id=usuario_id)
+        estado = self._ejecutar(_autenticacion.estado_de_cuenta, usuario_id=usuario_id)
+        estado["confianza_guardada"] = _tokens.hay_almacen(
+            self._raiz, self.state.usuario_nombre)
+        return estado
 
     # ------------------------------------------------------------------ #
     # Catálogo

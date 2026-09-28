@@ -141,9 +141,12 @@ class TestFlujoCompleto(BaseBackendTest):
         self.assertNotIn("login", pendientes)
         self.assertNotIn("login_2fa", pendientes)
 
-        # ...y lo que sigue pendiente es el alta y la gestión de cuenta.
-        for operacion in ("registro", "setup_2fa", "cambio_contrasena", "confianza_dispositivo"):
-            self.assertIn(operacion, pendientes)
+        # ...y la gestión de cuenta tampoco sigue pendiente (SCRUM-25).
+        for operacion in ("setup_2fa", "cambio_contrasena", "confianza_dispositivo"):
+            self.assertNotIn(operacion, pendientes)
+
+        # Lo único que queda fuera es el alta de usuario.
+        self.assertEqual(list(pendientes), ["registro"])
         self.assertTrue(all(pendientes.values()))
 
 

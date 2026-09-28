@@ -28,16 +28,22 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
+import io
+
 import pyotp
+import qrcode
 
 from backend.services import auditoria
 from backend.errors import (
+    DatosInvalidosError,
     CredencialesInvalidasError,
     CuentaBloqueadaError,
     SegundoFactorInvalidoError,
     UsuarioInexistenteError,
 )
-from database import (
+from database import (  # noqa: E402
+    clear_trust_token,
+    password_strength,
     check_account_locked,
     check_trust_token,
     hash_contrasena,
@@ -341,3 +347,204 @@ def estado_de_cuenta(conn, cursor, *, usuario_id: int) -> dict[str, Any]:
         "bloqueada_hasta": bloqueada_hasta,
         "intentos_fallidos": intentos or 0,
     }
+
+
+# ---------------------------------------------------------------------- #
+# Gestión de la propia cuenta (SCRUM-25)
+# ---------------------------------------------------------------------- #
+
+ACCION_CAMBIO_CONTRASENA = "Cambio de contraseña"
+ACCION_2FA_ACTIVADO = "Configuración 2FA completada"
+ACCION_2FA_DESACTIVADO = "2FA desactivado"
+ACCION_CODIGOS_REGENERADOS = "Códigos de respaldo regenerados"
+ACCION_CONFIANZA_REVOCADA = "Token de confianza revocado"
+
+CODIGOS_DE_RESPALDO = 5
+LONGITUD_CODIGO = 6
+LONGITUD_MINIMA_CONTRASENA = 8
+
+
+def _codigos_de_respaldo() -> list[str]:
+    """Genera códigos de un solo uso con el generador criptográfico."""
+    return [
+        "".join(str(secrets.randbelow(10)) for _ in range(LONGITUD_CODIGO))
+        for _ in range(CODIGOS_DE_RESPALDO)
+    ]
+
+
+def generar_secreto(usuario_nombre: str) -> dict[str, str]:
+    """Prepara un secreto TOTP nuevo y su URI de aprovisionamiento.
+
+    El secreto todavía no se guarda: se activa en ``activar_segundo_factor``
+    una vez el usuario demuestra que su autenticador lo acepta.
+    """
+    secreto = pyotp.random_base32()
+    uri = pyotp.TOTP(secreto).provisioning_uri(name=usuario_nombre, issuer_name="DatenJäger")
+    return {"secreto": secreto, "uri": uri}
+
+
+def generar_qr(uri: str) -> bytes:
+    """Devuelve el PNG del código QR del URI, para mostrarlo en el cliente."""
+    qr = qrcode.QRCode(version=1, box_size=8, border=4)
+    qr.add_data(uri)
+    qr.make(fit=True)
+    imagen = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    buffer = io.BytesIO()
+    imagen.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def activar_segundo_factor(conn, cursor, *, usuario_id: int, clave_sesion: bytes,
+                           secreto: str, codigo: str) -> list[str]:
+    """Activa el 2FA tras comprobar un código del secreto propuesto.
+
+    Devuelve los códigos de respaldo en claro: es la única vez que se muestran.
+    """
+    if not _codigo_valido(codigo):
+        raise SegundoFactorInvalidoError("El código debe tener 6 dígitos")
+    if not pyotp.TOTP(secreto).verify(codigo):
+        raise SegundoFactorInvalidoError("El código es incorrecto o ha expirado")
+
+    codigos = _codigos_de_respaldo()
+    cursor.execute(
+        "UPDATE Usuarios SET totp_secret = ?, totp_enabled = 1, backup_codes = ? WHERE id = ?",
+        (
+            EncryptionManager.encrypt_str_with_key(secreto, clave_sesion),
+            EncryptionManager.encrypt_str_with_key(",".join(codigos), clave_sesion),
+            usuario_id,
+        ),
+    )
+    conn.commit()
+    _auditar(conn, cursor, ACCION_2FA_ACTIVADO, usuario_id)
+    return codigos
+
+
+def desactivar_segundo_factor(conn, cursor, *, usuario_id: int, clave_sesion: bytes,
+                              codigo: str) -> None:
+    """Desactiva el 2FA. Exige un código vigente y descarta los tokens de confianza."""
+    secreto = _secreto_legible(cursor, usuario_id, clave_sesion)
+    if not _codigo_valido(codigo) or not pyotp.TOTP(secreto).verify(codigo):
+        raise SegundoFactorInvalidoError("El código es incorrecto o ha expirado")
+
+    cursor.execute(
+        "UPDATE Usuarios SET totp_secret = NULL, totp_enabled = 0, backup_codes = NULL"
+        " WHERE id = ?",
+        (usuario_id,),
+    )
+    clear_trust_token(cursor, conn, usuario_id)
+    conn.commit()
+    _auditar(conn, cursor, ACCION_2FA_DESACTIVADO, usuario_id)
+
+
+def regenerar_codigos_de_respaldo(conn, cursor, *, usuario_id: int, clave_sesion: bytes,
+                                  codigo: str) -> list[str]:
+    """Emite un juego nuevo de códigos de respaldo y anula los anteriores."""
+    secreto = _secreto_legible(cursor, usuario_id, clave_sesion)
+    if not _codigo_valido(codigo) or not pyotp.TOTP(secreto).verify(codigo):
+        raise SegundoFactorInvalidoError("El código es incorrecto o ha expirado")
+
+    codigos = _codigos_de_respaldo()
+    cursor.execute(
+        "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
+        (EncryptionManager.encrypt_str_with_key(",".join(codigos), clave_sesion), usuario_id),
+    )
+    conn.commit()
+    _auditar(conn, cursor, ACCION_CODIGOS_REGENERADOS, usuario_id)
+    return codigos
+
+
+def revocar_token_confianza(conn, cursor, *, usuario_id: int) -> None:
+    """Invalida el token de confianza: el próximo acceso volverá a pedir el 2FA."""
+    clear_trust_token(cursor, conn, usuario_id)
+    _auditar(conn, cursor, ACCION_CONFIANZA_REVOCADA, usuario_id)
+
+
+def cambiar_contrasena(conn, cursor, *, usuario_id: int, nombre: str, clave_sesion: bytes,
+                       contrasena_actual: str, contrasena_nueva: str,
+                       codigo: str) -> bytes:
+    """Cambia la contraseña y re-cifra los secretos con la clave nueva.
+
+    Devuelve la clave de sesión nueva: la anterior deja de servir en cuanto se
+    guarda, así que el cliente debe reemplazarla.
+
+    El 2FA es obligatorio para este cambio: quien tenga la sesión abierta en un
+    equipo desatendido no puede apropiarse de la cuenta cambiando la contraseña.
+    """
+    if not contrasena_actual or not contrasena_nueva:
+        raise DatosInvalidosError("Debes indicar la contraseña actual y la nueva")
+    if len(contrasena_nueva) < LONGITUD_MINIMA_CONTRASENA:
+        raise DatosInvalidosError(
+            f"La contraseña nueva debe tener al menos {LONGITUD_MINIMA_CONTRASENA} caracteres")
+
+    puntaje, etiqueta, _color = password_strength(contrasena_nueva)
+    if puntaje < 2:
+        raise DatosInvalidosError(
+            f"Contraseña débil (fortaleza: {etiqueta}). Usa mayúsculas, números y símbolos.")
+
+    cursor.execute(
+        "SELECT contrasena, totp_enabled, totp_secret, backup_codes FROM Usuarios WHERE id = ?",
+        (usuario_id,),
+    )
+    fila = cursor.fetchone()
+    if not fila:
+        raise UsuarioInexistenteError("La cuenta no existe")
+    hash_guardado, totp_activo, totp_cifrado, respaldo_cifrado = fila
+
+    correcta, _rehash = verify_contrasena(contrasena_actual, hash_guardado)
+    if not correcta:
+        raise CredencialesInvalidasError("La contraseña actual es incorrecta")
+
+    if not totp_activo or not totp_cifrado:
+        raise segundo_factor_no_configurado()
+
+    secreto = EncryptionManager.decrypt_str_with_key(totp_cifrado, clave_sesion)
+    if not _codigo_valido(codigo) or not pyotp.TOTP(secreto).verify(codigo):
+        raise SegundoFactorInvalidoError("El código del autenticador es incorrecto o expiró")
+
+    hash_nuevo = hash_contrasena(contrasena_nueva)
+    partes = hash_nuevo.split(":")
+    sal_nueva = partes[1] if len(partes) == 3 else nombre
+    clave_nueva = EncryptionManager.derive_session_key(contrasena_nueva, sal_nueva)
+
+    respaldo_nuevo = respaldo_cifrado
+    if respaldo_cifrado:
+        respaldo_nuevo = EncryptionManager.encrypt_str_with_key(
+            EncryptionManager.decrypt_str_with_key(respaldo_cifrado, clave_sesion),
+            clave_nueva,
+        )
+
+    cursor.execute(
+        "UPDATE Usuarios SET contrasena = ?, totp_secret = ?, backup_codes = ? WHERE id = ?",
+        (
+            hash_nuevo,
+            EncryptionManager.encrypt_str_with_key(secreto, clave_nueva),
+            respaldo_nuevo,
+            usuario_id,
+        ),
+    )
+    # La contraseña nueva deja inservible cualquier confianza anterior.
+    clear_trust_token(cursor, conn, usuario_id)
+    conn.commit()
+
+    _auditar(conn, cursor, ACCION_CAMBIO_CONTRASENA, usuario_id)
+    return clave_nueva
+
+
+def _secreto_legible(cursor, usuario_id: int, clave_sesion: bytes) -> str:
+    """Descifra el secreto TOTP de la cuenta o falla si el 2FA no está activo."""
+    cursor.execute("SELECT totp_secret FROM Usuarios WHERE id = ?", (usuario_id,))
+    fila = cursor.fetchone()
+    if not fila or not fila[0]:
+        raise segundo_factor_no_configurado()
+    return EncryptionManager.decrypt_str_with_key(fila[0], clave_sesion)
+
+
+def segundo_factor_no_configurado() -> SegundoFactorInvalidoError:
+    """Error uniforme cuando la cuenta no tiene 2FA activo."""
+    return SegundoFactorInvalidoError(
+        "La cuenta no tiene el segundo factor configurado: actívalo antes de continuar")
+
+
+def _codigo_valido(codigo: str) -> bool:
+    """Un código del autenticador son 6 dígitos."""
+    return bool(codigo) and len(codigo.strip()) == 6 and codigo.strip().isdigit()

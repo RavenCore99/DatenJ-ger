@@ -98,6 +98,21 @@ class Acceso(BaseModel):
     token_confianza: Optional[str] = None
 
 
+class SegundoFactorNuevo(BaseModel):
+    """Secreto TOTP propuesto y código con el que el usuario lo confirma."""
+
+    secreto: str
+    codigo: str
+
+
+class CambioDeContrasena(BaseModel):
+    """Cambio de contraseña: exige la actual y un código del autenticador."""
+
+    contrasena_actual: str
+    contrasena_nueva: str
+    codigo: str
+
+
 class CodigoDeSeguridad(BaseModel):
     """Código del segundo factor: TOTP o código de respaldo."""
 
@@ -279,6 +294,37 @@ def crear_app(
     async def estado_de_cuenta() -> dict[str, Any]:
         """Estado de seguridad de la cuenta en sesión."""
         return comandos.estado_de_cuenta()
+
+    @app.post("/api/cuenta/2fa/preparar", dependencies=protegido)
+    async def preparar_segundo_factor() -> dict[str, Any]:
+        """Genera un secreto TOTP y el PNG del QR, sin activarlo todavía."""
+        return comandos.preparar_segundo_factor()
+
+    @app.post("/api/cuenta/2fa/activar", dependencies=protegido)
+    async def activar_segundo_factor(cuerpo: SegundoFactorNuevo) -> dict[str, Any]:
+        """Activa el 2FA y devuelve los códigos de respaldo (una sola vez)."""
+        return comandos.activar_segundo_factor(cuerpo.secreto, cuerpo.codigo)
+
+    @app.post("/api/cuenta/2fa/desactivar", dependencies=protegido)
+    async def desactivar_segundo_factor(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
+        """Desactiva el 2FA y descarta la confianza de este dispositivo."""
+        return comandos.desactivar_segundo_factor(cuerpo.codigo)
+
+    @app.post("/api/cuenta/2fa/codigos", dependencies=protegido)
+    async def regenerar_codigos_de_respaldo(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
+        """Emite códigos de respaldo nuevos, invalidando los anteriores."""
+        return comandos.regenerar_codigos_de_respaldo(cuerpo.codigo)
+
+    @app.post("/api/cuenta/contrasena", dependencies=protegido)
+    async def cambiar_contrasena(cuerpo: CambioDeContrasena) -> dict[str, Any]:
+        """Cambia la contraseña y re-cifra los secretos con la clave nueva."""
+        return comandos.cambiar_contrasena(
+            cuerpo.contrasena_actual, cuerpo.contrasena_nueva, cuerpo.codigo)
+
+    @app.delete("/api/cuenta/confianza", dependencies=protegido)
+    async def revocar_confianza() -> dict[str, Any]:
+        """Olvida este dispositivo: el próximo acceso pedirá el segundo factor."""
+        return comandos.revocar_confianza()
 
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:

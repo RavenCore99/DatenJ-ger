@@ -27,6 +27,7 @@ MODULOS_BACKEND = (
     "backend.commands",
     "backend.services.auditoria",
     "backend.services.autenticacion",
+    "backend.tokens",
     "backend.services.documentos",
     "backend.services.personas",
     "backend.services.reportes",
