@@ -48,9 +48,12 @@ function generarToken() {
  * Servicio Python local: encapsula el proceso hijo y su configuración.
  */
 class ServicioPython {
-  constructor({ raiz = RAIZ, puerto = 8756 } = {}) {
+  constructor({ raiz = RAIZ, puerto = 8756, dbPath = process.env.DATENJAGER_DB ?? null } = {}) {
     this.raiz = raiz
     this.puerto = puerto
+    // Base alternativa: pruebas y desarrollo no deben escribir sobre la base
+    // de trabajo del usuario.
+    this.dbPath = dbPath
     this.token = generarToken()
     this.proceso = null
     this.puertoReal = null
@@ -79,6 +82,8 @@ class ServicioPython {
       '--puerto', String(this.puerto),
       '--token', this.token,
     ]
+
+    if (this.dbPath) orden.push('--db', this.dbPath)
 
     try {
       this.proceso = spawn(interprete(this.raiz), orden, {
