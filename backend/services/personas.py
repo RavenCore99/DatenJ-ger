@@ -110,7 +110,7 @@ def obtener_persona(conn, cursor, persona_id: int) -> dict:
     return _fila_a_dict(fila)
 
 
-def contar_personas(cursor) -> int:
+def contar_personas(conn, cursor) -> int:
     """Cuenta las personas registradas."""
     cursor.execute("SELECT COUNT(*) FROM Personas")
     fila = cursor.fetchone()
@@ -223,6 +223,11 @@ def eliminar_persona(
     persona = obtener_persona(conn, cursor, persona_id)
 
     try:
+        # Los documentos vinculados quedan sin titular. El esquema declara
+        # ON DELETE SET NULL, pero la conexión no activa las claves foráneas
+        # (PRAGMA foreign_keys), así que el desvinculo se hace explícito para
+        # que el documento no quede apuntando a un id reutilizable.
+        cursor.execute("UPDATE PDFs SET persona_id = NULL WHERE persona_id = ?", (persona_id,))
         cursor.execute("DELETE FROM Personas WHERE id = ?", (persona_id,))
         conn.commit()
     except Exception:
