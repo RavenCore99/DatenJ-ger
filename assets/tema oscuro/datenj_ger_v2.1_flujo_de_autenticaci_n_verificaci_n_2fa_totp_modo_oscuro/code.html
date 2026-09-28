@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DatenJäger v2.1 - Bóveda de Seguridad Minera Ubaté</title>
+<!-- Tailwind CSS v3 with Forms & Container Queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              glow: 'rgba(59, 130, 246, 0.45)',
+            },
+            deep: {
+              950: '#070d19',
+              900: '#0b1326',
+              850: '#0f172a',
+              800: '#131e38',
+              750: '#172342',
+            }
+          },
+          fontFamily: {
+            display: ['Cinzel', 'Playfair Display', 'Georgia', 'serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          boxShadow: {
+            'window': '0 25px 70px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 45px rgba(37, 99, 235, 0.15)',
+            'glow-blue': '0 0 25px rgba(59, 130, 246, 0.35)',
+            'inner-glow': 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-styling">
+    /* Subtle custom scrollbar and typography highlights */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070d19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    .display-hermes {
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 35px rgba(37, 99, 235, 0.45);
+    }
+    .cosmic-radial {
+      background: radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.15) 0%, rgba(11, 19, 38, 0.95) 60%, #070d19 100%);
+    }
+    .auth-card-backdrop {
+      background: linear-gradient(135deg, rgba(19, 30, 56, 0.72) 0%, rgba(11, 19, 38, 0.85) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.98); opacity: 0.8; }
+      50% { transform: scale(1.02); opacity: 1; }
+      100% { transform: scale(0.98); opacity: 0.8; }
+    }
+    .countdown-circle {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-950 font-sans text-slate-100 flex items-center justify-center p-3 sm:p-6 select-none overflow-hidden">
+<!-- BEGIN: DesktopApplicationWindow -->
+<div class="w-full max-w-[1540px] h-[94vh] min-h-[760px] bg-deep-950 rounded-2xl shadow-window flex flex-col border border-slate-700/40 relative overflow-hidden" data-purpose="electron-app-container">
+<!-- BEGIN: Titlebar -->
+<header class="h-11 bg-deep-900/90 border-b border-slate-800/80 flex items-center justify-between px-4 z-30 select-none" data-purpose="desktop-titlebar">
+<!-- Traffic Light Controls & Navigation Breadcrumbs -->
+<div class="flex items-center space-x-4">
+<!-- macOS Traffic Lights -->
+<div class="flex items-center space-x-2 mr-2">
+<span class="w-3 h-3 rounded-full bg-[#ff5f57] border border-[#e0443e] inline-block shadow-sm hover:opacity-80 transition cursor-pointer"></span>
+<span class="w-3 h-3 rounded-full bg-[#febc2e] border border-[#d89e24] inline-block shadow-sm hover:opacity-80 transition cursor-pointer"></span>
+<span class="w-3 h-3 rounded-full bg-[#28c840] border border-[#1aab29] inline-block shadow-sm hover:opacity-80 transition cursor-pointer"></span>
+</div>
+<!-- App Title & Breadcrumbs -->
+<div class="flex items-center space-x-2 text-xs font-mono text-slate-400">
+<span class="font-semibold text-slate-200 flex items-center gap-1.5">
+<svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+            DatenJäger v2.1 Desktop
+          </span>
+<span class="text-slate-600">/</span>
+<span class="text-slate-300">Bóveda de Seguridad Minera Ubaté</span>
+<span class="text-slate-600">/</span>
+<span class="text-brand-400 font-medium bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">Acceso Criptográfico Cero-Conocimiento</span>
+</div>
+</div>
+<!-- Right Header Actions & Security Indicators -->
+<div class="flex items-center space-x-4">
+<!-- Connection Status Indicator -->
+<div class="flex items-center space-x-2 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-400 font-mono">
+<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+<span>Bóveda Encriptada</span>
+</div>
+<!-- TOTP Hardware Sync Indicator -->
+<div class="flex items-center space-x-1.5 text-xs text-slate-400 font-mono hidden md:flex">
+<svg class="w-3.5 h-3.5 text-brand-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>TOTP RFC 6238 Sync</span>
+</div>
+<!-- Window System Control Icons (Reference Hermes Desktop) -->
+<div class="flex items-center space-x-2 text-slate-400 border-l border-slate-800 pl-3">
+<button class="p-1 hover:text-slate-200 transition" title="Volumen de Alerta de Seguridad">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-slate-200 transition" title="Identidad Criptográfica">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-slate-200 transition" title="Configuraciones de Seguridad">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-slate-200 transition" title="Panel Lateral">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h16m-7 6h7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+</div>
+</header>
+<!-- END: Titlebar -->
+<!-- BEGIN: MainContentArea -->
+<main class="flex-1 cosmic-radial relative overflow-y-auto flex flex-col justify-between p-6 lg:p-8" data-purpose="auth-view-canvas">
+<!-- Subtle background grid pattern overlay -->
+<div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:28px_28px] opacity-25 pointer-events-none"></div>
+<!-- BEGIN: HeroIdentitySection -->
+<section class="relative z-10 flex flex-col items-center text-center mt-1 mb-4" data-purpose="central-branding">
+<!-- Logo Badge Container with circular glow -->
+<div class="relative group mb-3">
+<div class="absolute -inset-1.5 bg-brand-500/25 rounded-full blur-md group-hover:bg-brand-500/40 transition duration-500"></div>
+<div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1 bg-deep-900 border-2 border-brand-500/60 shadow-2xl flex items-center justify-center overflow-hidden">
+<img alt="DatenJäger Raven Crest" class="w-full h-full object-cover rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB23EUlkziOJOlFEKal0qD49N9fA_1CvfsUs9Tm7UAZTi9R6bGt0hM7XR7_gSaHocrtZcwUWs__Poc5k9kvFLoZ2xqvQ8P5Xv4_WeqVxWwoYN-4-rFv6HYlAQneo40bpxavePDE1ZPzLp7ZZOMJSFN3V_BMJGqOcCz9vsGA3jxQ_I1xKXAHI5_LDDKKYVtifzaKQ5Lv2IgoS25nHMWHFh0xwuFKWvkvPmFxmhwR0KXOWmU5WJLDxp4dkPnYWKEQnCkdrg"/>
+</div>
+</div>
+<!-- Main Display Brand (Hermes Agent Style Font & Contrast) -->
+<h1 class="display-hermes text-4xl sm:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-blue-400 via-brand-500 to-blue-700 tracking-wider">
+          DATENJÄGER
+        </h1>
+<!-- Subtitle Contextualized to Ubate Mining Secure DMS -->
+<p class="mt-2 text-sm sm:text-base text-slate-200 font-medium tracking-wide max-w-2xl">
+          Sistema de Gestión Documental Seguro · Cifrado AES-256-GCM · Sector Minero Ubaté
+        </p>
+<!-- Transhumanist Security Motto -->
+<div class="mt-2.5 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-deep-900/80 border border-slate-700/60 text-xs text-brand-300/90 font-mono shadow-inner">
+<span class="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+<span>“Seguridad Inquebrantable · Privacidad Sin Compromiso · Autonomía y Responsabilidad”</span>
+</div>
+</section>
+<!-- END: HeroIdentitySection -->
+<!-- BEGIN: DualPanelAuthSection -->
+<section class="relative z-10 w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 my-auto" data-purpose="interactive-auth-grid">
+<!-- CARD 1: Master Credentials Input -->
+<div class="auth-card-backdrop rounded-xl border border-slate-700/60 p-6 flex flex-col justify-between shadow-2xl" data-purpose="credentials-card">
+<div>
+<!-- Card Header -->
+<div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+<div class="flex items-center space-x-2.5">
+<div class="w-8 h-8 rounded-lg bg-brand-500/10 border border-brand-500/30 flex items-center justify-center text-brand-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<h2 class="text-base font-bold text-white tracking-wide">Credenciales Maestras</h2>
+<p class="text-[11px] text-slate-400">Autenticación local con derivación de clave</p>
+</div>
+</div>
+<span class="text-[10px] font-mono uppercase tracking-wider bg-slate-800 px-2 py-0.5 rounded text-slate-300 border border-slate-700">Fase 1/2</span>
+</div>
+<!-- Form Elements -->
+<div class="space-y-4">
+<!-- Username Field -->
+<div>
+<label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider font-mono" for="username">
+                  Identificador de Operador Minero
+                </label>
+<div class="relative rounded-lg shadow-sm">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<input class="block w-full pl-9 pr-3 py-2.5 bg-deep-900/90 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono transition" id="username" placeholder="usuario@dominio.co" type="text" value="auditor.seguridad@ubate-minas.co"/>
+</div>
+</div>
+<!-- Master Password Field -->
+<div>
+<div class="flex items-center justify-between mb-1.5">
+<label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono" for="master-key">
+                    Frase de Paso Maestra (Master Passphrase)
+                  </label>
+<span class="text-[11px] text-brand-400 hover:text-brand-300 cursor-pointer transition">¿Llave física YubiKey?</span>
+</div>
+<div class="relative rounded-lg shadow-sm">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<input class="block w-full pl-9 pr-10 py-2.5 bg-deep-900/90 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono tracking-widest transition" id="master-key" type="password" value="••••••••••••••••••••••••••••••••"/>
+<button class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- Password Strength Meter: PBKDF2 4 Levels -->
+<div class="mt-2.5">
+<div class="flex items-center justify-between text-[11px] mb-1 font-mono">
+<span class="text-slate-400">Entropía PBKDF2 (600,000 iteraciones):</span>
+<span class="text-emerald-400 font-semibold flex items-center gap-1">
+<svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+                      Nivel Óptimo (128 bits)
+                    </span>
+</div>
+<div class="grid grid-cols-4 gap-1.5 h-1.5 w-full">
+<div class="h-full rounded-full bg-emerald-500"></div>
+<div class="h-full rounded-full bg-emerald-500"></div>
+<div class="h-full rounded-full bg-emerald-500"></div>
+<div class="h-full rounded-full bg-emerald-500 shadow-sm shadow-emerald-400/50"></div>
+</div>
+</div>
+</div>
+<!-- Remember Device / Trust Token Option -->
+<div class="flex items-center justify-between pt-1">
+<label class="flex items-center space-x-2.5 cursor-pointer">
+<input checked="" class="w-4 h-4 rounded border-slate-700 bg-deep-900 text-brand-600 focus:ring-brand-500 focus:ring-offset-slate-900" type="checkbox"/>
+<span class="text-xs text-slate-300">Confiar en este nodo Electron de la estación minera</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Card Button Action -->
+<div class="mt-6 pt-4 border-t border-slate-800">
+<button class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 via-brand-500 to-blue-600 hover:from-blue-500 hover:to-brand-600 text-white font-semibold text-sm rounded-lg shadow-glow-blue transition duration-200 flex items-center justify-center space-x-2 group" data-purpose="submit-credentials">
+<svg class="w-4 h-4 text-white group-hover:scale-110 transition" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Desbloquear Bóveda Local</span>
+</button>
+</div>
+</div>
+<!-- CARD 2: 2FA TOTP RFC 6238 Verification -->
+<div class="auth-card-backdrop rounded-xl border border-slate-700/60 p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden" data-purpose="totp-2fa-card">
+<!-- Subtle corner accent -->
+<div class="absolute top-0 right-0 w-24 h-24 bg-brand-500/10 rounded-bl-full pointer-events-none"></div>
+<div>
+<!-- Card Header -->
+<div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
+<div class="flex items-center space-x-2.5">
+<div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<div>
+<h2 class="text-base font-bold text-white tracking-wide">Verificación 2FA / TOTP</h2>
+<p class="text-[11px] text-slate-400">Algoritmo RFC 6238 basado en tiempo</p>
+</div>
+</div>
+<span class="text-[10px] font-mono uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded">Fase 2/2</span>
+</div>
+<!-- TOTP Ring & Timer Visualization -->
+<div class="flex items-center justify-between p-3.5 rounded-xl bg-deep-900/80 border border-slate-800 mb-5">
+<div class="flex items-center space-x-3.5">
+<!-- Circular SVG Countdown Ring -->
+<div class="relative w-12 h-12 flex items-center justify-center countdown-circle">
+<svg class="w-12 h-12 -rotate-90">
+<circle class="text-slate-800" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-width="3"></circle>
+<circle class="text-brand-400" cx="24" cy="24" fill="transparent" r="20" stroke="currentColor" stroke-dasharray="125.6" stroke-dashoffset="35" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span class="absolute text-xs font-mono font-bold text-white">22s</span>
+</div>
+<div>
+<span class="text-xs font-semibold text-slate-200 block">Ventana Temporal Activa</span>
+<span class="text-[11px] text-emerald-400 flex items-center gap-1 font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    Sincronizado con Authenticator
+                  </span>
+</div>
+</div>
+<!-- Authenticator Device Type Badge -->
+<div class="text-right">
+<span class="text-[10px] text-slate-400 font-mono block">Dispositivo Enlazado</span>
+<span class="text-xs text-brand-300 font-mono font-medium">Pixel 8 Pro (SE)</span>
+</div>
+</div>
+<!-- 6-Digit TOTP Input Boxes -->
+<div>
+<label class="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider font-mono">
+                Ingrese Código de 6 Dígitos
+              </label>
+<div class="grid grid-cols-6 gap-2 sm:gap-2.5">
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="7"/>
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="4"/>
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="9"/>
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="2"/>
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="0"/>
+<input class="w-full h-12 sm:h-14 text-center font-mono text-xl sm:text-2xl font-bold bg-deep-900 border-2 border-brand-500/80 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-brand-400 shadow-inner" maxlength="1" type="text" value="8"/>
+</div>
+</div>
+<!-- Emergency Backup Code Option -->
+<div class="mt-4 flex items-center justify-between text-xs font-mono">
+<span class="text-slate-400">¿Sin acceso a su autenticador?</span>
+<button class="text-brand-400 hover:text-brand-300 underline underline-offset-2 transition flex items-center gap-1">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+                Código de Respaldo de Emergencia
+              </button>
+</div>
+</div>
+<!-- Card Button Action -->
+<div class="mt-6 pt-4 border-t border-slate-800">
+<button class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-lg shadow-lg shadow-emerald-900/40 transition duration-200 flex items-center justify-center space-x-2" data-purpose="submit-totp-verify">
+<svg class="w-4 h-4 text-emerald-100" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Verificar Token e Ingresar al Sistema</span>
+</button>
+</div>
+</div>
+</section>
+<!-- END: DualPanelAuthSection -->
+<!-- BEGIN: RegulatoryComplianceBar -->
+<section class="relative z-10 w-full max-w-5xl mx-auto mt-4 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 font-mono gap-2" data-purpose="compliance-bar">
+<div class="flex items-center space-x-2">
+<span class="inline-flex items-center px-2 py-0.5 rounded bg-blue-950/70 border border-blue-500/30 text-blue-300 font-medium">
+<svg class="w-3 h-3 mr-1" fill="currentColor" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" fill-rule="evenodd"></path>
+</svg>
+            Cumplimiento Ley 1581 de 2012
+          </span>
+<span>Protección de Datos Personales Minería Cundinamarca</span>
+</div>
+<div class="flex items-center space-x-1.5 text-slate-400">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+<span>Registro en <code class="text-slate-300 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">log_auditoria.db</code> con firma HMAC-SHA256</span>
+</div>
+</section>
+<!-- END: RegulatoryComplianceBar -->
+</main>
+<!-- END: MainContentArea -->
+<!-- BEGIN: TechnicalStatusFooter -->
+<footer class="h-9 bg-deep-900 border-t border-slate-800/80 px-4 flex items-center justify-between text-xs font-mono text-slate-400 z-30 select-none" data-purpose="desktop-status-bar">
+<!-- Left Hermes-Style Status Elements -->
+<div class="flex items-center space-x-4">
+<!-- Command Symbol -->
+<span class="text-slate-500 font-bold hover:text-slate-300 cursor-pointer">⌘</span>
+<!-- Gateway / Cryptographic Module Status -->
+<div class="flex items-center space-x-1.5">
+<svg class="w-3.5 h-3.5 text-brand-400 animate-pulse" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="text-slate-300">Módulo Criptográfico:</span>
+<span class="text-emerald-400">En Espera de Clave</span>
+</div>
+<!-- Hash Iterations -->
+<div class="flex items-center space-x-1 hidden sm:flex">
+<svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="text-slate-400">PBKDF2 600,000 iteraciones</span>
+</div>
+</div>
+<!-- Right Hermes-Style Engine & Hash Elements -->
+<div class="flex items-center space-x-4">
+<!-- Local Engine Status -->
+<div class="flex items-center space-x-1.5">
+<svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<rect height="16" rx="2" stroke-width="2" width="16" x="4" y="4"></rect>
+<rect height="6" stroke-width="2" width="6" x="9" y="9"></rect>
+</svg>
+<span class="text-slate-400">Ollama local:</span>
+<span class="text-emerald-400 font-semibold">Listo</span>
+</div>
+<!-- Release Version Tag (Hermes Desktop style with blue badge) -->
+<div class="flex items-center space-x-2">
+<span class="text-brand-400 font-bold hover:underline cursor-pointer"># v2.1 (+React)</span>
+<span class="text-slate-500">79bfddd</span>
+</div>
+</div>
+</footer>
+<!-- END: TechnicalStatusFooter -->
+</div>
+<!-- END: DesktopApplicationWindow -->
+<!-- BEGIN: InteractiveScripts -->
+<script data-purpose="totp-input-navigation">
+    // Auto-focus progression for 6-digit TOTP input fields
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputs = document.querySelectorAll('input[maxlength="1"]');
+      inputs.forEach((input, index) => {
+        input.addEventListener('keyup', (e) => {
+          if (e.key >= '0' && e.key <= '9') {
+            if (index < inputs.length - 1) {
+              inputs[index + 1].focus();
+            }
+          } else if (e.key === 'Backspace') {
+            if (index > 0) {
+              inputs[index - 1].focus();
+            }
+          }
+        });
+      });
+    });
+  </script>
+<!-- END: InteractiveScripts -->
+</body></html>

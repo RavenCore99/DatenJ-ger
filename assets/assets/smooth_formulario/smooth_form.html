@@ -1,0 +1,294 @@
+<!-- TailwindCSS (Play CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        boxShadow: {
+          glow: "0 20px 60px -20px rgba(139,92,246,.45)",
+        }
+      }
+    }
+  }
+</script>
+
+<!-- Lucide icons (optional, used in inputs/stepper) -->
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<!-- Page Background -->
+<div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-black text-white grid place-items-center p-6">
+  <div class="w-full max-w-2xl">
+
+    <!-- Header / Intro -->
+    <div class="mb-6 text-center">
+      <h1 class="text-3xl font-extrabold tracking-tight">Create Your Account</h1>
+      <p class="text-white/70 mt-1">A modern, multi-step onboarding form with live validation.</p>
+    </div>
+
+    <!-- Card -->
+    <div class="relative rounded-2xl border border-white/15 bg-white/10 backdrop-blur-xl shadow-glow overflow-hidden">
+
+      <!-- Stepper -->
+      <div class="relative px-6 pt-6 pb-4">
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-3">
+            <div class="step-dot h-8 w-8 rounded-full grid place-items-center bg-white/20 border border-white/30" data-step="0">
+              <span class="font-semibold">1</span>
+            </div>
+            <div class="hidden sm:block">
+              <div class="font-semibold">Account</div>
+              <div class="text-white/60 text-xs">Email & password</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="step-dot h-8 w-8 rounded-full grid place-items-center bg-white/10 border border-white/20" data-step="1">
+              <span class="font-semibold">2</span>
+            </div>
+            <div class="hidden sm:block">
+              <div class="font-semibold">Profile</div>
+              <div class="text-white/60 text-xs">Your details</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="step-dot h-8 w-8 rounded-full grid place-items-center bg-white/10 border border-white/20" data-step="2">
+              <span class="font-semibold">3</span>
+            </div>
+            <div class="hidden sm:block">
+              <div class="font-semibold">Review</div>
+              <div class="text-white/60 text-xs">Confirm & submit</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress line -->
+        <div class="absolute left-6 right-6 top-[72px] h-1 bg-white/10 rounded-full">
+          <div id="progress" class="h-1 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Form body -->
+      <form id="msf" class="p-6 space-y-6" novalidate>
+
+        <!-- STEP 1: Account -->
+        <section class="step" data-step="0">
+          <div class="grid gap-4">
+            <div>
+              <label for="email" class="block text-sm font-medium mb-1">Email</label>
+              <div class="relative">
+                <input id="email" name="email" type="email" autocomplete="email" required class="peer w-full rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 px-11 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="you@example.com" />
+                <i data-lucide="mail" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60"></i>
+              </div>
+              <p class="mt-1 text-xs text-red-300 hidden" data-error="email">Please enter a valid email address.</p>
+            </div>
+
+            <div>
+              <label for="password" class="block text-sm font-medium mb-1">Password</label>
+              <div class="relative">
+                <input id="password" name="password" type="password" minlength="8" required class="peer w-full rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 px-11 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Min. 8 characters" />
+                <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60"></i>
+              </div>
+              <p class="mt-1 text-xs text-red-300 hidden" data-error="password">Password must be at least 8 characters.</p>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm">
+              <input id="tos1" type="checkbox" class="accent-purple-500">
+              <label for="tos1" class="text-white/80">I agree to the <a href="#" class="underline decoration-purple-400/70 hover:text-white">Terms</a>.</label>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 2: Profile -->
+        <section class="step hidden" data-step="1">
+          <div class="grid gap-4">
+            <div>
+              <label for="fullname" class="block text-sm font-medium mb-1">Full name</label>
+              <div class="relative">
+                <input id="fullname" name="fullname" type="text" required class="w-full rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 px-11 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Jane Doe" />
+                <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60"></i>
+              </div>
+              <p class="mt-1 text-xs text-red-300 hidden" data-error="fullname">Please enter your name.</p>
+            </div>
+
+            <div>
+              <label for="role" class="block text-sm font-medium mb-1">Role</label>
+              <div class="relative">
+                <select id="role" name="role" required class="w-full appearance-none rounded-xl bg-white/10 border border-white/20 text-white px-11 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  <option value="" class="bg-slate-800">Select your role</option>
+                  <option class="bg-slate-800">Student</option>
+                  <option class="bg-slate-800">Engineer</option>
+                  <option class="bg-slate-800">Designer</option>
+                  <option class="bg-slate-800">Manager</option>
+                </select>
+                <i data-lucide="briefcase" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60"></i>
+                <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 pointer-events-none"></i>
+              </div>
+              <p class="mt-1 text-xs text-red-300 hidden" data-error="role">Please select your role.</p>
+            </div>
+
+            <div>
+              <label for="phone" class="block text-sm font-medium mb-1">Phone (optional)</label>
+              <div class="relative">
+                <input id="phone" name="phone" type="tel" class="w-full rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/40 px-11 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="+44 7700 900123" />
+                <i data-lucide="phone" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60"></i>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 3: Review -->
+        <section class="step hidden" data-step="2">
+          <div class="grid gap-4">
+            <div class="rounded-xl border border-white/15 bg-white/5 p-4">
+              <h3 class="font-semibold mb-2">Review your details</h3>
+              <dl class="grid grid-cols-3 gap-2 text-sm">
+                <dt class="text-white/60">Email</dt>
+                <dd class="col-span-2 font-medium" id="r-email">—</dd>
+
+                <dt class="text-white/60">Name</dt>
+                <dd class="col-span-2 font-medium" id="r-fullname">—</dd>
+
+                <dt class="text-white/60">Role</dt>
+                <dd class="col-span-2 font-medium" id="r-role">—</dd>
+
+                <dt class="text-white/60">Phone</dt>
+                <dd class="col-span-2 font-medium" id="r-phone">—</dd>
+              </dl>
+            </div>
+
+            <label class="flex items-start gap-3 text-sm">
+              <input id="consent" type="checkbox" class="mt-1 accent-purple-500" required>
+              <span>I confirm that the above details are correct and I consent to processing in accordance with the privacy policy.</span>
+            </label>
+            <p class="mt-1 text-xs text-red-300 hidden" data-error="consent">You must provide consent to continue.</p>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" id="backBtn" class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed" disabled>Back</button>
+
+          <div class="flex gap-2">
+            <button type="button" id="nextBtn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 hover:opacity-90">
+              Next
+            </button>
+            <button type="submit" id="submitBtn" class="hidden px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600">Submit</button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Success state -->
+      <div id="success" class="hidden p-10 text-center">
+        <div class="mx-auto mb-4 h-12 w-12 rounded-full bg-emerald-500/20 grid place-items-center">
+          <svg viewBox="0 0 24 24" class="h-6 w-6 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <h3 class="text-2xl font-bold">All set!</h3>
+        <p class="text-white/70 mt-1">Your account has been created successfully.</p>
+      </div>
+    </div>
+
+    <!-- Footer note -->
+    <p class="mt-4 text-center text-xs text-white/50">Built with Tailwind. Smooth, accessible, production-ready.</p>
+  </div>
+</div>
+
+<!-- Behaviour -->
+<script>
+  lucide && lucide.createIcons?.();
+  const form = document.getElementById('msf');
+  const steps = Array.from(document.querySelectorAll('.step'));
+  const backBtn = document.getElementById('backBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const progress = document.getElementById('progress');
+  const dots = Array.from(document.querySelectorAll('.step-dot'));
+  const success = document.getElementById('success');
+  let current = 0;
+  // Simple validators
+  const rules = {
+    0: () => {
+      const email = form.email;
+      const pass = form.password;
+      const tos = document.getElementById('tos1');
+      let ok = true;
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value);
+      toggleError('email', !validEmail);
+      ok = ok && validEmail;
+      const validPass = (pass.value || '').length >= 8;
+      toggleError('password', !validPass);
+      ok = ok && validPass;
+      ok = ok && tos.checked;
+      return ok;
+    },
+    1: () => {
+      const name = form.fullname.value.trim().length > 1;
+      toggleError('fullname', !name);
+      const role = form.role.value.trim().length > 0;
+      toggleError('role', !role);
+      return name && role;
+    },
+    2: () => {
+      const consent = document.getElementById('consent').checked;
+      toggleError('consent', !consent);
+      return consent;
+    }
+  };
+
+  function toggleError(key, show) {
+    const el = document.querySelector(`[data-error="${key}"]`);
+    if (!el) return;
+    el.classList.toggle('hidden', !show);
+  }
+
+  function showStep(i) {
+    steps.forEach((s, idx) => {
+      s.classList.toggle('hidden', idx !== i);
+    });
+    // Buttons
+    backBtn.disabled = i === 0;
+    nextBtn.classList.toggle('hidden', i === steps.length - 1);
+    submitBtn.classList.toggle('hidden', i !== steps.length - 1);
+    // Progress & dots
+    const pct = (i / (steps.length - 1)) * 100;
+    progress.style.width = `${pct}%`;
+    dots.forEach((d, idx) => {
+      d.className =
+        `step-dot h-8 w-8 rounded-full grid place-items-center border 
+         ${idx <= i ? 'bg-white/20 border-white/40' : 'bg-white/10 border-white/20'}`;
+    });
+    // Review data on step 3
+    if (i === 2) {
+      document.getElementById('r-email').textContent = form.email.value || '—';
+      document.getElementById('r-fullname').textContent = form.fullname.value || '—';
+      document.getElementById('r-role').textContent = form.role.value || '—';
+      document.getElementById('r-phone').textContent = form.phone.value || '—';
+    }
+  }
+  nextBtn.addEventListener('click', () => {
+    const validate = rules[current] ?? (() => true);
+    if (!validate()) return;
+    current = Math.min(current + 1, steps.length - 1);
+    showStep(current);
+  });
+  backBtn.addEventListener('click', () => {
+    current = Math.max(current - 1, 0);
+    showStep(current);
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const validate = rules[current] ?? (() => true);
+    if (!validate()) return;
+    // Fake async submit UX
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+    setTimeout(() => {
+      form.classList.add('hidden');
+      success.classList.remove('hidden');
+    }, 700);
+  });
+  // Initial paint
+  showStep(0);
+</script>

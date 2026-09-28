@@ -1,0 +1,87 @@
+* { box-sizing: border-box; }
+
+.staggered-list-content {
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+.list {
+  list-style-type: none;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+}
+.list li + li {
+  margin-top: 1rem;
+}
+.listItem {
+  cursor: pointer;
+  background-color: #d0d0d0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 1rem;
+}
+
+.avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 100px;
+  background-color: grey;
+  margin-right: 2rem;
+}
+.listItem.expanded .avatar {
+  width: 8rem;
+  height: 8rem;
+  margin-right: 0;
+  margin-bottom: 1rem;
+}
+
+.line {
+  background-color: grey;
+  width: 14rem;
+  border-radius: 6px;
+  height: 0.5rem;
+}
+.line:nth-of-type(2) {
+  width: 11rem;
+}
+.line:nth-of-type(3) {
+  width: 8rem;
+}
+.line + .line {
+  margin-top: 1rem;
+}
+
+.listItem.expanded .description {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+.listItem.expanded {
+  background-color: #d0d0d0;
+  padding: 2rem;
+  flex-direction: column;
+}
+
+.additional-content {
+  width: 100%;
+  margin-top: 2rem;
+  display: none;
+}
+.listItem.expanded .additional-content {
+  display: block;
+}
+.chunk {
+  border-radius: 3px;
+  background-color: gray;
+  height: 5rem;
+  opacity: 0;
+}
+.listItem.expanded .chunk {
+  opacity: 1;
+}
+.chunk + .chunk {
+  margin-top: 1rem;
+}

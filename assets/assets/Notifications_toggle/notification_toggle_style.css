@@ -1,0 +1,11 @@
+.white-mode {
+    text-decoration: none;
+    padding: 17px 40px;
+    background-color: yellow;
+    border-radius: 3px;
+    color: black;
+    transition: .35s ease-in-out;
+    position: fixed;
+    left: 15px;
+    bottom: 15px
+}
