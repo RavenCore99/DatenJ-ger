@@ -16,3 +16,11 @@ INFORME_EDT_DatenJager.md
 # APIS
 .env
 .env.*
+.venv
+
+# Frontend (Electron + React + Vite)
+node_modules/
+/dist
+.vite/
+*.log
+npm-debug.log*

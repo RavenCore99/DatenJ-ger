@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens de DatenJäger. Único lugar donde viven los valores de color:
+ * tailwind.config.js los consume vía rgb(var(--dj-*) / <alpha-value>) y
+ * permite escribirlos como utilidades (bg-superficie, text-tenue, ...).
+ *
+ * Paleta base tomada de CLAUDE.md sección 6 — provisional hasta la revisión
+ * de mockups de la Fase 3.
+ */
+:root {
+  --dj-fondo: 245 247 251; /* #F5F7FB */
+  --dj-superficie: 255 255 255;
+  --dj-borde: 222 227 238;
+  --dj-primario: 47 111 237; /* #2F6FED — azul del logo */
+  --dj-texto: 21 27 61; /* #151B3D */
+  --dj-tenue: 100 110 140;
+  --dj-exito: 22 163 74;
+  --dj-alerta: 217 119 6;
+  --dj-peligro: 220 38 38;
+}
+
+.tema-oscuro {
+  --dj-fondo: 13 15 26; /* #0D0F1A */
+  --dj-superficie: 20 23 38;
+  --dj-borde: 42 47 70;
+  --dj-primario: 79 134 255;
+  --dj-texto: 230 232 240; /* #E6E8F0 */
+  --dj-tenue: 148 155 180;
+  --dj-exito: 52 199 121;
+  --dj-alerta: 245 158 11;
+  --dj-peligro: 248 113 113;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-fondo text-texto font-sans antialiased;
+  margin: 0;
+  overflow: hidden; /* el scroll vive en el área de contenido */
+}
+
+/* Barra de desplazamiento discreta, coherente con el panel de contenido. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--dj-borde));
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
