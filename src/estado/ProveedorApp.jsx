@@ -28,16 +28,30 @@ export function ProveedorApp({ children }) {
     }
   }, [])
 
+  /**
+   * Consulta la salud del servicio y, si responde, la sesión vigente: la
+   * sesión vive en Python, aquí solo se refleja para que las pantallas sepan
+   * si pueden pedir datos.
+   */
   const consultarSalud = useCallback(async (senal) => {
     try {
       const info = await backend.salud(senal)
       if (!montado.current) return
       setEstadoBackend('conectado')
       setVersion(info?.version ?? null)
+
+      try {
+        const actual = await backend.sesion.actual(senal)
+        if (montado.current) setSesion(actual)
+      } catch {
+        // El servicio respondió: si la sesión no se puede leer, no hay sesión.
+        if (montado.current) setSesion(null)
+      }
     } catch (error) {
       if (error?.name === 'AbortError') return
       if (!montado.current) return
       setEstadoBackend('sin_conexion')
+      setSesion(null)
       if (!(error instanceof ErrorBackend)) setAviso(String(error))
     }
   }, [])

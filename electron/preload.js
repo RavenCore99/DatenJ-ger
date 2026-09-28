@@ -30,6 +30,12 @@ contextBridge.exposeInMainWorld('datenjager', {
     return () => ipcRenderer.removeListener(CANAL_SERVICIO, manejador)
   },
 
+  /** Elige un PDF del disco con el diálogo nativo (contenido en base64). */
+  elegirArchivo: () => ipcRenderer.invoke('archivo:elegir'),
+
+  /** Guarda en disco, con diálogo nativo, un archivo recibido en base64. */
+  guardarArchivo: (datos) => ipcRenderer.invoke('archivo:guardar', datos),
+
   /** Solo lectura, sin IPC: datos del entorno de Electron. */
   versionElectron: process.versions.electron,
   versionNode: process.versions.node,

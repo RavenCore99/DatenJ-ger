@@ -19,6 +19,7 @@ const path = require('node:path')
 const { app, BrowserWindow, ipcMain, session, shell } = require('electron')
 
 const { ServicioPython } = require('./backend')
+const { elegirDocumento, guardarDocumento } = require('./archivos')
 
 /** Puerto por defecto del backend local (FastAPI + uvicorn, SCRUM-21). */
 const PUERTO_BACKEND = Number(process.env.DATENJAGER_PUERTO ?? 8756)
@@ -47,18 +48,22 @@ function aplicarPoliticaDeSeguridad() {
   // scripts y abrir un websocket de recarga en caliente (solo en localhost).
   if (enDesarrollo) return
 
-  const politica = [
-    "default-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    `connect-src 'self' http://127.0.0.1:${PUERTO_BACKEND}`,
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join('; ')
-
   session.defaultSession.webRequest.onHeadersReceived((detalles, responder) => {
+    // El puerto se lee en cada respuesta, no al registrar: el servicio puede
+    // haber resuelto un puerto distinto al configurado cuando llegue la carga.
+    const puerto = servicio.configuracion.puertoBackend
+
+    const politica = [
+      "default-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self' data:",
+      `connect-src 'self' http://127.0.0.1:${puerto}`,
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+    ].join('; ')
+
     responder({
       responseHeaders: {
         ...detalles.responseHeaders,
@@ -115,6 +120,10 @@ function crearVentana() {
 }
 
 ipcMain.handle('app:configuracion', () => configuracion())
+
+// Operaciones de disco: la ruta la elige siempre la persona por diálogo nativo.
+ipcMain.handle('archivo:elegir', () => elegirDocumento(ventana))
+ipcMain.handle('archivo:guardar', (_evento, datos) => guardarDocumento(ventana, datos))
 
 app.whenReady().then(async () => {
   aplicarPoliticaDeSeguridad()
