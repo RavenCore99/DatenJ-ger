@@ -155,7 +155,9 @@ aprobación explícita para moverse. Catálogo en
 
 ## Fase 2 — Migración a los nuevos frameworks (andamiaje técnico)
 
-Estado: **por hacer** — Skill: `electron-react-migration`
+Estado: **hecho** (cerrada 2026-09-28, Sprint 2 — `SCRUM-20` a `SCRUM-25`;
+`SCRUM-26`, el instalador, queda en pausa por decisión expresa de Raven y así
+figura en `jira.md`) — Skill: `electron-react-migration`
 
 Objetivo: levantar el proyecto Electron + React + Tailwind y conectarlo al
 backend ya desacoplado en la Fase 1, usando el mecanismo de comunicación
@@ -179,6 +181,15 @@ Secciones sugeridas:
 Criterio de cierre: el flujo login → panel documental → CRUD de PDFs
 funciona end-to-end sobre Electron/React consumiendo el backend Python
 real (no un mock), aunque visualmente sea provisional.
+
+**Cómo quedó cerrada.** El andamiaje (Vite + React + Tailwind con Electron),
+el puente HTTP (`backend/server.py` sobre FastAPI, con token por proceso) y
+los cinco paneles funcionales: acceso con 2FA, documentos, personas,
+auditoría y cuenta. Verificado con sondas que conducen el renderer real
+sobre bases temporales (`DATENJAGER_DB`) y almacenes temporales
+(`DATENJAGER_TOKENS`), nunca sobre los datos del usuario. La Fase 3 toma
+estas pantallas y las lleva al diseño de los mockups; el empaquetado
+(`SCRUM-26`) se retoma entonces.
 
 ---
 
@@ -351,7 +362,7 @@ de consumo de hardware y calidad de resultados que la respalden.
 | --- | --- | --- |
 | 0. Preparación | por hacer (mockups pendientes de recibir) | 2026-09-28 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
-| 2. Migración a Electron/React/Tailwind (andamiaje) | en progreso | 2026-09-28 |
+| 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
 | 3. Frontend conforme a mockups | por hacer | — |
 | 4. Integración de APIs y modelos locales | por hacer | — |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
