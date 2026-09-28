@@ -1,9 +1,24 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved
+# chatbot.py - servicio del asistente IA (sin dependencias de UI)
+
+"""Servicio del asistente IA.
+
+``ChatbotService`` encapsula la conversación con el modelo remoto: armado
+del historial, llamada a la API, reintentos entre modelos candidatos,
+traducción de errores de red y respaldo local ante un 403 del proyecto.
+
+Este módulo no importa Tkinter: la UI (``chatbot_ui.py``) solo monta los
+widgets, pide los textos a este servicio y le pasa los mensajes del
+usuario. El streaming de respuesta (RF-16) se implementa en la Fase 4.
+"""
+
 import os
 import json
 import socket
 import time
 from urllib import error, request
+
+import config  # importar carga el archivo .env (GEMINI_API_KEY)
 from transhumano import (
     DECLARACION_PRINCIPAL,
     PILARES,
@@ -11,6 +26,7 @@ from transhumano import (
     obtener_respuesta_reflexiva,
     obtener_frase_aleatoria
 )
+from backend.errors import BackendError
 
 
 SYSTEM_PROMPT = (
@@ -39,13 +55,82 @@ SYSTEM_PROMPT = (
 )
 
 
+class ConfiguracionChatbotError(BackendError, ValueError):
+    """Falta la configuración necesaria para contactar el modelo.
+
+    Hereda de ``BackendError`` para que la capa backend la reconozca y de
+    ``ValueError`` para no romper a los llamadores que ya la capturaban.
+    """
+
+
+class ChatbotError(BackendError):
+    """Error de conversación con el modelo remoto."""
+
+
+def declaracion_transhumana() -> str:
+    """Declaración principal de la Persona Transhumana (texto corto)."""
+    return DECLARACION_PRINCIPAL
+
+
+def mensaje_bienvenida(usuario_nombre: str) -> str:
+    """Texto de apertura del asistente para una sesión recién iniciada."""
+    return (
+        f"Hola {usuario_nombre}, soy tu asistente de DatenJäger.\n\n"
+        f"🌟 Bienvenido a tu espacio de autonomía digital.\n\n"
+        f"Aquí aplicamos la **Declaración de Persona Transhumana** "
+        f"de la Universidad de Cundinamarca:\n\n"
+        f'*"{DECLARACION_PRINCIPAL}"*\n\n'
+        f"Tu información está cifrada (AES-256), tu sesión protegida (2FA), "
+        f"y tus acciones auditadas.\n\n"
+        f"**Eres libre. Eres responsable. Eres el dueño.**\n\n"
+        f"¿En qué puedo ayudarte hoy?"
+    )
+
+
+#: Resumen corto de cada pilar tal como se muestra en el panel de reflexión.
+#: Si un pilar no aparece aquí se usa su descripción.
+_RESUMEN_PILARES = {
+    "LIBERTAD": "Autonomía informativa protegida por cifrado",
+    "AUTONOMÍA": "Control total sobre tus datos",
+    "RESPONSABILIDAD": "Auditoría completa de acciones",
+    "DIÁLOGO": "Conversación reflexiva y constructiva",
+    "CONSTRUCCIÓN": "Transformación positiva continua",
+}
+
+
+def contenido_reflexion() -> dict:
+    """Contenido del panel de reflexión sobre la Persona Transhumana.
+
+    Returns:
+        Dict con ``declaracion``, ``pilares`` (lista de dicts con nombre,
+        descripción, resumen corto, aspecto digital y reflexión) y ``frase``
+        aleatoria.
+    """
+    return {
+        "declaracion": DECLARACION_PRINCIPAL,
+        "pilares": [
+            {
+                "nombre": nombre,
+                "descripcion": datos.get("descripcion", ""),
+                "resumen": _RESUMEN_PILARES.get(nombre, datos.get("descripcion", "")),
+                "aspecto_digital": datos.get("aspecto_digital", ""),
+                "reflexion": datos.get("reflexion", ""),
+            }
+            for nombre, datos in PILARES.items()
+        ],
+        "frase": obtener_frase_aleatoria("reflexion"),
+    }
+
+
 class ChatbotService:
     """Servicio de IA. Una instancia por sesión de usuario."""
 
     def __init__(self, usuario_nombre: str = ""):
         api_key = os.getenv("GEMINI_API_KEY", "").strip()
         if not api_key:
-            raise ValueError("GEMINI_API_KEY no encontrada. Verifica el archivo .env")
+            raise ConfiguracionChatbotError(
+                "GEMINI_API_KEY no encontrada. Verifica el archivo .env"
+            )
 
         self.api_key = api_key
         self.model_candidates = [
@@ -197,8 +282,12 @@ class ChatbotService:
             "por permisos del proyecto."
         )
 
-    def send_message(self, user_text: str) -> str:
-        """Envía un mensaje y devuelve la respuesta del modelo."""
+    def enviar_mensaje(self, user_text: str) -> str:
+        """Envía un mensaje y devuelve la respuesta del modelo.
+
+        Hoy la espera es bloqueante (el streaming llega en la Fase 4): el
+        llamador debe invocarlo fuera del hilo de interfaz.
+        """
         try:
             contents = self._build_contents(user_text)
             reply = self._call_gemini(contents)
@@ -238,6 +327,9 @@ class ChatbotService:
         """Reinicia el historial de conversación."""
         self.history = []
 
+    #: Alias de compatibilidad con el nombre anterior del método.
+    send_message = enviar_mensaje
+
     def _detectar_palabra_clave_transhumana(self, texto: str) -> str | None:
         """
         Detecta palabras clave relacionadas con la filosofía transhumana.
@@ -258,3 +350,22 @@ class ChatbotService:
         if reflexion:
             return f"{respuesta}\n\n💭 *Reflexión transhumana:* {reflexion}"
         return respuesta
+
+
+def crear_servicio(usuario_nombre: str, contexto: str = "") -> ChatbotService:
+    """Punto de entrada único para iniciar la conversación de un usuario.
+
+    Args:
+        usuario_nombre: nombre del usuario autenticado.
+        contexto: contexto inicial que se inyecta como primer mensaje.
+
+    Returns:
+        ``ChatbotService`` listo para conversar.
+
+    Raises:
+        ConfiguracionChatbotError: falta ``GEMINI_API_KEY``.
+    """
+    servicio = ChatbotService(usuario_nombre)
+    if contexto:
+        servicio.set_context(contexto)
+    return servicio

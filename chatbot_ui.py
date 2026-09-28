@@ -4,13 +4,15 @@
 
 import threading
 import customtkinter as ctk
-from chatbot import ChatbotService
-from ui_components import get_dynamic_colors
-from transhumano import (
-    DECLARACION_PRINCIPAL,
-    MENSAJES_CONTEXTO,
-    obtener_frase_aleatoria
+from chatbot import (
+    ChatbotService,
+    ConfiguracionChatbotError,
+    contenido_reflexion,
+    crear_servicio,
+    declaracion_transhumana,
+    mensaje_bienvenida,
 )
+from ui_components import get_dynamic_colors
 
 
 class ChatbotPanel(ctk.CTkFrame):
@@ -125,7 +127,7 @@ class ChatbotPanel(ctk.CTkFrame):
 
         footer_text = ctk.CTkLabel(
             self._footer,
-            text=f"✨ {DECLARACION_PRINCIPAL}",
+            text=f"✨ {declaracion_transhumana()}",
             font=("Arial", 9, "italic"),
             text_color=("#6A1B9A", "#CE93D8"),
             wraplength=450,
@@ -208,7 +210,7 @@ class ChatbotPanel(ctk.CTkFrame):
         ).start()
 
     def _fetch_response(self, text: str):
-        response = self._service.send_message(text)
+        response = self._service.enviar_mensaje(text)
         # volver al hilo principal para actualizar widgets
         self.after(0, lambda: self._on_response(response))
 
@@ -254,7 +256,9 @@ class ChatbotPanel(ctk.CTkFrame):
         # Contenido scrolleable
         scroll = ctk.CTkScrollableFrame(win, fg_color=colors["bg_primary"])
         scroll.pack(fill="both", expand=True, padx=12, pady=12)
-        
+
+        reflexion = contenido_reflexion()
+
         # Declaración principal
         ctk.CTkLabel(
             scroll,
@@ -262,16 +266,16 @@ class ChatbotPanel(ctk.CTkFrame):
             font=("Arial", 12, "bold"),
             text_color=colors["text_primary"]
         ).pack(anchor="w", pady=(0, 4))
-        
+
         ctk.CTkLabel(
             scroll,
-            text=f'"{DECLARACION_PRINCIPAL}"',
+            text=f'"{reflexion["declaracion"]}"',
             font=("Arial", 11, "italic"),
             text_color=("#6A1B9A", "#CE93D8"),
             wraplength=550,
             justify="left"
         ).pack(anchor="w", pady=(0, 16))
-        
+
         # Pilares
         ctk.CTkLabel(
             scroll,
@@ -279,15 +283,12 @@ class ChatbotPanel(ctk.CTkFrame):
             font=("Arial", 12, "bold"),
             text_color=colors["text_primary"]
         ).pack(anchor="w", pady=(0, 8))
-        
-        pilares_texto = (
-            "• LIBERTAD: Autonomía informativa protegida por cifrado\n"
-            "• AUTONOMÍA: Control total sobre tus datos\n"
-            "• RESPONSABILIDAD: Auditoría completa de acciones\n"
-            "• DIÁLOGO: Conversación reflexiva y constructiva\n"
-            "• CONSTRUCCIÓN: Transformación positiva continua"
+
+        pilares_texto = "\n".join(
+            f"• {pilar['nombre']}: {pilar['resumen']}"
+            for pilar in reflexion["pilares"]
         )
-        
+
         ctk.CTkLabel(
             scroll,
             text=pilares_texto,
@@ -295,12 +296,11 @@ class ChatbotPanel(ctk.CTkFrame):
             text_color=colors["text_secondary"],
             justify="left"
         ).pack(anchor="w", pady=(0, 16))
-        
+
         # Frase reflexiva
-        frase = obtener_frase_aleatoria("reflexion")
         ctk.CTkLabel(
             scroll,
-            text=f"💭 {frase}",
+            text=f"💭 {reflexion['frase']}",
             font=("Arial", 10, "italic"),
             text_color=("#6A1B9A", "#AB47BC"),
             wraplength=550,
@@ -330,32 +330,19 @@ class ChatbotPanel(ctk.CTkFrame):
     def init_session(self, usuario_nombre: str, context: str = ""):
         """Inicializa el servicio y saluda al usuario. Llamar post-login."""
         try:
-            self._service = ChatbotService(usuario_nombre)
-            if context:
-                self._service.set_context(context)
-            
-            # Mensaje de bienvenida enriquecido con filosofía transhumana
-            bienvenida = (
-                f"Hola {usuario_nombre}, soy tu asistente de DatenJäger.\n\n"
-                f"🌟 Bienvenido a tu espacio de autonomía digital.\n\n"
-                f"Aquí aplicamos la **Declaración de Persona Transhumana** "
-                f"de la Universidad de Cundinamarca:\n\n"
-                f'*\"{DECLARACION_PRINCIPAL}\"*\n\n'
-                f"Tu información está cifrada (AES-256), tu sesión protegida (2FA), "
-                f"y tus acciones auditadas.\n\n"
-                f"**Eres libre. Eres responsable. Eres el dueño.**\n\n"
-                f"¿En qué puedo ayudarte hoy?"
-            )
-            self._add_bubble(bienvenida, "bot")
-            
+            self._service = crear_servicio(usuario_nombre, context)
+
+            # Mensaje de bienvenida provisto por el servicio
+            self._add_bubble(mensaje_bienvenida(usuario_nombre), "bot")
+
             # Mostrar pie de página con declaración
             self._mostrar_pie_pagina()
-            
-        except ValueError as e:
+
+        except ConfiguracionChatbotError as e:
             # API key no configurada — mostrar aviso en el chat
             self._service = None
             self._add_bubble(
-                f"⚠ No se pudo iniciar el asistente: {e}\n"
+                f"⚠ No se pudo iniciar el asistente: {e.mensaje}\n"
                 "Configura GEMINI_API_KEY en el archivo .env",
                 "bot"
             )
