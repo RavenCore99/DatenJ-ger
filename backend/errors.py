@@ -34,3 +34,28 @@ class DatosInvalidosError(BackendError):
 
 class ConflictoError(BackendError):
     """La operación choca con un registro existente (p. ej. cédula duplicada)."""
+
+
+class CredencialesInvalidasError(BackendError):
+    """El usuario o la contraseña no coinciden con ningún registro."""
+
+
+class UsuarioInexistenteError(CredencialesInvalidasError):
+    """El nombre de usuario no está registrado.
+
+    Hereda de `CredencialesInvalidasError` para que el servidor local pueda
+    responder lo mismo que ante una contraseña incorrecta sin revelar qué
+    usuarios existen.
+    """
+
+
+class CuentaBloqueadaError(BackendError):
+    """La cuenta está bloqueada temporalmente por intentos fallidos."""
+
+    def __init__(self, mensaje: str, segundos_restantes: int = 0):
+        super().__init__(mensaje)
+        self.segundos_restantes = segundos_restantes
+
+
+class SegundoFactorInvalidoError(BackendError):
+    """El código 2FA o el código de respaldo no son válidos."""

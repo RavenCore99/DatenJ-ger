@@ -47,6 +47,7 @@ class TestComandosSinSesion(BaseBackendTest):
             lambda: self.comandos.exportar_inventario(self.ruta_temporal("r.pdf")),
             lambda: self.comandos.iniciar_chat(),
             lambda: self.comandos.enviar_mensaje("hola"),
+            lambda: self.comandos.estado_de_cuenta(),
         ]
 
         for operacion in operaciones:
@@ -135,9 +136,17 @@ class TestFlujoCompleto(BaseBackendTest):
 
     def test_catalogo_de_operaciones_pendientes(self):
         pendientes = self.comandos.operaciones_pendientes()
-        self.assertIn("login", pendientes)
-        self.assertIn("login_2fa", pendientes)
+
+        # El acceso y el segundo factor ya viven en esta capa (SCRUM-22)...
+        self.assertNotIn("login", pendientes)
+        self.assertNotIn("login_2fa", pendientes)
+
+        # ...y lo que sigue pendiente es el alta y la gestión de cuenta.
+        for operacion in ("registro", "setup_2fa", "cambio_contrasena", "confianza_dispositivo"):
+            self.assertIn(operacion, pendientes)
         self.assertTrue(all(pendientes.values()))
+
+
 
     def test_chat_inicia_con_el_usuario_autenticado(self):
         chat = self.comandos.iniciar_chat("contexto de prueba")

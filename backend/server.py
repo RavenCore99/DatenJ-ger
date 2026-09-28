@@ -17,10 +17,12 @@ Decisiones de diseño:
 * **Errores tipados -> códigos HTTP.** Las excepciones de
   `backend/errors.py` se traducen al formato ``{"detail": {"tipo",
   "mensaje"}}`` que espera `src/lib/api.js`.
-* **La sesión no se crea aquí.** La verificación de credenciales y el 2FA
-  viven en `main.py`; este servidor solo *hereda* una sesión ya autenticada
-  (``POST /api/sesion/heredar``) o informa que el inicio de sesión todavía
-  no está disponible (``POST /api/sesion`` -> 501).
+* **La sesión se crea aquí.** ``POST /api/sesion`` valida credenciales y
+  aplica el bloqueo por intentos; ``POST /api/sesion/2fa`` y
+  ``/api/sesion/respaldo`` completan el segundo factor. La clave de sesión
+  nunca viaja en la respuesta: permanece en el proceso Python.
+* ``POST /api/sesion/heredar`` se conserva para que la aplicación de
+  escritorio pueda entregar una sesión ya autenticada durante la transición.
 
 Arranque:
 
@@ -47,9 +49,12 @@ from backend.commands import ComandosDatenJager
 from backend.errors import (
     BackendError,
     ConflictoError,
+    CredencialesInvalidasError,
+    CuentaBloqueadaError,
     DatosInvalidosError,
     NoAutenticadoError,
     NoEncontradoError,
+    SegundoFactorInvalidoError,
 )
 from backend.services.auditoria import LIMITE_VISOR
 from backend.state import AppState
@@ -65,6 +70,9 @@ CODIGOS_HTTP: tuple[tuple[type[BackendError], int], ...] = (
     (NoEncontradoError, 404),
     (ConflictoError, 409),
     (DatosInvalidosError, 422),
+    (SegundoFactorInvalidoError, 401),
+    (CredencialesInvalidasError, 401),
+    (CuentaBloqueadaError, 423),
     (BackendError, 400),
 )
 
@@ -80,6 +88,20 @@ class SesionHeredada(BaseModel):
     usuario_id: int
     nombre: str
     session_key: str = Field(description="clave de sesión en base64")
+
+
+class Acceso(BaseModel):
+    """Credenciales de acceso. El token de confianza es opcional."""
+
+    nombre: str
+    contrasena: str
+    token_confianza: Optional[str] = None
+
+
+class CodigoDeSeguridad(BaseModel):
+    """Código del segundo factor: TOTP o código de respaldo."""
+
+    codigo: str
 
 
 class DocumentoNuevo(BaseModel):
@@ -233,22 +255,30 @@ def crear_app(
         return comandos.sesion_actual()
 
     @app.post("/api/sesion", dependencies=protegido)
-    async def iniciar_sesion() -> JSONResponse:
-        pendientes = comandos.operaciones_pendientes()
-        return JSONResponse(
-            status_code=501,
-            content={
-                "detail": {
-                    "tipo": "NoImplementadoError",
-                    "mensaje": (
-                        "El inicio de sesión todavía se atiende en la aplicación de "
-                        "escritorio: la verificación de credenciales y el 2FA no se han "
-                        "movido al backend."
-                    ),
-                    "pendiente": sorted(clave for clave, falta in pendientes.items() if falta),
-                }
-            },
-        )
+    async def iniciar_sesion(cuerpo: Acceso) -> dict[str, Any]:
+        """Valida las credenciales.
+
+        Responde con ``estado: "segundo_factor"`` cuando la cuenta usa 2FA; en
+        ese caso hay que llamar a ``/api/sesion/2fa`` o ``/api/sesion/respaldo``.
+        La clave de sesión nunca viaja en la respuesta: se queda en el proceso.
+        """
+        return comandos.iniciar_sesion_credenciales(
+            cuerpo.nombre, cuerpo.contrasena, cuerpo.token_confianza)
+
+    @app.post("/api/sesion/2fa", dependencies=protegido)
+    async def verificar_segundo_factor(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
+        """Completa el acceso con el código TOTP."""
+        return comandos.verificar_segundo_factor(cuerpo.codigo)
+
+    @app.post("/api/sesion/respaldo", dependencies=protegido)
+    async def usar_codigo_de_respaldo(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
+        """Completa el acceso con un código de respaldo de un solo uso."""
+        return comandos.usar_codigo_de_respaldo(cuerpo.codigo)
+
+    @app.get("/api/cuenta", dependencies=protegido)
+    async def estado_de_cuenta() -> dict[str, Any]:
+        """Estado de seguridad de la cuenta en sesión."""
+        return comandos.estado_de_cuenta()
 
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:

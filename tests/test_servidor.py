@@ -18,10 +18,16 @@ import unittest
 import urllib.error
 import urllib.request
 
+import pyotp
 import uvicorn
 
 from tests.soporte import BaseBackendTest, PDF_MINIMO
 from backend import server
+from backend.services import autenticacion
+from database import hash_contrasena
+from encryption import EncryptionManager
+
+CONTRASENA = "Secreta-2026!"
 
 TOKEN = "token-de-prueba-para-el-puente"
 
@@ -36,6 +42,12 @@ class TestServidor(BaseBackendTest):
 
     def setUp(self):
         super().setUp()
+        self.cursor.execute(
+            "UPDATE Usuarios SET contrasena = ? WHERE id = ?",
+            (hash_contrasena(CONTRASENA), self.usuario_id),
+        )
+        self.conn.commit()
+
         self.puerto = puerto_libre()
         app, self.comandos_servidor = server.crear_servicio(self.db_path, token=TOKEN)
 
@@ -136,10 +148,101 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(estado, 200)
         self.assertFalse(self.pedir("GET", "/api/sesion")[1]["autenticado"])
 
-    def test_iniciar_sesion_por_http_esta_pendiente(self):
-        estado, cuerpo = self.pedir("POST", "/api/sesion")
-        self.assertEqual(estado, 501)
-        self.assertIn("login", cuerpo["detail"]["pendiente"])
+    def test_acceso_por_http(self):
+        estado, cuerpo = self.pedir("POST", "/api/sesion",
+                                    {"nombre": self.usuario_nombre, "contrasena": CONTRASENA})
+
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["estado"], "completado")
+        self.assertTrue(cuerpo["autenticado"])
+        self.assertNotIn("clave_sesion", cuerpo)
+
+        # La sesión queda abierta para el resto de rutas.
+        self.assertEqual(self.pedir("GET", "/api/documentos")[0], 200)
+
+    def test_la_clave_de_sesion_no_viaja_en_la_respuesta(self):
+        _estado, cuerpo = self.pedir("POST", "/api/sesion",
+                                     {"nombre": self.usuario_nombre, "contrasena": CONTRASENA})
+
+        for campo in ("clave_sesion", "session_key", "clave"):
+            self.assertNotIn(campo, cuerpo)
+
+    def test_acceso_con_contrasena_incorrecta(self):
+        estado, cuerpo = self.pedir("POST", "/api/sesion",
+                                    {"nombre": self.usuario_nombre, "contrasena": "mal"})
+        self.assertEqual(estado, 401)
+        self.assertEqual(cuerpo["detail"]["tipo"], "CredencialesInvalidasError")
+
+    def test_usuario_inexistente_responde_igual_que_contrasena_mala(self):
+        estado, _cuerpo = self.pedir("POST", "/api/sesion",
+                                     {"nombre": "fantasma", "contrasena": CONTRASENA})
+        self.assertEqual(estado, 401)
+
+    def test_cuenta_bloqueada_responde_423(self):
+        for _intento in range(5):
+            self.pedir("POST", "/api/sesion",
+                       {"nombre": self.usuario_nombre, "contrasena": "mal"})
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion",
+                                    {"nombre": self.usuario_nombre, "contrasena": CONTRASENA})
+        self.assertEqual(estado, 423)
+        self.assertEqual(cuerpo["detail"]["tipo"], "CuentaBloqueadaError")
+
+    def test_segundo_factor_por_http(self):
+        secreto = "JBSWY3DPEHPK3PXP"
+        clave = autenticacion.autenticar(
+            self.conn, self.cursor, nombre=self.usuario_nombre, contrasena=CONTRASENA)["clave_sesion"]
+        self.cursor.execute(
+            "UPDATE Usuarios SET totp_enabled = 1, totp_secret = ? WHERE id = ?",
+            (EncryptionManager.encrypt_str_with_key(secreto, clave), self.usuario_id),
+        )
+        self.conn.commit()
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion",
+                                    {"nombre": self.usuario_nombre, "contrasena": CONTRASENA})
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["estado"], "segundo_factor")
+        self.assertFalse(cuerpo["autenticado"])
+
+        # Con el código equivocado no se abre la sesión.
+        estado, _cuerpo = self.pedir("POST", "/api/sesion/2fa", {"codigo": "000000"})
+        self.assertEqual(estado, 401)
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion/2fa",
+                                    {"codigo": pyotp.TOTP(secreto).now()})
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["estado"], "completado")
+        self.assertTrue(cuerpo["autenticado"])
+        self.assertIsNotNone(cuerpo["token_confianza"])
+
+    def test_codigo_de_respaldo_por_http(self):
+        secreto = "JBSWY3DPEHPK3PXP"
+        clave = autenticacion.autenticar(
+            self.conn, self.cursor, nombre=self.usuario_nombre, contrasena=CONTRASENA)["clave_sesion"]
+        self.cursor.execute(
+            "UPDATE Usuarios SET totp_enabled = 1, totp_secret = ?, backup_codes = ? WHERE id = ?",
+            (
+                EncryptionManager.encrypt_str_with_key(secreto, clave),
+                EncryptionManager.encrypt_str_with_key("111111", clave),
+                self.usuario_id,
+            ),
+        )
+        self.conn.commit()
+
+        self.pedir("POST", "/api/sesion",
+                   {"nombre": self.usuario_nombre, "contrasena": CONTRASENA})
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion/respaldo", {"codigo": "111111"})
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["estado"], "completado")
+        self.assertTrue(cuerpo["autenticado"])
+
+    def test_estado_de_cuenta_por_http(self):
+        self.heredar_sesion()
+        estado, cuerpo = self.pedir("GET", "/api/cuenta")
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["nombre"], self.usuario_nombre)
+        self.assertFalse(cuerpo["segundo_factor_habilitado"])
 
     def test_clave_de_sesion_invalida(self):
         estado, cuerpo = self.pedir("POST", "/api/sesion/heredar", {

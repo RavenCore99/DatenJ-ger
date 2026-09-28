@@ -17,18 +17,21 @@ Contrato:
     - Los comandos retornan datos simples (``dict``/``list``/``bytes``),
       nunca widgets.
 
-Alcance pendiente: la verificación de credenciales, el flujo 2FA y el
-cambio de contraseña siguen viviendo en ``main.py`` porque forman parte del
-flujo de autenticación y requieren aprobación explícita antes de moverse
-(ver ``operaciones_pendientes``).
+La verificación de credenciales, el bloqueo por intentos y el segundo
+factor (TOTP o código de respaldo) ya forman parte de esta capa (SCRUM-22).
+La clave de sesión se retiene aquí: nunca se entrega al cliente.
+
+Alcance pendiente: el alta de usuario con derivación de claves y el cambio
+de contraseña (SCRUM-25).
 """
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-from backend.errors import NoAutenticadoError
+from backend.errors import NoAutenticadoError, SegundoFactorInvalidoError
 from backend.services import auditoria as _auditoria
+from backend.services import autenticacion as _autenticacion
 from backend.services import documentos as _documentos
 from backend.services import personas as _personas
 from backend.services import reportes as _reportes
@@ -37,8 +40,6 @@ from chatbot import ChatbotService, crear_servicio
 #: Operaciones que todavía viven en la interfaz y su motivo.
 OPERACIONES_PENDIENTES = {
     "registro": "Alta de usuario con derivación de claves (flujo de autenticación)",
-    "login": "Verificación de credenciales, bloqueo por intentos y token de confianza",
-    "login_2fa": "Verificación TOTP y códigos de respaldo",
     "setup_2fa": "Generación del secreto TOTP y códigos de respaldo",
     "cambio_contrasena": "Re-cifrado de secretos con la nueva clave de sesión",
     "confianza_dispositivo": "Emisión y revocación del token de confianza",
@@ -95,8 +96,9 @@ class ComandosDatenJager:
         return self.sesion_actual()
 
     def cerrar_sesion(self) -> None:
-        """Descarta la sesión y la conversación activa."""
+        """Descarta la sesión, el acceso a medio completar y la conversación."""
         self._chat = None
+        self._acceso_pendiente = None
         self.state.cerrar_sesion()
 
     def sesion_actual(self) -> dict:
@@ -374,6 +376,115 @@ class ComandosDatenJager:
         """Reinicia el historial de la conversación activa."""
         if self._chat is not None:
             self._chat.clear_history()
+
+    # ------------------------------------------------------------------ #
+    # Autenticación (SCRUM-22)
+    # ------------------------------------------------------------------ #
+
+    def _horas_confianza(self) -> int:
+        """Horas de validez del token de confianza, según la configuración."""
+        if self.state.config is None:
+            return _autenticacion.HORAS_CONFIANZA_POR_DEFECTO
+        return int(self.state.config.get("2fa_trust_hours", 0) or 0)
+
+    def iniciar_sesion_credenciales(
+        self,
+        nombre: str,
+        contrasena: str,
+        token_confianza: Optional[str] = None,
+    ) -> dict:
+        """Valida las credenciales y abre la sesión, o pide el segundo factor.
+
+        La clave de sesión no sale del proceso: se guarda en el estado (o queda
+        retenida hasta completar el segundo factor) y al cliente solo le llega
+        el resumen de la sesión.
+        """
+        resultado = self._ejecutar(
+            _autenticacion.autenticar,
+            nombre=nombre,
+            contrasena=contrasena,
+            token_confianza=token_confianza,
+            horas_confianza=self._horas_confianza(),
+        )
+
+        if resultado["estado"] == _autenticacion.ESTADO_COMPLETADO:
+            self.state.iniciar_sesion(
+                resultado["usuario_id"], resultado["nombre"], resultado["clave_sesion"])
+            return {
+                "estado": _autenticacion.ESTADO_COMPLETADO,
+                "segundo_factor_omitido": resultado["segundo_factor_omitido"],
+                **self.sesion_actual(),
+            }
+
+        self._acceso_pendiente = (
+            resultado["usuario_id"], resultado["nombre"], resultado["clave_sesion"])
+        return {
+            "estado": _autenticacion.ESTADO_SEGUNDO_FACTOR,
+            "usuario_id": resultado["usuario_id"],
+            "usuario_nombre": resultado["nombre"],
+            **self.sesion_actual(),
+        }
+
+    def verificar_segundo_factor(self, codigo: str) -> dict:
+        """Completa el acceso con el código TOTP y emite el token de confianza."""
+        usuario_id, nombre, clave = self._acceso_pendiente_actual()
+
+        valido = self._ejecutar(
+            _autenticacion.verificar_segundo_factor,
+            usuario_id=usuario_id, clave_sesion=clave, codigo=codigo,
+        )
+        if not valido:
+            raise SegundoFactorInvalidoError("El código es incorrecto o ha expirado")
+
+        return self._completar_acceso(
+            usuario_id, nombre, clave, _autenticacion.ACCION_2FA_OK)
+
+    def usar_codigo_de_respaldo(self, codigo: str) -> dict:
+        """Completa el acceso con un código de respaldo de un solo uso."""
+        usuario_id, nombre, clave = self._acceso_pendiente_actual()
+
+        valido = self._ejecutar(
+            _autenticacion.usar_codigo_de_respaldo,
+            usuario_id=usuario_id, clave_sesion=clave, codigo=codigo,
+        )
+        if not valido:
+            raise SegundoFactorInvalidoError("El código de respaldo es inválido")
+
+        return self._completar_acceso(
+            usuario_id, nombre, clave, _autenticacion.ACCION_RESPALDO_OK)
+
+    def _completar_acceso(
+        self, usuario_id: int, nombre: str, clave: bytes, accion: str
+    ) -> dict:
+        """Registra el segundo factor, emite el token de confianza y abre sesión."""
+        self.registrar_evento(accion, usuario_id=usuario_id)
+        token = self._ejecutar(
+            _autenticacion.generar_token_confianza,
+            usuario_id=usuario_id,
+            horas=self._horas_confianza(),
+        )
+
+        self.state.iniciar_sesion(usuario_id, nombre, clave)
+        self._acceso_pendiente = None
+
+        return {
+            "estado": _autenticacion.ESTADO_COMPLETADO,
+            "token_confianza": token,
+            **self.sesion_actual(),
+        }
+
+    def _acceso_pendiente_actual(self) -> tuple:
+        """Datos del acceso a medio completar, o error si no hay ninguno."""
+        pendiente = getattr(self, "_acceso_pendiente", None)
+        if not pendiente:
+            raise SegundoFactorInvalidoError(
+                "No hay un acceso pendiente: vuelve a ingresar tus credenciales")
+        return pendiente
+
+    def estado_de_cuenta(self) -> dict:
+        """Resumen del estado de seguridad de la cuenta en sesión."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(_autenticacion.estado_de_cuenta, usuario_id=usuario_id)
 
     # ------------------------------------------------------------------ #
     # Catálogo
