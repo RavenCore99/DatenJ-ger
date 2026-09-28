@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
-import { backend, ErrorBackend } from '../lib/api.js'
+import { backend, ErrorBackend, fijarConfiguracion } from '../lib/api.js'
 
 /**
  * Estado de aplicación del renderer: sesión, tema y disponibilidad del
@@ -41,6 +41,18 @@ export function ProveedorApp({ children }) {
       if (!(error instanceof ErrorBackend)) setAviso(String(error))
     }
   }, [])
+
+  // El proceso principal avisa cuando el servicio Python terminó de arrancar
+  // (o cuando no pudo): la configuración se refresca y el sondeo se repite.
+  useEffect(() => {
+    if (!globalThis.datenjager?.alCambiarServicio) return undefined
+
+    return globalThis.datenjager.alCambiarServicio((configuracion) => {
+      fijarConfiguracion(configuracion)
+      setAviso(configuracion?.error ?? null)
+      consultarSalud()
+    })
+  }, [consultarSalud])
 
   // Sondeo del servicio local: el backend puede arrancar después que la
   // ventana (Electron lanza el proceso Python en paralelo).

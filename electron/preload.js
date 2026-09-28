@@ -13,10 +13,22 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 const CANAL_CONFIGURACION = 'app:configuracion'
+const CANAL_SERVICIO = 'app:servicio'
 
 contextBridge.exposeInMainWorld('datenjager', {
-  /** Configuración resuelta por el proceso principal. */
+  /**
+   * Configuración resuelta por el proceso principal: puerto y token del
+   * servicio local. El token vive en el proceso principal; el renderer solo lo
+   * reenvía en la cabecera `X-DatenJager-Token`.
+   */
   configuracion: () => ipcRenderer.invoke(CANAL_CONFIGURACION),
+
+  /** Aviso del proceso principal cuando el servicio local terminó de arrancar. */
+  alCambiarServicio: (escucha) => {
+    const manejador = (_evento, configuracion) => escucha(configuracion)
+    ipcRenderer.on(CANAL_SERVICIO, manejador)
+    return () => ipcRenderer.removeListener(CANAL_SERVICIO, manejador)
+  },
 
   /** Solo lectura, sin IPC: datos del entorno de Electron. */
   versionElectron: process.versions.electron,

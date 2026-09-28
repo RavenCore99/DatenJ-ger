@@ -18,22 +18,26 @@
 const path = require('node:path')
 const { app, BrowserWindow, ipcMain, session, shell } = require('electron')
 
+const { ServicioPython } = require('./backend')
+
 /** Puerto por defecto del backend local (FastAPI + uvicorn, SCRUM-21). */
 const PUERTO_BACKEND = Number(process.env.DATENJAGER_PUERTO ?? 8756)
 
-/** Puerto del servidor de desarrollo de Vite (vite.config.js). */
+/** Puerto del servidor de desarrollo de Vite (vite.config.mjs). */
 const PUERTO_VITE = 5273
 
 const enDesarrollo = process.argv.includes('--dev') && !app.isPackaged
+
+/** Servicio Python local. Se arranca al estar lista la aplicación. */
+const servicio = new ServicioPython({ puerto: PUERTO_BACKEND })
 
 let ventana = null
 
 function configuracion() {
   return {
     modo: enDesarrollo ? 'desarrollo' : 'produccion',
-    puertoBackend: PUERTO_BACKEND,
-    urlBackend: `http://127.0.0.1:${PUERTO_BACKEND}`,
     version: app.getVersion(),
+    ...servicio.configuracion,
   }
 }
 
@@ -112,9 +116,19 @@ function crearVentana() {
 
 ipcMain.handle('app:configuracion', () => configuracion())
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   aplicarPoliticaDeSeguridad()
   crearVentana()
+
+  // El servicio local se levanta después de la ventana: si tarda o falla, la
+  // interfaz ya está visible y muestra el estado «sin conexión».
+  const configuracionServicio = await servicio.arrancar()
+  console.log(
+    configuracionServicio.disponible
+      ? `[datenjager] servicio local en ${configuracionServicio.urlBackend}`
+      : `[datenjager] servicio local no disponible: ${configuracionServicio.error}`,
+  )
+  ventana?.webContents.send('app:servicio', configuracionServicio)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) crearVentana()
@@ -124,3 +138,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+// El proceso de Python no debe sobrevivir a la aplicación.
+app.on('before-quit', () => servicio.detener())

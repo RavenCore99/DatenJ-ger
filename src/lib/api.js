@@ -12,6 +12,64 @@
 
 export const PUERTO_BACKEND_POR_DEFECTO = 8756
 
+/** Caché de la configuración que publica el proceso principal de Electron. */
+let configuracionCache = null
+let promesaConfiguracion = null
+
+/**
+ * Configuración del servicio local: puerto y token.
+ *
+ * En Electron la entrega el proceso principal por IPC (el token se genera en
+ * cada arranque); en el navegador de desarrollo se cae a las variables de Vite
+ * y no hay token.
+ */
+export function configuracion() {
+  if (configuracionCache) return Promise.resolve(configuracionCache)
+
+  if (!promesaConfiguracion) {
+    promesaConfiguracion = (async () => {
+      let resuelta = null
+
+      try {
+        if (globalThis.datenjager?.configuracion) {
+          resuelta = await globalThis.datenjager.configuracion()
+        }
+      } catch (error) {
+        console.warn(`No se pudo leer la configuración de Electron: ${error.message}`)
+      }
+
+      configuracionCache = {
+        puerto: resuelta?.puertoBackend ?? Number(import.meta.env?.VITE_DATENJAGER_PUERTO ?? PUERTO_BACKEND_POR_DEFECTO),
+        token: resuelta?.token ?? null,
+      }
+      return configuracionCache
+    })()
+  }
+
+  return promesaConfiguracion
+}
+
+/** Actualiza la configuración en caliente cuando el servicio arranca. */
+export function fijarConfiguracion({ puertoBackend, token } = {}) {
+  if (!puertoBackend && !token) return
+  configuracionCache = {
+    puerto: puertoBackend ?? configuracionCache?.puerto ?? PUERTO_BACKEND_POR_DEFECTO,
+    token: token ?? configuracionCache?.token ?? null,
+  }
+  promesaConfiguracion = Promise.resolve(configuracionCache)
+}
+
+/**
+ * URL base del servicio local.
+ *
+ * Síncrona a propósito: se usa para mostrarla en la barra de estado. Antes de
+ * la primera petición devuelve el valor por defecto.
+ */
+export function urlBase() {
+  const puerto = configuracionCache?.puerto ?? PUERTO_BACKEND_POR_DEFECTO
+  return `http://127.0.0.1:${puerto}`
+}
+
 /** Error tipado que replica las excepciones de `backend/errors.py`. */
 export class ErrorBackend extends Error {
   constructor(mensaje, tipo = 'BackendError', estado = 0) {
@@ -28,22 +86,6 @@ export class ErrorBackend extends Error {
   get noEncontrado() {
     return this.tipo === 'NoEncontradoError' || this.estado === 404
   }
-}
-
-/**
- * URL base del backend.
- *
- * En Electron el proceso principal inyecta la configuración real (puerto
- * elegido en tiempo de arranque) mediante `window.datenjager`; en el navegador
- * de desarrollo se usa la variable de Vite o el puerto por defecto.
- */
-export function urlBase() {
-  const configurada =
-    globalThis.datenjager?.puertoBackend ??
-    import.meta.env?.VITE_DATENJAGER_PUERTO ??
-    PUERTO_BACKEND_POR_DEFECTO
-
-  return `http://127.0.0.1:${configurada}`
 }
 
 /** Normaliza la respuesta de error del backend a un `ErrorBackend`. */
@@ -74,12 +116,18 @@ async function aError(respuesta) {
  * @param {object} [opciones] `metodo`, `cuerpo`, `señal` (AbortSignal)
  */
 export async function solicitar(ruta, { metodo = 'GET', cuerpo, senal } = {}) {
+  const { puerto, token } = await configuracion()
+
+  const cabeceras = {}
+  if (cuerpo) cabeceras['Content-Type'] = 'application/json'
+  if (token) cabeceras['X-DatenJager-Token'] = token
+
   let respuesta
 
   try {
-    respuesta = await fetch(`${urlBase()}${ruta}`, {
+    respuesta = await fetch(`http://127.0.0.1:${puerto}${ruta}`, {
       method: metodo,
-      headers: cuerpo ? { 'Content-Type': 'application/json' } : undefined,
+      headers: cabeceras,
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
       signal: senal,
     })
