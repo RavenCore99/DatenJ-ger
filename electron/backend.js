@@ -17,6 +17,25 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
+
+// Servicios en marcha en este proceso. Si el proceso principal muere de golpe
+// (cierre forzado o fallo), el hijo de Python no debe quedarse vivo ocupando
+// el puerto: 'before-quit' no llega a ejecutarse en esos casos.
+const VIVOS = new Set()
+
+const limpiarAlSalir = () => {
+  for (const proceso of VIVOS) {
+    try {
+      proceso.kill('SIGKILL')
+    } catch {
+      /* el proceso ya no existe */
+    }
+  }
+}
+
+process.on('exit', limpiarAlSalir)
+process.on('SIGTERM', limpiarAlSalir)
+process.on('SIGINT', limpiarAlSalir)
 const { randomBytes } = require('node:crypto')
 
 /** Tiempo máximo de espera del anuncio de arranque. */
@@ -96,6 +115,8 @@ class ServicioPython {
       return this.configuracion
     }
 
+    VIVOS.add(this.proceso)
+
     this.proceso.on('error', (error) => {
       this.error = `No se pudo lanzar Python: ${error.message}`
     })
@@ -104,6 +125,7 @@ class ServicioPython {
       if (this.puertoReal && codigo !== 0) {
         this.error = `El servicio local terminó (código ${codigo}, señal ${senal})`
       }
+      VIVOS.delete(this.proceso)
       this.proceso = null
       this.puertoReal = null
     })
@@ -186,6 +208,7 @@ class ServicioPython {
     this.puertoReal = null
 
     try {
+      VIVOS.delete(proceso)
       proceso.kill('SIGTERM')
       setTimeout(() => {
         if (!proceso.killed) proceso.kill('SIGKILL')

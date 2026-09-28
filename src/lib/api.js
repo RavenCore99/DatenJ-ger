@@ -152,9 +152,22 @@ export const backend = {
 
   sesion: {
     actual: (senal) => solicitar('/api/sesion', { senal }),
-    entrar: (usuario, contrasena) =>
-      solicitar('/api/sesion', { metodo: 'POST', cuerpo: { usuario, contrasena } }),
+    // `tokenConfianza` es el token del dispositivo: si el servicio lo acepta,
+    // el segundo factor se omite en este acceso.
+    entrar: (nombre, contrasena, tokenConfianza = null) =>
+      solicitar('/api/sesion', {
+        metodo: 'POST',
+        cuerpo: { nombre, contrasena, token_confianza: tokenConfianza },
+      }),
+    verificarCodigo: (codigo) =>
+      solicitar('/api/sesion/2fa', { metodo: 'POST', cuerpo: { codigo } }),
+    usarCodigoDeRespaldo: (codigo) =>
+      solicitar('/api/sesion/respaldo', { metodo: 'POST', cuerpo: { codigo } }),
     salir: () => solicitar('/api/sesion', { metodo: 'DELETE' }),
+  },
+
+  cuenta: {
+    estado: () => solicitar('/api/cuenta'),
   },
 
   documentos: {

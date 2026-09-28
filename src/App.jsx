@@ -8,6 +8,7 @@ import Documentos from './pages/Documentos.jsx'
 import Personas from './pages/Personas.jsx'
 import Auditoria from './pages/Auditoria.jsx'
 import Cuenta from './pages/Cuenta.jsx'
+import Acceso from './pages/Acceso.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
@@ -31,7 +32,7 @@ export function App() {
 
 /** Marco visual: barra lateral fija, área de contenido desplazable, pie de estado. */
 function Marco() {
-  const { tema } = useApp()
+  const { tema, autenticado } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
 
   useEffect(() => {
@@ -41,6 +42,9 @@ function Marco() {
       /* almacenamiento no disponible */
     }
   }, [tema])
+
+  // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
+  if (!autenticado) return <Acceso />
 
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
   const { Componente } = activa

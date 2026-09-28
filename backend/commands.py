@@ -456,8 +456,12 @@ class ComandosDatenJager:
     def _completar_acceso(
         self, usuario_id: int, nombre: str, clave: bytes, accion: str
     ) -> dict:
-        """Registra el segundo factor, emite el token de confianza y abre sesión."""
-        self.registrar_evento(accion, usuario_id=usuario_id)
+        """Emite el token de confianza y abre la sesión.
+
+        `accion` nombra el evento ya registrado por el servicio; se recibe para
+        dejar constancia en la firma de qué segundo factor se completó. El
+        evento no se registra aquí: hacerlo lo duplicaría.
+        """
         token = self._ejecutar(
             _autenticacion.generar_token_confianza,
             usuario_id=usuario_id,
