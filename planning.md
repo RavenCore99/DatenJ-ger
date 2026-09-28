@@ -57,7 +57,11 @@ cerrado).
 
 ## Fase 0 — Preparación (transversal, antes de tocar código)
 
-Estado: **por hacer**
+Estado: **hecho en lo técnico** — el mecanismo Python↔Electron quedó definido
+y construido (FastAPI + uvicorn sobre `127.0.0.1`, token por proceso; ver
+`backend/README.md` y `backend/server.py`). Lo que sigue pendiente son los
+**mockups de login, 2FA, registro y dashboard**, que hacen falta antes de que
+la Fase 3 llegue a esas pantallas.
 
 - [x] Revisar el contenido de `/assets/mockups` disponible hasta ahora
       (5 pantallas: Configuración/Appearance, Auditoría Ley 1581 en modo
@@ -354,7 +358,8 @@ de consumo de hardware y calidad de resultados que la respalden.
 - [ ] Si el cambio tocó cifrado, autenticación, o más de 2 archivos de UI,
       fue aprobado explícitamente por Raven antes del commit (ver
       `CLAUDE.md`, sección 10).
-- [ ] Raven ejecuta `add` / `commit` / `push` — el agente nunca lo hace.
+- [ ] `add` / `commit` / `push` los ejecuta el agente con autorización de
+      Raven (ver `CLAUDE.md` §8); `pull` y `pr` quedan fuera de su alcance.
 
 ## Seguimiento de progreso
 
@@ -369,3 +374,52 @@ de consumo de hardware y calidad de resultados que la respalden.
 
 Actualiza esta tabla al cerrar cada fase o hito relevante, y refleja el
 cambio en `CLAUDE.md` (sección 12) en la misma sesión.
+
+---
+
+## Qué ya está hecho — no volver a hacerlo
+
+Esta lista existe para no repetir trabajo ni re-abrir decisiones cerradas.
+Antes de proponer una tarea, comprueba aquí.
+
+**Backend (`backend/`, sin Tkinter, importable sin display)**
+
+| Pieza | Archivo | Estado |
+| --- | --- | --- |
+| Errores tipados | `backend/errors.py` | hecho |
+| Servicios de negocio | `backend/services/{documentos,personas,auditoria,reportes,autenticacion}.py` | hecho |
+| Estado de aplicación | `backend/state.py` (`AppState`, `SesionUsuario`) | hecho |
+| Fachada de comandos | `backend/commands.py` (punto de entrada único) | hecho |
+| Puente HTTP | `backend/server.py` (FastAPI + uvicorn, token por proceso) | hecho |
+| Almacén cifrado de tokens | `backend/tokens.py` + `scripts/cifrar_tokens_confianza.py` | hecho |
+| Contrato | `backend/README.md` | hecho |
+
+**Autenticación: ya no vive en `main.py`.** Está en
+`backend/services/autenticacion.py`: bloqueo por intentos, migración de hashes
+heredados, derivación de la clave de sesión, migración del material 2FA de
+`ENC:` a `ENCK:`, verificación TOTP, códigos de respaldo de un solo uso,
+activación/desactivación del 2FA, cambio de contraseña con re-cifrado y token
+de confianza. Las primitivas de `database.py` y `encryption.py` **no** se
+tocaron: cualquier cambio futuro ahí es un cambio de cifrado y exige
+aprobación explícita (CLAUDE.md §10).
+
+**Puente HTTP:** `POST /api/sesion` (con `/2fa` y `/respaldo`), `GET|DELETE /api/sesion`,
+`POST /api/sesion/heredar`, `GET /api/cuenta` y `/api/cuenta/2fa/{preparar,activar,desactivar,codigos}`,
+`POST /api/cuenta/contrasena`, `DELETE /api/cuenta/confianza`, más documentos,
+personas, auditoría, reportes y asistente.
+
+**Frontend (`src/`, `electron/`):** andamiaje Vite + React + Tailwind, puente
+Electron (`electron/{main,preload,backend,archivos}.js`) y los cinco paneles
+funcionales: `Acceso` (login y 2FA), `Documentos`, `Personas`, `Auditoria` y
+`Cuenta` (apariencia, 2FA, contraseña, confianza).
+
+**Pendiente de verdad:** el **alta de usuario** (`registro`) — único elemento
+de `ComandosDatenJager.operaciones_pendientes()` — y el empaquetado
+(`SCRUM-26`, en pausa).
+
+**Variables de entorno del servicio:** `DATENJAGER_DB` (base alternativa) y
+`DATENJAGER_TOKENS` (almacén alternativo de tokens). Las pruebas y las sondas
+las usan siempre para no tocar los datos reales del usuario.
+
+**Cómo verificar sin rehacer:** `./venv/bin/python -m unittest discover -s tests -t .`
+(121 pruebas, sin Tkinter), `npx vite build`, `./node_modules/.bin/electron . --no-sandbox`.

@@ -91,7 +91,10 @@ docs(SCRUM-10): delimita alcance de mockups
 ```
 
 ---
-**iniciamos aqui**
+> El **Sprint 2 está cerrado**. El siguiente trabajo es el **Sprint 3**
+> (Frontend + UI) y no debe volver a tocar lo ya hecho aquí: el desacople del
+> backend, el puente, los cinco paneles funcionales y la autenticación ya
+> viven en el backend y están verificados.
 
 # Sprint 2 — Backend + Andamiaje   | pr actual "[SPRINT-2] SCRUM-5 a SCRUM-11: Implementación de funcionalidades del Sprint 1- #9"
 
@@ -99,23 +102,44 @@ docs(SCRUM-10): delimita alcance de mockups
 
 **Objetivo:** desacoplar la lógica del backend Python y levantar el andamiaje funcional Electron/React/Tailwind conectado al backend.
 
-| Jira | Tarea | Etiquetas adicionales sugeridas |
-|---|---|---|
-| `SCRUM-12` | Extraer CRUD de PDF de la UI | `backend`, `pdf-manager`, `refactor` |
-| `SCRUM-13` | Extraer CRUD de personas de la UI | `backend`, `personas`, `refactor` |
-| `SCRUM-14` | Separar auditoría de la interfaz | `backend`, `auditoria`, `refactor` |
-| `SCRUM-15` | Consolidar servicio del chatbot | `backend`, `chatbot`, `refactor` |
-| `SCRUM-16` | Implementar capa de estado de aplicación | `arquitectura`, `rnf-07`, `refactor` |
-| `SCRUM-17` | Crear capa de comandos y rutas | `arquitectura`, `servicios`, `refactor` |
-| `SCRUM-18` | Probar backend sin Tkinter | `testing`, `backend` |
-| `SCRUM-19` | Documentar cierre de extracción backend | `documentacion`, `hito` |
-| `SCRUM-20` | Crear andamiaje Electron + React + Tailwind | `electron`, `react`, `build` |
-| `SCRUM-21` | Implementar bridge Python-Electron | `electron`, `bridge`, `backend` |
-| `SCRUM-22` | Migrar login y 2FA funcionales | `electron`, `auth`, `feat` |
-| `SCRUM-23` | Migrar panel documental funcional | `electron`, `pdf-manager`, `feat` |
-| `SCRUM-24` | Migrar personas y auditoría funcional | `electron`, `frontend`, `feat` |
-| `SCRUM-25` | Migrar configuración y cuenta funcional | `electron`, `configuracion`, `feat` |
-| `SCRUM-26` | Generar instalador inicial | `electron`, `build`, `release` | para esto hay que ver como realizarlo y tenerlo con github packages para que funcione con cualquier sistema (windows y linux) a verificar y en pausa
+**Estado: Sprint 2 cerrado (2026-09-28) — `SCRUM-12` a `SCRUM-25` hechos y publicados en `origin/v2.1`.**
+
+| Jira | Tarea | Etiquetas adicionales sugeridas | Estado | Commit(s) |
+|---|---|---|---|---|
+| `SCRUM-12` | Extraer CRUD de PDF de la UI | `backend`, `pdf-manager`, `refactor` | hecho | `171eba9` |
+| `SCRUM-13` | Extraer CRUD de personas de la UI | `backend`, `personas`, `refactor` | hecho | `fbc6919` |
+| `SCRUM-14` | Separar auditoría de la interfaz | `backend`, `auditoria`, `refactor` | hecho | `c42e996` |
+| `SCRUM-15` | Consolidar servicio del chatbot | `backend`, `chatbot`, `refactor` | hecho | `8820c02` |
+| `SCRUM-16` | Implementar capa de estado de aplicación | `arquitectura`, `rnf-07`, `refactor` | hecho | `a0f20b4` |
+| `SCRUM-17` | Crear capa de comandos y rutas | `arquitectura`, `servicios`, `refactor` | hecho | `df258ea` |
+| `SCRUM-18` | Probar backend sin Tkinter | `testing`, `backend` | hecho | `d8add47` |
+| `SCRUM-19` | Documentar cierre de extracción backend | `documentacion`, `hito` | hecho | `aa7c94e`, `05b02f8` |
+| `SCRUM-20` | Crear andamiaje Electron + React + Tailwind | `electron`, `react`, `build` | hecho | `b8c0b8b` |
+| `SCRUM-21` | Implementar bridge Python-Electron | `electron`, `bridge`, `backend` | hecho | `0de7137`, `50cb5db`, `111b4f2` |
+| `SCRUM-22` | Migrar login y 2FA funcionales | `electron`, `auth`, `feat` | hecho | `2d67e56`, `93b6680` |
+| `SCRUM-23` | Migrar panel documental funcional | `electron`, `pdf-manager`, `feat` | hecho | `cf59b76` |
+| `SCRUM-24` | Migrar personas y auditoría funcional | `electron`, `frontend`, `feat` | hecho | `73ded75` |
+| `SCRUM-25` | Migrar configuración y cuenta funcional | `electron`, `configuracion`, `feat` | hecho | `5aec953`, `0ba7ff5`, `27e6e60` |
+| `SCRUM-26` | Generar instalador inicial | `electron`, `build`, `release` | **en pausa** | — |
+
+`SCRUM-26` queda en pausa: hay que ver cómo generarlo y publicarlo con GitHub
+Packages para que funcione tanto en Windows como en Linux.
+
+### Cómo comprobar el estado del Sprint 2 sin repetir trabajo
+
+```bash
+./venv/bin/python -m unittest discover -s tests -t .     # 121 pruebas, sin Tkinter
+npx vite build                                            # el frontend compila
+./node_modules/.bin/electron . --no-sandbox              # arranca el sistema completo
+```
+
+La autenticación ya **no** vive en `main.py`: está en
+`backend/services/autenticacion.py` y se expone por el puente (`POST /api/sesion`,
+`/api/sesion/2fa`, `/api/sesion/respaldo`, `GET /api/cuenta` y `/api/cuenta/...`).
+Los tokens de confianza ya **no** están en claro en `config.json`: viven cifrados
+en `tokens_confianza/` (ignorado por git). Lo único pendiente dentro del desacople
+es el **alta de usuario**: `ComandosDatenJager.operaciones_pendientes()` devuelve
+solo `registro`.
 
 ### Commits esperados
 
