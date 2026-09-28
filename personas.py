@@ -10,6 +10,8 @@ from datetime import datetime
 
 from ui_components import Notification, ConfirmDialog, get_dynamic_colors
 from icons import get_icon
+from backend.errors import BackendError, ConflictoError
+from backend.services import personas as personas_service
 
 
 # colores compartidos
@@ -24,6 +26,32 @@ class GestorPersonas:
     def __init__(self, app):
         # referencia a la app principal
         self.app = app
+
+    # ---- acceso al servicio (bajo el lock de base de datos) ----
+
+    def _crear(self, cedula, nombres, empresa):
+        with self.app._db_lock:
+            return personas_service.crear_persona(
+                self.app.conn, self.app.cursor,
+                cedula=cedula, nombres=nombres, empresa=empresa,
+                usuario_id=self.app.usuario_actual,
+            )
+
+    def _actualizar(self, persona_id, nombres, empresa):
+        with self.app._db_lock:
+            return personas_service.actualizar_persona(
+                self.app.conn, self.app.cursor,
+                persona_id=int(persona_id), nombres=nombres, empresa=empresa,
+                usuario_id=self.app.usuario_actual,
+            )
+
+    def _eliminar_persona(self, persona_id):
+        with self.app._db_lock:
+            return personas_service.eliminar_persona(
+                self.app.conn, self.app.cursor,
+                persona_id=int(persona_id),
+                usuario_id=self.app.usuario_actual,
+            )
 
     def mostrar(self):
         # abrir ventana de gestion de personas
@@ -147,27 +175,11 @@ class GestorPersonas:
 
         # carga datos
         def _fetch_rows(filtro=""):
-            # query
-            query = (
-                "SELECT pe.id, pe.cedula, pe.nombres, "
-                "       COALESCE(pe.empresa, '—'), "
-                "       COUNT(p.id) AS total_docs "
-                "FROM Personas pe "
-                "LEFT JOIN PDFs p ON p.persona_id = pe.id "
-                "WHERE 1=1 "
-            )
-            params = []
-            if filtro.strip():
-                query += (
-                    "AND (pe.cedula LIKE ? OR pe.nombres LIKE ? "
-                    "     OR pe.empresa LIKE ?) "
-                )
-                like = f"%{filtro.strip()}%"
-                params.extend([like, like, like])
-            query += "GROUP BY pe.id ORDER BY pe.nombres ASC"
+            # consulta delegada al servicio de personas
             with self.app._db_lock:
-                self.app.cursor.execute(query, params)
-                return self.app.cursor.fetchall()
+                return personas_service.listar_personas(
+                    self.app.conn, self.app.cursor, filtro
+                )
 
         def _rows_hash(rows):
             # hash rapido para detectar cambios
@@ -183,10 +195,12 @@ class GestorPersonas:
 
                 for row in tree.get_children():
                     tree.delete(row)
-                for i, (pid, cedula, nombres, empresa, docs) in enumerate(rows):
+                for i, persona in enumerate(rows):
                     tag = "odd" if i % 2 == 0 else "even"
                     tree.insert("", "end",
-                                values=(pid, cedula, nombres, empresa, docs),
+                                values=(persona["id"], persona["cedula"],
+                                        persona["nombres"], persona["empresa"],
+                                        persona["documentos"]),
                                 tags=(tag,))
                 lbl_count.configure(
                     text=f"{len(rows)} persona{'s' if len(rows) != 1 else ''}"
@@ -272,40 +286,24 @@ class GestorPersonas:
                     return
 
                 try:
-                    with self.app._db_lock:
-                        if modo == "agregar":
-                            self.app.cursor.execute(
-                                "SELECT id FROM Personas WHERE cedula = ?",
-                                (cedula,)
-                            )
-                            if self.app.cursor.fetchone():
-                                Notification(form, "Duplicado",
-                                             f"Ya existe una persona con cédula {cedula}.",
-                                             notification_type="warning")
-                                return
-                            self.app.cursor.execute(
-                                "INSERT INTO Personas (cedula, nombres, empresa) "
-                                "VALUES (?, ?, ?)",
-                                (cedula, nombres, empresa)
-                            )
-                            self.app._audit("Agregar persona (Panel Personas)")
-                            msg = f"Persona '{nombres}' registrada."
-                        else:
-                            self.app.cursor.execute(
-                                "UPDATE Personas SET nombres = ?, empresa = ? "
-                                "WHERE id = ?",
-                                (nombres, empresa, datos[0])
-                            )
-                            self.app._audit("Editar persona (Panel Personas)")
-                            msg = f"Persona '{nombres}' actualizada."
-                        self.app.conn.commit()
+                    if modo == "agregar":
+                        resultado = self._crear(cedula, nombres, empresa)
+                        msg = f"Persona '{resultado['nombres']}' registrada."
+                    else:
+                        resultado = self._actualizar(datos[0], nombres, empresa)
+                        msg = f"Persona '{resultado['nombres']}' actualizada."
 
                     Notification(self.app.root, "Guardado", msg,
                                  notification_type="success", duration=2500)
                     form.destroy()
                     _cargar(entry_buscar.get())
+                except ConflictoError as exc:
+                    Notification(form, "Duplicado", exc.mensaje,
+                                 notification_type="warning")
+                except BackendError as exc:
+                    Notification(form, "Error", exc.mensaje,
+                                 notification_type="error")
                 except Exception as exc:
-                    self.app.conn.rollback()
                     Notification(form, "Error", str(exc),
                                  notification_type="error")
 
@@ -377,18 +375,15 @@ class GestorPersonas:
             if not dlg.result:
                 return
             try:
-                with self.app._db_lock:
-                    self.app.cursor.execute(
-                        "DELETE FROM Personas WHERE id = ?", (pid,)
-                    )
-                    self.app._audit("Eliminar persona (Panel Personas)")
-                    self.app.conn.commit()
+                self._eliminar_persona(pid)
                 Notification(self.app.root, "Eliminada",
                              f"Persona '{nombres}' eliminada correctamente.",
                              notification_type="success", duration=2500)
                 _cargar(entry_buscar.get())
+            except BackendError as exc:
+                Notification(win, "Error", exc.mensaje,
+                             notification_type="error")
             except Exception as exc:
-                self.app.conn.rollback()
                 Notification(win, "Error", str(exc),
                              notification_type="error")
 

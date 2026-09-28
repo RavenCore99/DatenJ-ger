@@ -30,3 +30,7 @@ class NoEncontradoError(BackendError):
 
 class DatosInvalidosError(BackendError):
     """Los datos entregados no cumplen las validaciones del servicio."""
+
+
+class ConflictoError(BackendError):
+    """La operación choca con un registro existente (p. ej. cédula duplicada)."""
