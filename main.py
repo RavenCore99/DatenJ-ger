@@ -35,6 +35,7 @@ from personas import GestorPersonas
 from audit import GestorAuditoria
 from pdf_manager import GestorPDF
 from chatbot_ui import ChatbotPanel
+from backend.state import AppState
 
 
 
@@ -100,9 +101,16 @@ class AppDBPDF:
 
         self.conn, self.cursor = conectar_db()
         self._db_lock = threading.Lock()
-        self.usuario_actual = None
-        self.usuario_nombre = None
-        self._session_key   = None
+
+        # capa de estado de aplicación (sesión, tema, configuración)
+        self.state = AppState(
+            conn=self.conn,
+            cursor=self.cursor,
+            db_lock=self._db_lock,
+            config=self.config,
+            tema=theme,
+        )
+
         self.animating = False
         self._login_fail_count = 0
         self._search_timer = None
@@ -132,6 +140,35 @@ class AppDBPDF:
         # restaurar ventana
         if self.config.get("window_maximized", False):
             self.root.after(100, self._maximize_window)
+
+    # ---- estado de aplicación (delegado a backend.state.AppState) ----
+
+    @property
+    def usuario_actual(self):
+        # id del usuario autenticado
+        return self.state.usuario_actual
+
+    @usuario_actual.setter
+    def usuario_actual(self, valor):
+        self.state.usuario_actual = valor
+
+    @property
+    def usuario_nombre(self):
+        # nombre del usuario autenticado
+        return self.state.usuario_nombre
+
+    @usuario_nombre.setter
+    def usuario_nombre(self, valor):
+        self.state.usuario_nombre = valor
+
+    @property
+    def _session_key(self):
+        # clave de sesión derivada de la contraseña
+        return self.state.session_key
+
+    @_session_key.setter
+    def _session_key(self, valor):
+        self.state.session_key = valor
 
     def get_colors(self):
         # colores segun tema
@@ -168,6 +205,7 @@ class AppDBPDF:
         def _tick():
             try:
                 current_mode = ctk.get_appearance_mode()
+                self.state.tema = current_mode
                 self.actualizar_colores_dinamicos(refresh_data=False)
                 self.root.event_generate("<<ThemeChanged>>", when="tail")
                 self._last_theme_mode = current_mode
@@ -3214,7 +3252,7 @@ class AppDBPDF:
     def _start_idle_tracking(self):
         # iniciar tracking inactividad
         self._stop_idle_tracking()
-        timeout_s = self.config.get("session_timeout_minutes", 10) * 60
+        timeout_s = self.state.segundos_inactividad()
         self._idle_timeout_ms  = int(timeout_s * 1000)
         self._idle_warning_ms  = int(max(timeout_s - 30, 5) * 1000)
         
