@@ -1871,27 +1871,6 @@ class AppDBPDF:
         )
 
    
-    # HELPERS: OPERACIONES PDF (devoluciones de llamada de subprocesos + limpieza de archivos temporales)
-    
-
-    def _save_pdf_to_db(self, datos_enc, tamano, nombre, descripcion,
-                        cedula, nombres, empresa, usuario_actual, window):
-        # delegado a pdf_manager.py
-        self.pdf._save_to_db(datos_enc, tamano, nombre, descripcion,
-                             cedula, nombres, empresa, usuario_actual, window)
-
-    def _on_pdf_added(self, nombre, window):
-        # delegado a pdf_manager.py
-        self.pdf._on_added(nombre, window)
-
-    def _on_pdf_add_error(self, error):
-        # delegado a pdf_manager.py
-        self.pdf._on_add_error(error)
-
-    def _abrir_visor_pdf(self, pdf_bytes: bytes, nombre: str, window=None):
-        # delegado a pdf_manager.py
-        self.pdf._abrir_visor(pdf_bytes, nombre, window)
-
     def mostrar_inicial(self):
         # muestra la pantalla inicial con fade
         self._login_fail_count = 0
