@@ -14,7 +14,6 @@ evento de auditoría de las operaciones de escritura.
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any, Optional, Sequence
 
 from backend.errors import (
@@ -22,6 +21,7 @@ from backend.errors import (
     DatosInvalidosError,
     NoEncontradoError,
 )
+from backend.services import auditoria
 
 ACCION_AGREGAR = "Agregar persona (Panel Personas)"
 ACCION_EDITAR = "Editar persona (Panel Personas)"
@@ -35,10 +35,6 @@ class PersonaError(DatosInvalidosError):
     """Error propio del servicio de personas."""
 
 
-def _ahora() -> str:
-    return datetime.now().isoformat()
-
-
 def _fila_a_dict(fila: Sequence[Any]) -> dict:
     return {
         "id": fila[0],
@@ -50,18 +46,8 @@ def _fila_a_dict(fila: Sequence[Any]) -> dict:
 
 
 def _registrar_auditoria(cursor, conn, accion: str, usuario_id: Optional[int]) -> None:
-    """Inserta un evento de auditoría sin cortar el flujo principal.
-
-    Se consolida en el servicio de auditoría al cerrar SCRUM-14.
-    """
-    try:
-        cursor.execute(
-            "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-            (accion, None, usuario_id, _ahora()),
-        )
-        conn.commit()
-    except Exception:
-        pass
+    """Registra el evento en el servicio de auditoría (best-effort)."""
+    auditoria.registrar_evento(conn, cursor, accion, usuario_id)
 
 
 # --------------------------------------------------------------------------- #

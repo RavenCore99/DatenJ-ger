@@ -25,6 +25,7 @@ from backend.errors import (
     NoEncontradoError,
     NoAutenticadoError,
 )
+from backend.services import auditoria
 
 # Acciones registradas en la tabla Auditoria por este servicio.
 ACCION_AGREGAR = "Agregar PDF (Encriptado AES-256-GCM)"
@@ -75,21 +76,8 @@ def _registrar_auditoria(
     usuario_id: Optional[int],
     documento_id: Optional[int] = None,
 ) -> None:
-    """Inserta un evento de auditoría sin cortar el flujo principal.
-
-    Se mantiene aquí para que documentos.py siga siendo autónomo; cuando el
-    servicio de auditoría esté consolidado (SCRUM-14), esta función delega
-    en él.
-    """
-    try:
-        cursor.execute(
-            "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-            (accion, documento_id, usuario_id, _ahora()),
-        )
-        conn.commit()
-    except Exception:
-        # la auditoría nunca debe romper la operación de negocio
-        pass
+    """Registra el evento en el servicio de auditoría (best-effort)."""
+    auditoria.registrar_evento(conn, cursor, accion, usuario_id, documento_id)
 
 
 # --------------------------------------------------------------------------- #
