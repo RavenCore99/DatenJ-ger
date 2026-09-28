@@ -57,11 +57,23 @@ cerrado).
 
 ## Fase 0 — Preparación (transversal, antes de tocar código)
 
-Estado: **hecho en lo técnico** — el mecanismo Python↔Electron quedó definido
-y construido (FastAPI + uvicorn sobre `127.0.0.1`, token por proceso; ver
-`backend/README.md` y `backend/server.py`). Lo que sigue pendiente son los
-**mockups de login, 2FA, registro y dashboard**, que hacen falta antes de que
-la Fase 3 llegue a esas pantallas.
+Estado: **hecho en lo técnico**, y los **mockups ya están en el repositorio**:
+
+* el mecanismo Python↔Electron quedó definido y construido (FastAPI + uvicorn
+  sobre `127.0.0.1`, token por proceso; ver `backend/README.md` y
+  `backend/server.py`);
+* los mockups que faltaban llegaron: **11 pantallas** en `assets/tema claro/` y
+  `assets/tema oscuro/`, que cubren justo lo que estaba pendiente —menú de
+  inicio con registro de operadores y setup 2FA, flujo de autenticación y
+  verificación 2FA TOTP, suite documental con el chatbot en la barra lateral,
+  panel de auditoría (trazabilidad Ley 1581), panel de configuración estilo
+  Hermes Desktop, asistente conversacional—, más el logo en
+  `assets/logo/logo.png` y `assets/logo/logo.ico`, **44 iconos** en
+  `assets/icons/` y cinco complementos de interfaz en `assets/assets/`.
+
+Con esto la Fase 3 deja de estar bloqueada. Antes de que el empaquetado
+dependa de ellos, los assets que use la aplicación deben quedar versionados
+(hoy están en el árbol de trabajo sin commitear: decisión de Raven).
 
 - [x] Revisar el contenido de `/assets/mockups` disponible hasta ahora
       (5 pantallas: Configuración/Appearance, Auditoría Ley 1581 en modo
@@ -199,6 +211,14 @@ estas pantallas y las lleva al diseño de los mockups; el empaquetado
 
 ## Fase 3 — Construcción del frontend conforme a los mockups
 
+> **Alcance ampliado (2026-09-28).** Además de llevar a diseño las cinco
+> pantallas ya funcionales, la Fase 3 cubre las pantallas que todavía no
+> existen, la identidad visual y el movimiento. En `jira.md` estos trabajos
+> viven en el **Sprint 5**: pantallas nuevas en `SCRUM-57` a `SCRUM-64`,
+> identidad visual y movimiento en `SCRUM-65` a `SCRUM-71`. Los `SCRUM-27` a
+> `SCRUM-32` del Sprint 3 siguen siendo el acabado visual de lo que ya
+> funciona.
+
 Estado: **por hacer** — Skill: `electron-react-migration` +
 `ui-states-animations`
 
@@ -274,7 +294,42 @@ Secciones sugeridas:
    configuración), reemplazando el markup provisional por el diseño
    inspirado en el mockup correspondiente y limitado a las secciones que
    existen en el código Python actual.
-3. **Estados canónicos y transiciones**: vacío, error, carga
+3. **Pantallas que todavía no existen** (hoy no tienen equivalente en el
+   frontend nuevo y sí lógica en el código Python):
+
+   | Pantalla | Origen en el sistema actual |
+   | --- | --- |
+   | Registro de operadores (alta de usuario) | flujo de registro de `main.py`; es lo único que sigue marcado pendiente en `ComandosDatenJager.operaciones_pendientes()` |
+   | Setup 2FA con QR y códigos de respaldo | `main.py` (`mostrar_setup_2fa`, `_mostrar_codigos_respaldo`); el backend ya lo expone, falta la pantalla dedicada al alta |
+   | Panel del chatbot con barra lateral por botones | `chatbot_ui.py` (hoy bloqueante; el streaming llega en la Fase 4) |
+   | Visor de PDF dentro de la aplicación | hoy no existe: los documentos se descifran y se abren por fuera |
+   | Reportes con paleta estructurada por tipo | `reporter.py` |
+   | Recopilador de datos y estadísticas | métricas de `ui_components.py` y `backend/services/reportes.py` |
+   | Panel de ajustes completo | paridad con las secciones reales del código Python (`main.py`), más el panel de conexión de APIs y modelos |
+   | Panel de conexión de modelos y APIs | Fase 4; aquí se construye la pantalla |
+
+4. **Identidad visual y movimiento**, extraída de `assets/` y de la paleta del
+   logo:
+
+   * logo e icono de la aplicación desde `assets/logo/` (ventana, barra de
+     tareas, pantalla de acceso);
+   * los 44 iconos de `assets/icons/` como set de acción del sistema;
+   * transición **suave** al cambiar de tema claro a oscuro y viceversa (hoy
+     el cambio es instantáneo);
+   * animación de entrada al abrir la aplicación, de tono minimalista, en la
+     línea de Hermes Desktop;
+   * micro-interacciones y transiciones entre paneles;
+   * los complementos de `assets/assets/` incorporados como componentes
+     propios, con la estética del proyecto (no tal cual vienen): botón
+     biométrico, sistema de partículas, conmutador de notificaciones, cajón
+     desplazable y formulario suave.
+
+5. **Estados que informan de verdad**: indicadores con color para la conexión
+   con la base de datos, el estado de las conexiones de API y el estado del
+   chatbot; *skeletons* de carga en las listas; iconos de acción para
+   desplegar y recoger las barras laterales.
+
+6. **Estados canónicos y transiciones**: vacío, error, carga
    (*skeleton*), y animaciones (fade, hover, easing) — implementados
    directamente en React/Tailwind, con opción de deshabilitarlas desde
    configuración de usuario.
@@ -290,6 +345,10 @@ pantallas principales (login, dashboard, PDFs).
 ## Fase 4 — Integración de APIs y modelos locales
 
 Estado: **por hacer** — Skill: `chatbot-streaming` + `local-llm-fallback`
+
+Incluye el **panel de conexión** (pantalla propia, no un ajuste suelto): cargar
+claves y puntos de conexión de APIs, elegir entre proveedor por API o modelo
+local, y que el chatbot los adopte **sin reiniciar** la aplicación.
 
 Se deja para el final porque depende de tener ya un frontend real (Fase 3)
 donde mostrar el panel de modelos, y porque no bloquea el resto del
@@ -349,6 +408,52 @@ de consumo de hardware y calidad de resultados que la respalden.
 
 ---
 
+## Fase 6 — Clasificación automática de documentos (evaluación, paralela)
+
+Estado: **evaluación** — `SCRUM-72` a `SCRUM-74` en `jira.md` (Sprint 5).
+Dependencia: se puede prototipar en paralelo a
+cualquier fase posterior a la Fase 1, pero **solo backend**.
+
+Objetivo: evaluar si un método de aprendizaje automático puede clasificar los
+PDF que ya entran al sistema (afiliaciones, reportes de seguridad social,
+contratos laborales, etc.) sin que nadie elija la categoría a mano. El valor
+académico está en la **medición**, no en la promesa: si la precisión no
+justifica el costo, se documenta y se descarta igual que la búsqueda semántica.
+
+Alcance sugerido:
+
+1. **Corpus de evaluación**: tomar los documentos reales ya cargados y
+   etiquetarlos a mano como referencia (sin sacarlos del sistema).
+2. **Línea base sin modelo**: clasificación por reglas sobre el texto extraído
+   (palabras clave, nombre del archivo, entidad asociada). Si esto ya acierta
+   lo suficiente, es la respuesta más barata y hay que decirlo.
+3. **Extracción de texto**: reutilizar el camino de lectura de PDF ya existente.
+4. **Prototipo con embeddings**: `sentence-transformers` sobre texto extraído y
+   un clasificador simple encima; alternativamente un modelo de cero disparos.
+5. **Medición**: precisión, exhaustividad y matriz de confusión sobre el corpus
+   etiquetado, con el mismo rigor que la Fase 5.
+6. **Decisión**: continuar, ajustar o descartar, documentada con los números.
+
+Criterio de cierre: existe una medición reproducible sobre documentos reales y
+una decisión escrita. No se integra a la interfaz en esta fase: si los números
+lo justifican, se convierte en tarea propia.
+
+---
+
+## Criterio de cierre del proyecto
+
+`SCRUM-75` a `SCRUM-78` en `jira.md` (Sprint 5). Además del criterio de cada
+fase, el proyecto se considera entregable cuando:
+
+* existe un **instalador de escritorio** que funciona en Windows y Linux y se
+  publica como paquete en GitHub Packages;
+* la instalación y el arranque están documentados para alguien que llega nuevo;
+* el código Python que queda es **backend funcional** (servicios, cifrado, base
+  de datos, asistente); CustomTkinter se retira una vez la Fase 3 cierra
+  pantalla por pantalla.
+
+---
+
 ## Checklist de commits (aplica a toda fase)
 
 - [ ] El commit corresponde a **una sola sección**, no a varias.
@@ -368,9 +473,10 @@ de consumo de hardware y calidad de resultados que la respalden.
 | 0. Preparación | por hacer (mockups pendientes de recibir) | 2026-09-28 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | por hacer | — |
+| 3. Frontend conforme a mockups | por hacer (mockups recibidos) | 2026-09-28 |
 | 4. Integración de APIs y modelos locales | por hacer | — |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
+| 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
 
 Actualiza esta tabla al cerrar cada fase o hito relevante, y refleja el
 cambio en `CLAUDE.md` (sección 12) en la misma sesión.
