@@ -168,6 +168,24 @@ export const backend = {
 
   cuenta: {
     estado: () => solicitar('/api/cuenta'),
+    // El secreto del 2FA no se activa hasta que el usuario confirma un código.
+    prepararSegundoFactor: () => solicitar('/api/cuenta/2fa/preparar', { metodo: 'POST' }),
+    activarSegundoFactor: (secreto, codigo) =>
+      solicitar('/api/cuenta/2fa/activar', { metodo: 'POST', cuerpo: { secreto, codigo } }),
+    desactivarSegundoFactor: (codigo) =>
+      solicitar('/api/cuenta/2fa/desactivar', { metodo: 'POST', cuerpo: { codigo } }),
+    regenerarCodigos: (codigo) =>
+      solicitar('/api/cuenta/2fa/codigos', { metodo: 'POST', cuerpo: { codigo } }),
+    cambiarContrasena: (contrasenaActual, contrasenaNueva, codigo) =>
+      solicitar('/api/cuenta/contrasena', {
+        metodo: 'POST',
+        cuerpo: {
+          contrasena_actual: contrasenaActual,
+          contrasena_nueva: contrasenaNueva,
+          codigo,
+        },
+      }),
+    revocarConfianza: () => solicitar('/api/cuenta/confianza', { metodo: 'DELETE' }),
   },
 
   documentos: {
