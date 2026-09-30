@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import Panel, { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
+import Panel, {
+  Aviso,
+  CabeceraPagina,
+  Esqueleto,
+  EstadoError,
+  EstadoVacio,
+  Pill,
+  Tarjeta,
+} from '../components/Panel.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { fechaCorta } from '../lib/formato.js'
@@ -8,17 +16,21 @@ import { fechaCorta } from '../lib/formato.js'
 /** Tamaño de página del historial, igual que el visor de CustomTkinter. */
 const POR_PAGINA = 200
 
+const FILTROS_VACIOS = { desde: '', hasta: '', accion: '' }
+
 /**
- * Panel de auditoría (SCRUM-24).
+ * Panel de auditoría (SCRUM-30): trazabilidad de las acciones sobre el archivo.
  *
- * Migra el visor de historial: consulta filtrada por fecha y tipo de acción,
- * conteo, limpieza del historial (dejando constancia del vaciado) y consulta
- * del log del sistema.
+ * Conserva la funcionalidad del visor anterior —consulta filtrada por fecha y
+ * tipo de acción, conteo, limpieza del historial y consulta del log— y adopta
+ * la composición de los mockups: fila de métricas, filtros en una tarjeta,
+ * tabla con la acción en pill coloreada y visor de log tipo terminal en
+ * monoespaciada.
  */
 export default function Auditoria() {
   const { conectado, autenticado } = useApp()
 
-  const [filtros, setFiltros] = useState({ desde: '', hasta: '', accion: '' })
+  const [filtros, setFiltros] = useState(FILTROS_VACIOS)
   const [estado, setEstado] = useState('cargando')
   const [eventos, setEventos] = useState([])
   const [total, setTotal] = useState(0)
@@ -52,19 +64,32 @@ export default function Auditoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conectado, autenticado, cargar])
 
+  /** Reparto por tipo de acción del historial visible, para las métricas. */
+  const resumen = useMemo(() => {
+    const porTipo = new Map()
+    for (const evento of eventos) {
+      const clave = clasificarAccion(evento.accion)
+      porTipo.set(clave, (porTipo.get(clave) ?? 0) + 1)
+    }
+    return { porTipo, tipos: porTipo.size }
+  }, [eventos])
+
   const limpiar = useCallback(async () => {
-    if (!globalThis.confirm(
-      'Se vaciará todo el historial de auditoría. Quedará registrada la limpieza. ¿Continuar?',
-    )) return
+    if (
+      !globalThis.confirm(
+        'Se vaciará todo el historial de auditoría. Quedará registrada la limpieza. ¿Continuar?',
+      )
+    )
+      return
 
     setOcupado(true)
     setAviso(null)
     try {
       const resultado = await backend.auditoria.limpiar()
-      setAviso(`${resultado.eliminados} registro(s) eliminado(s)`)
+      setAviso({ tipo: 'exito', texto: `${resultado.eliminados} registro(s) eliminado(s)` })
       await cargar(filtros)
     } catch (fallo) {
-      setAviso(`Error: ${fallo.message}`)
+      setAviso({ tipo: 'error', texto: fallo.message })
     } finally {
       setOcupado(false)
     }
@@ -76,7 +101,7 @@ export default function Auditoria() {
     try {
       setLog(await backend.auditoria.log())
     } catch (fallo) {
-      setAviso(`Error: ${fallo.message}`)
+      setAviso({ tipo: 'error', texto: fallo.message })
     } finally {
       setOcupado(false)
     }
@@ -89,7 +114,7 @@ export default function Auditoria() {
           titulo={conectado ? 'Sesión no iniciada' : 'Sin conexión con el servicio local'}
           mensaje={
             conectado
-              ? 'La pantalla de inicio de sesión todavía no está migrada (SCRUM-22).'
+              ? 'Vuelve a la pantalla de acceso para identificarte.'
               : 'El historial se consulta contra el servicio de Python.'
           }
         />
@@ -98,34 +123,17 @@ export default function Auditoria() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {aviso && (
-        <div
-          role="status"
-          className={[
-            'flex items-center justify-between gap-4 rounded-lg border px-4 py-2 text-xs',
-            aviso.startsWith('Error')
-              ? 'border-peligro/40 bg-peligro/5 text-peligro'
-              : 'border-exito/40 bg-exito/5',
-          ].join(' ')}
-        >
-          <span>{aviso}</span>
-          <button type="button" onClick={() => setAviso(null)} className="font-mono">
-            cerrar
-          </button>
-        </div>
-      )}
-
-      <Panel
-        titulo="Filtros"
-        descripcion="Fecha (desde y hasta) y tipo de acción"
+    <div className="aparecer flex flex-col gap-6">
+      <CabeceraPagina
+        titulo="Auditoría"
+        descripcion="Trazabilidad de acciones · Ley 1581 de 2012"
         acciones={
           <>
             <button
               type="button"
               onClick={verLog}
               disabled={ocupado}
-              className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium hover:border-primario hover:text-primario disabled:opacity-50"
+              className="rounded-lg border border-borde px-3 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
             >
               Ver log del sistema
             </button>
@@ -133,11 +141,36 @@ export default function Auditoria() {
               type="button"
               onClick={limpiar}
               disabled={ocupado}
-              className="rounded-lg border border-peligro/40 px-3 py-1.5 text-xs font-medium text-peligro disabled:opacity-50"
+              className="rounded-lg border border-peligro/40 px-3 py-2 text-etiqueta-md font-medium text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
             >
               Limpiar historial
             </button>
           </>
+        }
+      />
+
+      {aviso && (
+        <Aviso tipo={aviso.tipo} onCerrar={() => setAviso(null)}>
+          {aviso.texto}
+        </Aviso>
+      )}
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Tarjeta etiqueta="Registros totales" valor={total} acento="primario" />
+        <Tarjeta etiqueta="Mostrados" valor={eventos.length} nota={`últimos ${POR_PAGINA}`} />
+        <Tarjeta etiqueta="Tipos de acción" valor={resumen.tipos} />
+        <Tarjeta
+          etiqueta="Rango consultado"
+          valor={filtros.desde || filtros.hasta ? 'filtrado' : 'completo'}
+          nota={rangoLegible(filtros)}
+        />
+      </div>
+
+      <Panel
+        titulo="Filtros"
+        descripcion="Fecha (desde y hasta) y tipo de acción"
+        acciones={
+          <span className="font-mono text-telemetria text-tenue">Ley 1581 · hábeas data</span>
         }
       >
         <form
@@ -153,14 +186,14 @@ export default function Auditoria() {
             ['accion', 'Acción contiene', 'text'],
           ].map(([campo, etiqueta, tipo]) => (
             <label key={campo} className="flex flex-col gap-1">
-              <span className="text-[11px] uppercase tracking-wider text-tenue">{etiqueta}</span>
+              <span className="text-etiqueta-sm text-texto">{etiqueta}</span>
               <input
                 type={tipo}
                 value={filtros[campo]}
                 onChange={(evento) =>
                   setFiltros((actual) => ({ ...actual, [campo]: evento.target.value }))
                 }
-                className="rounded-lg border border-borde bg-fondo px-3 py-1.5 text-xs outline-none focus:border-primario"
+                className="rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none transition-colors focus:border-primario"
               />
             </label>
           ))}
@@ -168,18 +201,17 @@ export default function Auditoria() {
           <div className="flex items-end gap-2">
             <button
               type="submit"
-              className="rounded-lg bg-primario px-4 py-1.5 text-xs font-medium text-white"
+              className="rounded-lg bg-primario px-4 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis"
             >
               Aplicar
             </button>
             <button
               type="button"
               onClick={() => {
-                const limpios = { desde: '', hasta: '', accion: '' }
-                setFiltros(limpios)
-                cargar(limpios)
+                setFiltros(FILTROS_VACIOS)
+                cargar(FILTROS_VACIOS)
               }}
-              className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium"
+              className="rounded-lg border border-borde px-3 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
             >
               Limpiar
             </button>
@@ -202,9 +234,9 @@ export default function Auditoria() {
         )}
 
         {estado === 'listo' && eventos.length > 0 && (
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-cuerpo-md">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wider text-tenue">
+              <tr className="text-left text-etiqueta-sm uppercase tracking-wider text-tenue">
                 <th className="pb-2 font-medium">Fecha</th>
                 <th className="pb-2 font-medium">Acción</th>
                 <th className="pb-2 font-medium">Usuario</th>
@@ -213,11 +245,15 @@ export default function Auditoria() {
             </thead>
             <tbody>
               {eventos.map((evento) => (
-                <tr key={evento.id} className="border-t border-borde">
-                  <td className="py-2 pr-3 font-mono text-tenue">{fechaCorta(evento.fecha)}</td>
-                  <td className="py-2 pr-3">{evento.accion}</td>
-                  <td className="py-2 pr-3 text-tenue">{evento.usuario ?? '—'}</td>
-                  <td className="py-2 font-mono text-tenue">
+                <tr key={evento.id} className="border-t border-borde transition-colors hover:bg-fondo-2">
+                  <td className="py-2.5 pr-3 font-mono text-cuerpo-sm text-tenue">
+                    {fechaCorta(evento.fecha)}
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <Pill tipo={colorDeAccion(evento.accion)}>{evento.accion}</Pill>
+                  </td>
+                  <td className="py-2.5 pr-3 text-texto-2">{evento.usuario ?? '—'}</td>
+                  <td className="py-2.5 font-mono text-cuerpo-sm text-tenue">
                     {evento.documento_id ?? '—'}
                   </td>
                 </tr>
@@ -235,17 +271,54 @@ export default function Auditoria() {
             <button
               type="button"
               onClick={() => setLog(null)}
-              className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium"
+              className="rounded-lg border border-borde px-3 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
             >
               Cerrar
             </button>
           }
         >
-          <pre className="max-h-96 overflow-auto rounded-lg bg-fondo px-4 py-3 font-mono text-[11px] leading-relaxed">
-            {log.contenido || '(vacío)'}
-          </pre>
+          <div className="flex flex-col overflow-hidden rounded-lg border border-borde bg-lienzo">
+            <div className="flex items-center gap-1.5 border-b border-borde px-3 py-2">
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-trafico-cerrar" />
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-trafico-minimizar" />
+              <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-trafico-expandir" />
+              <span className="ml-2 truncate font-mono text-telemetria text-tenue">{log.origen}</span>
+            </div>
+            <pre className="max-h-96 overflow-auto px-4 py-3 font-mono text-codigo leading-relaxed text-texto-2">
+              {log.contenido || '(vacío)'}
+            </pre>
+          </div>
         </Panel>
       )}
     </div>
   )
+}
+
+/* ------------------------------------------------------------------ */
+
+/** Clasifica una acción en una familia, para el reparto de las métricas. */
+function clasificarAccion(accion = '') {
+  const texto = accion.toLowerCase()
+  if (/(elimin|borr|purga|vacia|limpieza)/.test(texto)) return 'eliminacion'
+  if (/(crea|alta|agrega|registr|sube|cifra)/.test(texto)) return 'alta'
+  if (/(acceso|sesion|login|autentic|2fa|token|confianza)/.test(texto)) return 'acceso'
+  if (/(descarga|exporta|abre|lectura|consulta)/.test(texto)) return 'lectura'
+  return 'otro'
+}
+
+const COLORES = {
+  eliminacion: 'peligro',
+  alta: 'exito',
+  acceso: 'primario',
+  lectura: 'info',
+  otro: 'neutro',
+}
+
+function colorDeAccion(accion) {
+  return COLORES[clasificarAccion(accion)] ?? 'neutro'
+}
+
+function rangoLegible({ desde, hasta }) {
+  if (!desde && !hasta) return 'sin filtro de fecha'
+  return `${desde || 'inicio'} → ${hasta || 'hoy'}`
 }
