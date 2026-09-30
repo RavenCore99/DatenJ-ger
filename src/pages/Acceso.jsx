@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend, urlBase } from '../lib/api.js'
 import MarcoAcceso from '../components/MarcoAcceso.jsx'
+import Icono from '../components/Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
 /**
@@ -233,9 +234,9 @@ function Cabecera({ paso }) {
         />
         <span
           title="Servicio local verificado"
-          className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-superficie bg-exito text-[10px] font-bold text-white"
+          className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-superficie bg-exito text-white"
         >
-          ✓
+          <Icono nombre="check" tamano={13} />
         </span>
       </div>
 
@@ -257,8 +258,8 @@ function PanelContexto({ conectado }) {
     <aside className="hidden w-[20rem] shrink-0 flex-col justify-between border-r border-borde bg-fondo-2 p-6 lg:flex">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-panel border border-borde bg-superficie font-marca text-primario">
-            ⌂
+          <span className="flex h-10 w-10 items-center justify-center rounded-panel border border-borde bg-superficie text-primario">
+            <Icono nombre="candado" tamano={18} />
           </span>
           <div className="leading-tight">
             <p className="font-marca text-cuerpo-md font-semibold">Bóveda local</p>
@@ -339,7 +340,7 @@ function NotaLegal() {
   return (
     <p className="flex items-start gap-2.5 rounded-lg border border-borde bg-fondo px-3 py-2.5 text-cuerpo-sm text-texto-2">
       <span aria-hidden="true" className="shrink-0 text-primario">
-        ⛨
+        <Icono nombre="escudo" tamano={16} />
       </span>
       <span>
         <span className="font-semibold text-texto">Ley 1581 de 2012 / Hábeas Data:</span> tus
@@ -407,7 +408,7 @@ function Boton({ ocupado, inhabilitado, texto, textoOcupado }) {
       className="flex items-center justify-center gap-2 rounded-lg bg-primario px-4 py-2.5 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
     >
       {ocupado ? textoOcupado : texto}
-      {!ocupado && <span aria-hidden="true">→</span>}
+      {!ocupado && <Icono nombre="flecha-derecha" tamano={15} />}
     </button>
   )
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
+import Icono from '../components/Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { elegirArchivo, guardarArchivo } from '../lib/escritorio.js'
@@ -181,8 +182,9 @@ export default function Documentos() {
           type="button"
           onClick={agregar}
           disabled={ocupado === 'agregar'}
-          className="rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
+          className="flex items-center gap-2 rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
         >
+          <Icono nombre="mas" tamano={15} />
           {ocupado === 'agregar' ? 'Cifrando…' : 'Agregar documento'}
         </button>
       </header>
@@ -325,8 +327,9 @@ export default function Documentos() {
                           descargar(fila)
                         }}
                         disabled={ocupado === 'descargar'}
-                        className="rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
                       >
+                        <Icono nombre="descargar" tamano={13} />
                         Descargar
                       </button>
                     </td>
@@ -352,7 +355,7 @@ export default function Documentos() {
                 aria-label="Cerrar el detalle"
                 className="shrink-0 rounded px-1.5 text-tenue transition-colors hover:text-texto"
               >
-                ✕
+                <Icono nombre="cerrar" tamano={16} />
               </button>
             </header>
 
@@ -373,16 +376,18 @@ export default function Documentos() {
                   type="button"
                   onClick={() => descargar(seleccionada)}
                   disabled={ocupado === 'descargar'}
-                  className="rounded-lg border border-borde px-3 py-1.5 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
                 >
+                  <Icono nombre="descargar" tamano={13} />
                   Exportar
                 </button>
                 <button
                   type="button"
                   onClick={() => eliminar(seleccionada)}
                   disabled={ocupado === 'eliminar'}
-                  className="ml-auto rounded-lg border border-peligro/40 px-3 py-1.5 text-etiqueta-sm font-medium text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-peligro/40 px-3 py-1.5 text-etiqueta-sm font-medium text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
                 >
+                  <Icono nombre="basura" tamano={13} />
                   {ocupado === 'eliminar' ? 'Eliminando…' : 'Eliminar'}
                 </button>
               </div>

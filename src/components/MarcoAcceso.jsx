@@ -1,4 +1,5 @@
 import logo from '../../assets/logo/logo.png'
+import Icono from './Icono.jsx'
 
 /**
  * Marco de las pantallas de acceso (SCRUM-29): cabecera de ventana con la marca
@@ -36,9 +37,10 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
           <button
             type="button"
             onClick={onVolver}
-            className="shrink-0 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2"
+            className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2"
           >
-            ← {subtitulo ?? 'Volver'}
+            <Icono nombre="flecha-izquierda" tamano={14} />
+            {subtitulo ?? 'Volver'}
           </button>
         )}
       </header>
@@ -47,9 +49,7 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
 
       <footer className="flex h-telemetria shrink-0 items-center justify-between gap-4 border-t border-borde bg-superficie px-4 font-mono text-telemetria text-tenue">
         <span className="flex min-w-0 items-center gap-2">
-          <span aria-hidden="true" className="font-bold text-primario">
-            ⌘
-          </span>
+          <Icono nombre="candado" tamano={12} className="text-primario" />
           <span className="truncate">Bóveda local · sin conexión</span>
         </span>
         <span className="shrink-0 text-primario">

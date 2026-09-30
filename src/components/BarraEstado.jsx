@@ -1,10 +1,11 @@
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { urlBase } from '../lib/api.js'
+import Icono from './Icono.jsx'
 
 /**
- * Franja de telemetría inferior (SCRUM-28): `32px` pegados al borde, en
- * monoespaciada de 11px, con el estado del servicio a la izquierda y la
- * versión con el hash del build a la derecha.
+ * Franja de telemetría inferior (SCRUM-28, iconos en SCRUM-65): `32px` pegados
+ * al borde, en monoespaciada de 11px, con el estado del servicio a la izquierda
+ * y la versión con el hash del build a la derecha.
  *
  * `__VERSION__` y `__HASH__` los inyecta Vite al compilar (ver `vite.config.mjs`),
  * de modo que la aplicación empaquetada no depende de tener git al lado.
@@ -16,13 +17,17 @@ export default function BarraEstado() {
     <footer className="flex h-telemetria shrink-0 items-center justify-between gap-4 border-t border-borde bg-superficie px-4 font-mono text-telemetria text-tenue">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex shrink-0 items-center gap-1.5">
+          <Icono nombre="base-datos" tamano={12} />
           <Indicador estado={estadoBackend} />
           {DESCRIPCION[estadoBackend] ?? 'Verificando servicio local…'}
         </span>
 
         <Filete />
 
-        <span className="hidden shrink-0 sm:inline">AES-256-GCM</span>
+        <span className="hidden shrink-0 items-center gap-1.5 sm:flex">
+          <Icono nombre="escudo" tamano={12} />
+          AES-256-GCM
+        </span>
 
         <Filete />
 

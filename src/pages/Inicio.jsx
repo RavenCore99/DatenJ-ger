@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import Panel, { Esqueleto, EstadoError, EstadoVacio, Tarjeta } from '../components/Panel.jsx'
+import Icono from '../components/Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
@@ -77,17 +78,18 @@ export default function Inicio({ onNavegar }) {
       <Panel titulo="Accesos" descripcion="Secciones del sistema">
         <div className="flex flex-wrap gap-2">
           {[
-            ['documentos', 'Ver documentos'],
-            ['personas', 'Ver personas'],
-            ['auditoria', 'Ver auditoría'],
-            ['cuenta', 'Cuenta y seguridad'],
-          ].map(([clave, etiqueta]) => (
+            ['documentos', 'Ver documentos', 'documentos'],
+            ['personas', 'Ver personas', 'personas'],
+            ['auditoria', 'Ver auditoría', 'auditoria'],
+            ['cuenta', 'Cuenta y seguridad', 'cuenta'],
+          ].map(([clave, etiqueta, icono]) => (
             <button
               key={clave}
               type="button"
               onClick={() => onNavegar?.(clave)}
-              className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium transition-colors hover:border-primario hover:text-primario"
+              className="flex items-center gap-2 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium transition-colors hover:border-primario hover:text-primario"
             >
+              <Icono nombre={icono} tamano={14} />
               {etiqueta}
             </button>
           ))}

@@ -16,11 +16,11 @@ import Bienvenida from './pages/Bienvenida.jsx'
  * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
  */
 export const SECCIONES = [
-  { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', Componente: Inicio },
-  { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', Componente: Documentos },
-  { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', Componente: Personas },
-  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', Componente: Auditoria },
-  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', Componente: Cuenta },
+  { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', icono: 'inicio', Componente: Inicio },
+  { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', icono: 'documentos', Componente: Documentos },
+  { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', icono: 'personas', Componente: Personas },
+  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', icono: 'auditoria', Componente: Auditoria },
+  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', icono: 'cuenta', Componente: Cuenta },
 ]
 
 export function App() {

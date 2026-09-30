@@ -1,3 +1,5 @@
+import Icono from './Icono.jsx'
+
 /**
  * Piezas de interfaz compartidas por las pantallas del sistema (Fase 3).
  *
@@ -88,14 +90,14 @@ export function Pill({ tipo = 'neutro', children, titulo }) {
 }
 
 /** Estado vacío canónico: nada que mostrar todavía, con acción sugerida. */
-export function EstadoVacio({ titulo, mensaje, accion }) {
+export function EstadoVacio({ titulo, mensaje, accion, icono = 'info' }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
       <span
         aria-hidden="true"
-        className="mb-1 flex h-11 w-11 items-center justify-center rounded-full border border-borde bg-fondo font-marca text-titulo-sm text-tenue"
+        className="mb-1 flex h-11 w-11 items-center justify-center rounded-full border border-borde bg-fondo text-tenue"
       >
-        ∅
+        <Icono nombre={icono} tamano={20} />
       </span>
       <p className="text-titulo-sm">{titulo}</p>
       {mensaje && <p className="max-w-md text-cuerpo-sm text-tenue">{mensaje}</p>}
