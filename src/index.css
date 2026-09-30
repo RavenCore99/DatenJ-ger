@@ -66,6 +66,18 @@ body {
     animation: entrar 260ms ease-out both;
   }
 
+  /* Cambio de tema suave (SCRUM-66): mientras la clase `cambiando-tema` está
+   * puesta en la raíz, los colores transicionan en vez de saltar. Solo se
+   * activa durante el cambio —una transición global permanente encarecería los
+   * repintados y competiría con las micro-interacciones de cada componente— y
+   * nunca con el movimiento desactivado. */
+  html.cambiando-tema *,
+  html.cambiando-tema *::before,
+  html.cambiando-tema *::after {
+    transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease,
+      fill 260ms ease, stroke 260ms ease, box-shadow 260ms ease;
+  }
+
   /* Quien pida menos movimiento, no lo recibe. */
   @media (prefers-reduced-motion: reduce) {
     *,

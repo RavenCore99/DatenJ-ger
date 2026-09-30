@@ -89,6 +89,21 @@ export function ProveedorApp({ children }) {
     raiz.dataset.tema = tema
   }, [tema])
 
+  // Cambio de tema suave (SCRUM-66): se habilita la transición de color solo
+  // durante el cambio y se retira enseguida, para no dejar una transición
+  // global permanente. Con el movimiento desactivado, el tema cambia directo.
+  useEffect(() => {
+    if (!animaciones) return undefined
+
+    const raiz = document.documentElement
+    raiz.classList.add('cambiando-tema')
+    const temporizador = setTimeout(() => raiz.classList.remove('cambiando-tema'), 320)
+    return () => {
+      clearTimeout(temporizador)
+      raiz.classList.remove('cambiando-tema')
+    }
+  }, [tema, animaciones])
+
   // El movimiento es opcional (SCRUM-32): la clase `sin-animacion` en la raíz
   // lo desactiva en toda la aplicación, incluidos los componentes que traigan
   // su propia animación.
