@@ -1,0 +1,241 @@
+/**
+ * Cliente del backend local de DatenJäger.
+ *
+ * El backend Python expone `backend/commands.py` por HTTP (FastAPI + uvicorn,
+ * SCRUM-21). Este módulo es el único punto del renderer que conoce la URL y el
+ * formato de las respuestas: las pantallas nunca llaman a `fetch` directamente.
+ *
+ * Contrato de errores — el backend devuelve `{ "detail": { "tipo": "...",
+ * "mensaje": "..." } }`. Aquí se traduce a `ErrorBackend` para que la UI
+ * decida qué mostrar sin interpretar códigos HTTP.
+ */
+
+export const PUERTO_BACKEND_POR_DEFECTO = 8756
+
+/** Caché de la configuración que publica el proceso principal de Electron. */
+let configuracionCache = null
+let promesaConfiguracion = null
+
+/**
+ * Configuración del servicio local: puerto y token.
+ *
+ * En Electron la entrega el proceso principal por IPC (el token se genera en
+ * cada arranque); en el navegador de desarrollo se cae a las variables de Vite
+ * y no hay token.
+ */
+export function configuracion() {
+  if (configuracionCache) return Promise.resolve(configuracionCache)
+
+  if (!promesaConfiguracion) {
+    promesaConfiguracion = (async () => {
+      let resuelta = null
+
+      try {
+        if (globalThis.datenjager?.configuracion) {
+          resuelta = await globalThis.datenjager.configuracion()
+        }
+      } catch (error) {
+        console.warn(`No se pudo leer la configuración de Electron: ${error.message}`)
+      }
+
+      configuracionCache = {
+        puerto: resuelta?.puertoBackend ?? Number(import.meta.env?.VITE_DATENJAGER_PUERTO ?? PUERTO_BACKEND_POR_DEFECTO),
+        token: resuelta?.token ?? null,
+      }
+      return configuracionCache
+    })()
+  }
+
+  return promesaConfiguracion
+}
+
+/** Actualiza la configuración en caliente cuando el servicio arranca. */
+export function fijarConfiguracion({ puertoBackend, token } = {}) {
+  if (!puertoBackend && !token) return
+  configuracionCache = {
+    puerto: puertoBackend ?? configuracionCache?.puerto ?? PUERTO_BACKEND_POR_DEFECTO,
+    token: token ?? configuracionCache?.token ?? null,
+  }
+  promesaConfiguracion = Promise.resolve(configuracionCache)
+}
+
+/**
+ * URL base del servicio local.
+ *
+ * Síncrona a propósito: se usa para mostrarla en la barra de estado. Antes de
+ * la primera petición devuelve el valor por defecto.
+ */
+export function urlBase() {
+  const puerto = configuracionCache?.puerto ?? PUERTO_BACKEND_POR_DEFECTO
+  return `http://127.0.0.1:${puerto}`
+}
+
+/** Error tipado que replica las excepciones de `backend/errors.py`. */
+export class ErrorBackend extends Error {
+  constructor(mensaje, tipo = 'BackendError', estado = 0) {
+    super(mensaje)
+    this.name = 'ErrorBackend'
+    this.tipo = tipo
+    this.estado = estado
+  }
+
+  get sinSesion() {
+    return this.tipo === 'NoAutenticadoError' || this.estado === 401
+  }
+
+  get noEncontrado() {
+    return this.tipo === 'NoEncontradoError' || this.estado === 404
+  }
+}
+
+/** Normaliza la respuesta de error del backend a un `ErrorBackend`. */
+async function aError(respuesta) {
+  let tipo = 'BackendError'
+  let mensaje = `Error ${respuesta.status} al comunicarse con el backend`
+
+  try {
+    const cuerpo = await respuesta.json()
+    const detalle = cuerpo?.detail ?? cuerpo
+    if (typeof detalle === 'string') {
+      mensaje = detalle
+    } else if (detalle && typeof detalle === 'object') {
+      tipo = detalle.tipo ?? tipo
+      mensaje = detalle.mensaje ?? mensaje
+    }
+  } catch {
+    /* respuesta sin cuerpo JSON: se conserva el mensaje genérico */
+  }
+
+  return new ErrorBackend(mensaje, tipo, respuesta.status)
+}
+
+/**
+ * Ejecuta una petición contra el backend.
+ *
+ * @param {string} ruta    ruta relativa, p. ej. `/api/documentos`
+ * @param {object} [opciones] `metodo`, `cuerpo`, `señal` (AbortSignal)
+ */
+export async function solicitar(ruta, { metodo = 'GET', cuerpo, senal } = {}) {
+  const { puerto, token } = await configuracion()
+
+  const cabeceras = {}
+  if (cuerpo) cabeceras['Content-Type'] = 'application/json'
+  if (token) cabeceras['X-DatenJager-Token'] = token
+
+  let respuesta
+
+  try {
+    respuesta = await fetch(`http://127.0.0.1:${puerto}${ruta}`, {
+      method: metodo,
+      headers: cabeceras,
+      body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+      signal: senal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw new ErrorBackend(
+      'No se pudo contactar el servicio local. Verifica que el backend esté en ejecución.',
+      'ServicioNoDisponible',
+      0,
+    )
+  }
+
+  if (!respuesta.ok) throw await aError(respuesta)
+  if (respuesta.status === 204) return null
+
+  return respuesta.json()
+}
+
+/** Accesos concretos al backend, por área del sistema. */
+export const backend = {
+  salud: (senal) => solicitar('/api/salud', { senal }),
+
+  sesion: {
+    actual: (senal) => solicitar('/api/sesion', { senal }),
+    // `tokenConfianza` es el token del dispositivo: si el servicio lo acepta,
+    // el segundo factor se omite en este acceso.
+    entrar: (nombre, contrasena, tokenConfianza = null) =>
+      solicitar('/api/sesion', {
+        metodo: 'POST',
+        cuerpo: { nombre, contrasena, token_confianza: tokenConfianza },
+      }),
+    verificarCodigo: (codigo) =>
+      solicitar('/api/sesion/2fa', { metodo: 'POST', cuerpo: { codigo } }),
+    usarCodigoDeRespaldo: (codigo) =>
+      solicitar('/api/sesion/respaldo', { metodo: 'POST', cuerpo: { codigo } }),
+    salir: () => solicitar('/api/sesion', { metodo: 'DELETE' }),
+  },
+
+  cuenta: {
+    estado: () => solicitar('/api/cuenta'),
+    // El secreto del 2FA no se activa hasta que el usuario confirma un código.
+    prepararSegundoFactor: () => solicitar('/api/cuenta/2fa/preparar', { metodo: 'POST' }),
+    activarSegundoFactor: (secreto, codigo) =>
+      solicitar('/api/cuenta/2fa/activar', { metodo: 'POST', cuerpo: { secreto, codigo } }),
+    desactivarSegundoFactor: (codigo) =>
+      solicitar('/api/cuenta/2fa/desactivar', { metodo: 'POST', cuerpo: { codigo } }),
+    regenerarCodigos: (codigo) =>
+      solicitar('/api/cuenta/2fa/codigos', { metodo: 'POST', cuerpo: { codigo } }),
+    cambiarContrasena: (contrasenaActual, contrasenaNueva, codigo) =>
+      solicitar('/api/cuenta/contrasena', {
+        metodo: 'POST',
+        cuerpo: {
+          contrasena_actual: contrasenaActual,
+          contrasena_nueva: contrasenaNueva,
+          codigo,
+        },
+      }),
+    revocarConfianza: () => solicitar('/api/cuenta/confianza', { metodo: 'DELETE' }),
+  },
+
+  documentos: {
+    listar: (busqueda = '') =>
+      solicitar(`/api/documentos${busqueda ? `?buscar=${encodeURIComponent(busqueda)}` : ''}`),
+    contar: () => solicitar('/api/documentos/conteo'),
+    obtener: (id) => solicitar(`/api/documentos/${id}`),
+    crear: (datos) => solicitar('/api/documentos', { metodo: 'POST', cuerpo: datos }),
+    actualizar: (id, datos) =>
+      solicitar(`/api/documentos/${id}`, { metodo: 'PATCH', cuerpo: datos }),
+    eliminar: (id) => solicitar(`/api/documentos/${id}`, { metodo: 'DELETE' }),
+    descargar: (id) => solicitar(`/api/documentos/${id}/descarga`),
+    exportar: (id, destino) =>
+      solicitar(`/api/documentos/${id}/exportar`, { metodo: 'POST', cuerpo: { destino } }),
+  },
+
+  personas: {
+    listar: (busqueda = '') =>
+      solicitar(`/api/personas${busqueda ? `?buscar=${encodeURIComponent(busqueda)}` : ''}`),
+    obtener: (id) => solicitar(`/api/personas/${id}`),
+    crear: (datos) => solicitar('/api/personas', { metodo: 'POST', cuerpo: datos }),
+    actualizar: (id, datos) =>
+      solicitar(`/api/personas/${id}`, { metodo: 'PATCH', cuerpo: datos }),
+    eliminar: (id) => solicitar(`/api/personas/${id}`, { metodo: 'DELETE' }),
+  },
+
+  auditoria: {
+    listar: (filtros = {}) => {
+      const parametros = new URLSearchParams(
+        Object.entries(filtros).filter(([, valor]) => valor),
+      ).toString()
+      return solicitar(`/api/auditoria${parametros ? `?${parametros}` : ''}`)
+    },
+    contar: () => solicitar('/api/auditoria/conteo'),
+    limpiar: () => solicitar('/api/auditoria', { metodo: 'DELETE' }),
+    log: () => solicitar('/api/auditoria/log'),
+  },
+
+  reportes: {
+    estadisticas: () => solicitar('/api/reportes/estadisticas'),
+    inventario: () => solicitar('/api/reportes/inventario'),
+    exportar: (destino, formato) =>
+      solicitar('/api/reportes/exportar', { metodo: 'POST', cuerpo: { destino, formato } }),
+  },
+
+  chat: {
+    iniciar: (contexto = '') =>
+      solicitar('/api/chat', { metodo: 'POST', cuerpo: { contexto } }),
+    enviar: (mensaje) => solicitar('/api/chat/mensajes', { metodo: 'POST', cuerpo: { mensaje } }),
+  },
+}
+
+export default backend

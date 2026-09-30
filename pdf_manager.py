@@ -1,16 +1,26 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# pdf_manager.py - operaciones crud de pdfs
+# pdf_manager.py - panel documental (solo interfaz)
+
+"""Panel de gestión documental.
+
+Este módulo conserva **únicamente** la construcción de la interfaz
+(ventanas, widgets, notificaciones). Todas las operaciones de negocio —
+listar, crear, abrir, editar, eliminar y exportar PDFs — se delegan en
+``backend.services.documentos``, que no depende de Tkinter.
+
+Los errores del servicio se capturan aquí y se traducen a notificaciones.
+"""
 
 
 import os
 import threading
 import customtkinter as ctk
 from tkinter import filedialog
-from datetime import datetime
 
 from ui_components import Notification, ConfirmDialog, PDFViewerWindow, get_dynamic_colors
-from encryption import EncryptionManager
 from icons import get_icon
+from backend.errors import BackendError
+from backend.services import documentos
 
 
 # colores compartidos
@@ -42,8 +52,26 @@ def _bind_mousewheel(scrollable_frame):
     scrollable_frame.after(100, lambda: _bind_all(scrollable_frame))
 
 
+def _fila_tree(documento: dict) -> tuple:
+    """Convierte un documento del servicio en la fila del Treeview.
+
+    Orden histórico de columnas del panel: id, nombre, descripción,
+    tamaño, fecha, cédula, nombres, empresa.
+    """
+    return (
+        documento["id"],
+        documento["nombre"],
+        documento["descripcion"],
+        documento["tamano"],
+        documento["fecha_subida"],
+        documento["cedula"],
+        documento["nombres"],
+        documento["empresa"],
+    )
+
+
 class GestorPDF:
-    # maneja las operaciones crud de pdfs
+    # maneja las operaciones crud de pdfs (interfaz)
 
     def __init__(self, app):
         # referencia a la app principal
@@ -56,6 +84,22 @@ class GestorPDF:
         self.entry_nombres = None
         self.entry_empresa = None
 
+    # ---- acceso al servicio ----
+
+    @property
+    def _servicio(self):
+        return documentos
+
+    def _ejecutar(self, operacion, /, **kwargs):
+        """Invoca el servicio de documentos bajo el lock de base de datos."""
+        with self.app._db_lock:
+            return operacion(
+                self.app.conn,
+                self.app.cursor,
+                usuario_id=self.app.usuario_actual,
+                **kwargs,
+            )
+
     def _theme_entry(self, entry, colors):
         if entry and entry.winfo_exists():
             entry.configure(
@@ -66,46 +110,6 @@ class GestorPDF:
             )
 
     # ---- helpers internos (callbacks de threads) ----
-
-    def _save_to_db(self, datos_enc, tamano, nombre, descripcion,
-                    cedula, nombres, empresa, usuario_actual, window):
-        # guarda el blob pdf cifrado en la db
-        try:
-            self.app.cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
-            result = self.app.cursor.fetchone()
-            if result:
-                persona_id = result[0]
-                self.app.cursor.execute(
-                    "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
-                    (nombres, empresa, persona_id)
-                )
-            else:
-                self.app.cursor.execute(
-                    "INSERT INTO Personas (cedula, nombres, empresa) VALUES (?, ?, ?)",
-                    (cedula, nombres, empresa)
-                )
-                persona_id = self.app.cursor.lastrowid
-
-            self.app.cursor.execute(
-                "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, "
-                "tamano, fecha_subida, usuario_id, persona_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (nombre, descripcion, datos_enc, 1, tamano,
-                 datetime.now().isoformat(), usuario_actual, persona_id)
-            )
-            pdf_id = self.app.cursor.lastrowid
-
-            self.app.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Agregar PDF (Encriptado AES-256-GCM)", pdf_id, usuario_actual,
-                 datetime.now().isoformat())
-            )
-            self.app.conn.commit()
-            self._on_added(nombre, window)
-        except Exception as e:
-            self.app.conn.rollback()
-            self._on_add_error(e)
-        finally:
-            self.app.progress_bar.stop()
 
     def _on_added(self, nombre, window):
         # callback exito al agregar pdf
@@ -270,24 +274,25 @@ class GestorPDF:
 
         self.app.progress_bar.start("Encriptando y agregando PDF...")
 
-        selected_file  = self.selected_file
+        ruta           = self.selected_file
         usuario_nombre = self.app.usuario_nombre
-        usuario_actual = self.app.usuario_actual
 
         def encrypt_task():
             try:
-                with open(selected_file, 'rb') as f:
-                    datos_originales = f.read()
-                datos_enc = EncryptionManager.encrypt_data(datos_originales, usuario_nombre)
-                tamano    = len(datos_originales)
-                nombre    = os.path.basename(selected_file)
-                # guardar en main thread
-                self.app.root.after(0, lambda: self._save_to_db(
-                    datos_enc, tamano, nombre, descripcion,
-                    cedula, nombres, empresa, usuario_actual, window
-                ))
-            except Exception as e:
-                self.app.root.after(0, lambda err=e: self._on_add_error(err))
+                resultado = self._ejecutar(
+                    self._servicio.crear_documento_desde_archivo,
+                    usuario_nombre=usuario_nombre,
+                    ruta=ruta,
+                    descripcion=descripcion,
+                    cedula=cedula,
+                    nombres=nombres,
+                    empresa=empresa,
+                )
+                nombre = resultado["nombre"]
+                self.app.root.after(0, lambda: self._on_added(nombre, window))
+            except Exception as exc:
+                self.app.root.after(0, lambda err=exc: self._on_add_error(err))
+            finally:
                 self.app.root.after(0, self.app.progress_bar.stop)
 
         threading.Thread(target=encrypt_task, daemon=True).start()
@@ -300,23 +305,16 @@ class GestorPDF:
         self.app.progress_bar.start("Cargando PDFs...")
 
         try:
-            self.app.cursor.execute("""
-                SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ?
-                ORDER BY p.fecha_subida DESC
-            """, (self.app.usuario_actual,))
-
-            rows = self.app.cursor.fetchall()
-            self.app._populate_treeview(rows)
+            filas = self._ejecutar(self._servicio.listar_documentos)
+            self.app._populate_treeview([_fila_tree(d) for d in filas])
 
             colors = get_dynamic_colors()
             self.app.status.configure(
-                text=f"Se muestran {len(rows)} PDFs (Encriptados)",
+                text=f"Se muestran {len(filas)} PDFs (Encriptados)",
                 text_color=colors["text_primary"]
             )
+        except BackendError as e:
+            Notification(self.app.root, "Error", e.mensaje, notification_type="error")
         except Exception as e:
             Notification(self.app.root, "Error", str(e), notification_type="error")
         finally:
@@ -333,34 +331,23 @@ class GestorPDF:
         self.app.progress_bar.start(f"Buscando '{term}'...")
 
         try:
-            self.app.cursor.execute("""
-                SELECT p.id, p.nombre, p.descripcion, p.tamano,
-                       p.fecha_subida, pe.cedula, pe.nombres, pe.empresa
-                FROM PDFs p
-                LEFT JOIN Personas pe ON p.persona_id = pe.id
-                WHERE p.usuario_id = ? AND (
-                    p.nombre LIKE ? OR p.descripcion LIKE ?
-                    OR pe.cedula LIKE ? OR pe.nombres LIKE ?
-                    OR pe.empresa LIKE ?
-                )
-            """, (self.app.usuario_actual,
-                  f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%", f"%{term}%"))
-
-            rows = self.app.cursor.fetchall()
-            self.app._populate_treeview(rows)
+            filas = self._ejecutar(self._servicio.listar_documentos, termino=term)
+            self.app._populate_treeview([_fila_tree(d) for d in filas])
 
             colors = get_dynamic_colors()
             self.app.status.configure(
-                text=f"Se muestran {len(rows)} resultados",
+                text=f"Se muestran {len(filas)} resultados",
                 text_color=colors["text_primary"]
             )
             Notification(
                 self.app.root,
                 "Búsqueda completada",
-                f"Se encontraron {len(rows)} PDF(s) encriptados",
+                f"Se encontraron {len(filas)} PDF(s) encriptados",
                 notification_type="success",
                 duration=2000
             )
+        except BackendError as e:
+            Notification(self.app.root, "Error", e.mensaje, notification_type="error")
         except Exception as e:
             Notification(self.app.root, "Error", str(e), notification_type="error")
         finally:
@@ -476,39 +463,26 @@ class GestorPDF:
         # abrir pdf por id, decrypt en thread
         self.app.progress_bar.start("Desencriptando PDF...")
 
-        try:
-            self.app.cursor.execute(
-                "SELECT datos, nombre, datos_encriptados FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.app.usuario_actual)
-            )
-            result = self.app.cursor.fetchone()
-        except Exception as e:
-            self.app.progress_bar.stop()
-            Notification(self.app.root, "Error", str(e), notification_type="error")
-            return
-
-        if not result:
-            self.app.progress_bar.stop()
-            Notification(self.app.root, "Error", "PDF no encontrado", notification_type="error")
-            return
-
-        datos_enc, nombre, encriptado = result
-        self.app._audit("Abrir / Descifrar PDF", pdf_id=pdf_id)
         usuario_nombre = self.app.usuario_nombre
 
         def decrypt_task():
             try:
-                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
-                         if encriptado else bytes(datos_enc))
+                with self.app._db_lock:
+                    datos, nombre = self._servicio.leer_documento(
+                        self.app.conn,
+                        self.app.cursor,
+                        usuario_id=self.app.usuario_actual,
+                        documento_id=pdf_id,
+                        usuario_nombre=usuario_nombre,
+                    )
                 # mostrar sin guardar
-                self.app.root.after(0, lambda d=datos: self._abrir_visor(d, nombre, window))
-            except Exception as e:
+                self.app.root.after(0, lambda d=datos, n=nombre: self._abrir_visor(d, n, window))
+            except Exception as exc:
+                mensaje = exc.mensaje if isinstance(exc, BackendError) else f"No se pudo abrir el PDF: {exc}"
                 self.app.root.after(
                     0,
-                    lambda err=e: Notification(
-                        self.app.root, "Error",
-                        f"No se pudo abrir el PDF: {err}",
-                        notification_type="error"
+                    lambda msg=mensaje: Notification(
+                        self.app.root, "Error", msg, notification_type="error"
                     )
                 )
             finally:
@@ -545,30 +519,16 @@ class GestorPDF:
         self.app.progress_bar.start("Eliminando PDF…")
 
         try:
-            self.app.cursor.execute(
-                "DELETE FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.app.usuario_actual)
-            )
-
-            if self.app.cursor.rowcount == 0:
-                Notification(self.app.root, "Error", "PDF no encontrado",
-                             notification_type="error")
-                return
-
-            self.app.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                ("Eliminar PDF", pdf_id, self.app.usuario_actual, datetime.now().isoformat())
-            )
-
-            self.app.conn.commit()
+            self._ejecutar(self._servicio.eliminar_documento, documento_id=pdf_id)
             self.app._reset_preview_panel()
             Notification(self.app.root, "Eliminado",
                          f"'{pdf_nombre}' eliminado correctamente",
                          notification_type="success")
             self.app.cargar_dashboard()
             self.ver_todos()
+        except BackendError as e:
+            Notification(self.app.root, "Error", e.mensaje, notification_type="error")
         except Exception as e:
-            self.app.conn.rollback()
             Notification(self.app.root, "Error", str(e), notification_type="error")
         finally:
             self.app.progress_bar.stop()
@@ -655,29 +615,24 @@ class GestorPDF:
                 return
 
             try:
-                self.app.cursor.execute(
-                    "UPDATE PDFs SET nombre = ?, descripcion = ? WHERE id = ? AND usuario_id = ?",
-                    (nuevo_nombre, nueva_desc, pdf_id, self.app.usuario_actual)
+                self._ejecutar(
+                    self._servicio.actualizar_documento,
+                    documento_id=pdf_id,
+                    nombre=nuevo_nombre,
+                    descripcion=nueva_desc,
+                    cedula=nueva_cedula,
+                    nombres=nuevos_nombres,
+                    empresa=nueva_empresa,
                 )
-                if nueva_cedula:
-                    self.app.cursor.execute(
-                        """UPDATE Personas SET nombres = ?, empresa = ?
-                           WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",
-                        (nuevos_nombres, nueva_empresa, pdf_id)
-                    )
-                self.app.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
-                    ("Editar metadatos PDF", pdf_id, self.app.usuario_actual, datetime.now().isoformat())
-                )
-                self.app.conn.commit()
                 Notification(self.app.root, "Guardado",
                              "Metadatos actualizados correctamente",
                              notification_type="success")
                 edit_win.destroy()
                 self.ver_todos()
                 self.app._reset_preview_panel()
+            except BackendError as exc:
+                Notification(edit_win, "Error", exc.mensaje, notification_type="error")
             except Exception as exc:
-                self.app.conn.rollback()
                 Notification(edit_win, "Error", str(exc), notification_type="error")
 
         ctk.CTkButton(
@@ -726,46 +681,28 @@ class GestorPDF:
 
         self.app.progress_bar.start("Desencriptando y exportando…")
 
-        try:
-            self.app.cursor.execute(
-                "SELECT datos, datos_encriptados FROM PDFs WHERE id = ? AND usuario_id = ?",
-                (pdf_id, self.app.usuario_actual)
-            )
-            result = self.app.cursor.fetchone()
-        except Exception as e:
-            self.app.progress_bar.stop()
-            Notification(self.app.root, "Error", str(e), notification_type="error")
-            return
-
-        if not result:
-            self.app.progress_bar.stop()
-            Notification(self.app.root, "Error", "PDF no encontrado", notification_type="error")
-            return
-
-        datos_enc, encriptado = result
         usuario_nombre = self.app.usuario_nombre
 
         def export_task():
             try:
-                datos = (EncryptionManager.decrypt_data(bytes(datos_enc), usuario_nombre)
-                         if encriptado else bytes(datos_enc))
-                with open(dest, 'wb') as f:
-                    f.write(datos)
+                with self.app._db_lock:
+                    self._servicio.exportar_documento(
+                        self.app.conn,
+                        self.app.cursor,
+                        usuario_id=self.app.usuario_actual,
+                        documento_id=pdf_id,
+                        usuario_nombre=usuario_nombre,
+                        destino=dest,
+                    )
                 self.app.root.after(0, lambda: Notification(
                     self.app.root, "Exportado",
                     f"PDF exportado a:\n{dest}",
                     notification_type="success", duration=4000
                 ))
-                self.app.cursor.execute(
-                    "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?,?,?,?)",
-                    ("Exportar PDF", pdf_id, self.app.usuario_actual, datetime.now().isoformat())
-                )
-                self.app.conn.commit()
             except Exception as e:
-                self.app.root.after(0, lambda err=e: Notification(
-                    self.app.root, "Error",
-                    f"Error al exportar: {err}",
-                    notification_type="error"
+                mensaje = e.mensaje if isinstance(e, BackendError) else f"Error al exportar: {e}"
+                self.app.root.after(0, lambda msg=mensaje: Notification(
+                    self.app.root, "Error", msg, notification_type="error"
                 ))
             finally:
                 self.app.root.after(0, self.app.progress_bar.stop)

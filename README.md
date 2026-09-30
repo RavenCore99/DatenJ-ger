@@ -1,6 +1,6 @@
 <div align="center">
 
-# DatenJager -- Sistema de Gestion Documental
+# DatenJager -- Sistema de Gestion Documental v.2.1
 
 *Digitalizacion, organizacion y consulta segura de documentos para el sector minero*
 

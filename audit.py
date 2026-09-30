@@ -8,10 +8,10 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
-from datetime import datetime
 
 from ui_components import Notification, ConfirmDialog, get_dynamic_colors
 from icons import get_icon
+from backend.services import auditoria as auditoria_service
 
 
 # colores compartidos
@@ -26,16 +26,13 @@ class GestorAuditoria:
         self.app = app
 
     def registrar(self, accion: str, pdf_id=None, usuario_id=None):
-        # registrar evento de auditoria en la db
-        try:
-            uid = usuario_id if usuario_id is not None else self.app.usuario_actual
-            self.app.cursor.execute(
-                "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) VALUES (?, ?, ?, ?)",
-                (accion, pdf_id, uid, datetime.now().isoformat())
+        # registrar evento de auditoria (delegado al servicio)
+        with self.app._db_lock:
+            return auditoria_service.registrar_evento(
+                self.app.conn, self.app.cursor, accion,
+                usuario_id if usuario_id is not None else self.app.usuario_actual,
+                pdf_id,
             )
-            self.app.conn.commit()
-        except Exception:
-            pass
 
     def mostrar(self):
         # abrir ventana del visor de auditoria
@@ -166,28 +163,14 @@ class GestorAuditoria:
 
             def _query():
                 try:
-                    query = (
-                        "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
-                        "       COALESCE(u.nombre,'—') "
-                        "FROM Auditoria a "
-                        "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
-                        "WHERE 1=1 "
-                    )
-                    params = []
-                    if desde.strip():
-                        query += "AND a.fecha >= ? "
-                        params.append(desde.strip())
-                    if hasta.strip():
-                        query += "AND a.fecha <= ? "
-                        params.append(hasta.strip() + "T23:59:59")
-                    if accion_txt.strip():
-                        query += "AND a.accion LIKE ? "
-                        params.append(f"%{accion_txt.strip()}%")
-                    query += "ORDER BY a.fecha DESC LIMIT 2000"
-
                     with self.app._db_lock:
-                        self.app.cursor.execute(query, params)
-                        rows = self.app.cursor.fetchall()
+                        rows = auditoria_service.listar_eventos(
+                            self.app.conn,
+                            self.app.cursor,
+                            desde=desde,
+                            hasta=hasta,
+                            accion=accion_txt,
+                        )
 
                     # insertar en el main thread via after, por lotes
                     if win.winfo_exists():
@@ -212,11 +195,14 @@ class GestorAuditoria:
                 start = idx[0]
                 end = min(start + batch_size, total)
                 for i in range(start, end):
-                    fecha, accion, pdf_id, usuario = rows[i]
+                    evento = rows[i]
+                    fecha = evento["fecha"]
                     fecha_fmt = fecha[:19].replace("T", "  ") if fecha else "—"
+                    pdf_id = evento["documento_id"] if evento["documento_id"] is not None else "—"
+                    usuario = evento["usuario"] or "—"
                     tag = "odd" if i % 2 == 0 else "even"
                     tree.insert("", "end",
-                                values=(fecha_fmt, accion, pdf_id, usuario),
+                                values=(fecha_fmt, evento["accion"], pdf_id, usuario),
                                 tags=(tag,))
                 idx[0] = end
                 if end < total and win.winfo_exists():
@@ -241,51 +227,16 @@ class GestorAuditoria:
         # visor log backend (carga en hilo)
         def _ver_log_backend():
             def _load_log():
-                import glob
-                log_paths = [
-                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "datenjager.log"),
-                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.log"),
-                ]
-                log_paths += glob.glob(
-                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "*.log")
-                )
-
-                log_content = ""
-                found_log = None
-                for lp in log_paths:
-                    if os.path.isfile(lp):
-                        try:
-                            with open(lp, "r", encoding="utf-8", errors="replace") as f:
-                                log_content = f.read()
-                            found_log = lp
-                            break
-                        except Exception:
-                            continue
-
-                if not found_log:
-                    import sys
-                    import platform
-                    log_content = (
-                        "═══ DatenJäger — Información del Sistema ═══\n\n"
-                        f"Python:     {sys.version}\n"
-                        f"Plataforma: {platform.platform()}\n"
-                        f"SQLite:     {__import__('sqlite3').sqlite_version}\n\n"
-                        "═══ Log de Auditoría exportado ═══\n\n"
-                    )
-                    try:
-                        with self.app._db_lock:
-                            self.app.cursor.execute(
-                                "SELECT a.fecha, a.accion, COALESCE(a.pdf_id,'—'), "
-                                "COALESCE(u.nombre,'—') FROM Auditoria a "
-                                "LEFT JOIN Usuarios u ON a.usuario_id = u.id "
-                                "ORDER BY a.fecha DESC LIMIT 500"
-                            )
-                            for r in self.app.cursor.fetchall():
-                                fecha_f = r[0][:19].replace('T', ' ') if r[0] else '—'
-                                log_content += f"[{fecha_f}] {r[1]} | PDF={r[2]} | User={r[3]}\n"
-                    except Exception as ex:
-                        log_content += f"Error leyendo BD: {ex}\n"
-                    found_log = "(generado en memoria)"
+                # composición del log delegada al servicio de auditoría
+                try:
+                    with self.app._db_lock:
+                        log_content, found_log = auditoria_service.construir_log_sistema(
+                            self.app.conn,
+                            self.app.cursor,
+                            os.path.dirname(os.path.abspath(__file__)),
+                        )
+                except Exception as ex:
+                    log_content, found_log = f"Error leyendo el log: {ex}\n", "(error)"
 
                 # mostrar en main thread
                 if win.winfo_exists():
@@ -389,8 +340,7 @@ class GestorAuditoria:
         def _limpiar_historial():
             try:
                 with self.app._db_lock:
-                    self.app.cursor.execute("SELECT COUNT(*) FROM Auditoria")
-                    total = self.app.cursor.fetchone()[0]
+                    total = auditoria_service.contar_eventos(self.app.conn, self.app.cursor)
                 if total == 0:
                     Notification(win, "Info", "El historial ya está vacío.",
                                  notification_type="warning")
@@ -407,24 +357,12 @@ class GestorAuditoria:
                 if not dlg.result:
                     return
                 with self.app._db_lock:
-                    self.app.cursor.execute("DELETE FROM Auditoria")
-                    # dejar evidencia
-                    self.app.cursor.execute(
-                        "INSERT INTO Auditoria (accion, pdf_id, usuario_id, fecha) "
-                        "VALUES (?, NULL, ?, ?)",
-                        (f"Historial de auditoría limpiado ({total} registros eliminados)",
-                         self.app.usuario_actual,
-                         __import__('datetime').datetime.now().isoformat())
+                    eliminados = auditoria_service.limpiar_historial(
+                        self.app.conn, self.app.cursor, self.app.usuario_actual
                     )
-                    self.app.conn.commit()
-                    # vacuum para liberar espacio (fuera del lock)
-                try:
-                    self.app.cursor.execute("VACUUM")
-                except Exception:
-                    pass
                 _cargar()
                 Notification(win, "Historial Limpio",
-                             f"Se eliminaron {total} registros de auditoría.",
+                             f"Se eliminaron {eliminados} registros de auditoría.",
                              notification_type="success")
             except Exception as ex:
                 Notification(win, "Error", str(ex), notification_type="error")

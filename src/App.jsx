@@ -1,0 +1,148 @@
+import { useEffect, useState } from 'react'
+
+import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
+import BarraLateral from './components/BarraLateral.jsx'
+import BarraEstado from './components/BarraEstado.jsx'
+import Inicio from './pages/Inicio.jsx'
+import Documentos from './pages/Documentos.jsx'
+import Personas from './pages/Personas.jsx'
+import Auditoria from './pages/Auditoria.jsx'
+import Cuenta from './pages/Cuenta.jsx'
+import Acceso from './pages/Acceso.jsx'
+
+/**
+ * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
+ * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
+ */
+export const SECCIONES = [
+  { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', Componente: Inicio },
+  { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', Componente: Documentos },
+  { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', Componente: Personas },
+  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', Componente: Auditoria },
+  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', Componente: Cuenta },
+]
+
+export function App() {
+  return (
+    <ProveedorApp>
+      <Marco />
+    </ProveedorApp>
+  )
+}
+
+/**
+ * Marco de la aplicación (SCRUM-28), con las densidades del sistema de diseño:
+ * barra lateral de `240px` que se recoge a `64px`, sub-cabecera de `48px` con
+ * migas de pan, área de contenido desplazable y franja de telemetría de `32px`
+ * pegada al borde inferior.
+ */
+function Marco() {
+  const { tema, autenticado } = useApp()
+  const [seccion, setSeccion] = useSeccionInicial()
+  const [plegada, setPlegada] = useBarraLateral()
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('datenjager.tema', tema)
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [tema])
+
+  // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
+  if (!autenticado) return <Acceso />
+
+  const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
+  const { Componente } = activa
+
+  return (
+    <div className="flex h-full w-full bg-fondo text-texto">
+      <BarraLateral
+        seccion={seccion}
+        onSeleccionar={setSeccion}
+        plegada={plegada}
+        onPlegar={() => setPlegada((valor) => !valor)}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <SubCabecera seccion={activa} />
+
+        <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+          <Componente onNavegar={setSeccion} />
+        </main>
+
+        <BarraEstado />
+      </div>
+    </div>
+  )
+}
+
+/** Sub-cabecera fija: migas de pan a la izquierda, insignia de cifrado a la derecha. */
+function SubCabecera({ seccion }) {
+  return (
+    <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
+      <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
+        <span className="font-marca text-tenue">DatenJäger</span>
+        <span aria-hidden="true" className="text-borde-fuerte">
+          /
+        </span>
+        <span className="truncate font-medium">{seccion.titulo}</span>
+        <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
+      </nav>
+
+      <span
+        className="flex shrink-0 items-center gap-1.5 rounded border border-borde bg-fondo px-2 py-1 font-mono text-telemetria text-tenue"
+        title="Los documentos se guardan cifrados con AES-256-GCM"
+      >
+        <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-exito" />
+        AES-256-GCM
+      </span>
+    </header>
+  )
+}
+
+/** La sección activa sobrevive al recargado de la ventana. */
+function useSeccionInicial() {
+  const [seccion, setSeccion] = useState(() => {
+    try {
+      const guardada = localStorage.getItem('datenjager.seccion')
+      if (SECCIONES.some(({ clave }) => clave === guardada)) return guardada
+    } catch {
+      /* almacenamiento no disponible */
+    }
+    return SECCIONES[0].clave
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('datenjager.seccion', seccion)
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [seccion])
+
+  return [seccion, setSeccion]
+}
+
+/** El ancho de la barra lateral también sobrevive al recargado. */
+function useBarraLateral() {
+  const [plegada, setPlegada] = useState(() => {
+    try {
+      return localStorage.getItem('datenjager.lateral') === 'plegada'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('datenjager.lateral', plegada ? 'plegada' : 'abierta')
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [plegada])
+
+  return [plegada, setPlegada]
+}
+
+export default App

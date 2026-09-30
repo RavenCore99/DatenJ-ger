@@ -10,14 +10,19 @@ import hashlib
 import secrets
 from datetime import datetime
 
-def conectar_db():
+def conectar_db(db_path=None):
     # conectar bd
-    if getattr(sys, 'frozen', False):
-        basepath = sys.MEIPASS
-    else:
-        basepath = os.path.dirname(os.path.abspath(__file__))
+    # db_path permite apuntar a otra base (pruebas o servidor local);
+    # sin argumento se mantiene el comportamiento historico.
+    if db_path is None:
+        if getattr(sys, 'frozen', False):
+            basepath = sys.MEIPASS
+        else:
+            basepath = os.path.dirname(os.path.abspath(__file__))
 
-    dbpath = os.path.join(basepath, 'base_datos_pdfs.db')
+        dbpath = os.path.join(basepath, 'base_datos_pdfs.db')
+    else:
+        dbpath = db_path
     conn = sqlite3.connect(dbpath, check_same_thread=False)
     cursor = conn.cursor()
 

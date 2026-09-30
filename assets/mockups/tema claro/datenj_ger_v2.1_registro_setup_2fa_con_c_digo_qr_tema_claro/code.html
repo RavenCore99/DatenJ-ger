@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DatenJäger v2.1 • Ubaté Minería — Registro &amp; Setup 2FA</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts: Space Grotesk, Inter, JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed-variant": "#0039b5",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-container": "#545c72",
+            "surface-bright": "#f8f9ff",
+            "on-error": "#ffffff",
+            "on-primary": "#ffffff",
+            "on-primary-fixed": "#001551",
+            "surface-container": "#e5eeff",
+            "on-tertiary-fixed-variant": "#3f465c",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#434655",
+            "error": "#ba1a1a",
+            "inverse-primary": "#b7c4ff",
+            "surface": "#f8f9ff",
+            "on-secondary": "#ffffff",
+            "surface-tint": "#2151da",
+            "inverse-surface": "#213145",
+            "inverse-on-surface": "#eaf1ff",
+            "on-error-container": "#93000a",
+            "secondary": "#006398",
+            "secondary-container": "#5bb8fe",
+            "secondary-fixed-dim": "#93ccff",
+            "on-secondary-fixed-variant": "#004b73",
+            "surface-dim": "#cbdbf5",
+            "surface-container-low": "#eff4ff",
+            "on-secondary-fixed": "#001d31",
+            "error-container": "#ffdad6",
+            "outline-variant": "#c4c5d7",
+            "primary-container": "#1d4ed8",
+            "on-secondary-container": "#00476e",
+            "primary": "#0037b0",
+            "surface-container-high": "#dce9ff",
+            "on-tertiary": "#ffffff",
+            "primary-fixed-dim": "#b7c4ff",
+            "tertiary-fixed-dim": "#bec6e0",
+            "primary-fixed": "#dce1ff",
+            "surface-variant": "#d3e4fe",
+            "on-primary-container": "#cad3ff",
+            "background": "#f8f9ff",
+            "tertiary": "#3d445a",
+            "surface-container-highest": "#d3e4fe",
+            "secondary-fixed": "#cce5ff",
+            "outline": "#747686",
+            "tertiary-fixed": "#dae2fd",
+            "on-tertiary-container": "#cdd5ef",
+            "on-background": "#0b1c30",
+            "on-tertiary-fixed": "#131b2e"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-sm": "0.5rem",
+            "space-xs": "0.25rem",
+            "gutter": "0.75rem",
+            "space-xl": "2rem",
+            "space-md": "0.75rem",
+            "margin": "1rem",
+            "space-lg": "1.25rem"
+          },
+          "fontFamily": {
+            "telemetry-mono": ["JetBrains Mono"],
+            "body-md": ["Inter"],
+            "label-sm": ["Inter"],
+            "display-hero": ["Space Grotesk"],
+            "body-lg": ["Inter"],
+            "telemetry-code": ["JetBrains Mono"],
+            "headline-sm": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "label-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-lg": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "telemetry-mono": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "500" }],
+            "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+            "body-lg": ["15px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "telemetry-code": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c4c5d7;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased h-screen flex flex-col overflow-hidden select-none p-2 sm:p-3 lg:p-4">
+<!-- Desktop App Window Frame (macOS Style Shell) -->
+<div class="w-full h-full flex flex-col bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/40 overflow-hidden">
+<!-- Window Header & Navigation Ribbon -->
+<header class="h-11 bg-surface-container-low border-b border-outline-variant/30 flex items-center justify-between px-4 shrink-0">
+<!-- Traffic Light Controls & Title -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-[#ff5f56] inline-block border border-[#e0443e]/40"></span>
+<span class="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block border border-[#dea123]/40"></span>
+<span class="w-3 h-3 rounded-full bg-[#27c93f] inline-block border border-[#1aab29]/40"></span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant/40 mx-1"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="shield">shield</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">DatenJäger</span>
+<span class="text-outline-variant text-body-sm font-body-sm">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">Registro de Operador &amp; Configuración 2FA (Paso 2 de 2)</span>
+</div>
+</div>
+<!-- Window Breadcrumb / Status Badge -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 bg-surface-container-high px-2.5 py-0.5 rounded-full border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-telemetry-mono text-telemetry-mono text-primary font-medium tracking-wide">CANAL SEGURO TLS 1.3</span>
+</div>
+<div class="text-on-surface-variant flex items-center gap-1 text-label-sm font-label-sm bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[15px]" data-icon="lock">lock</span>
+<span>AES-256-GCM</span>
+</div>
+</div>
+</header>
+<!-- Main Workspace: Split Two-Column Grid Layout -->
+<main class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6 bg-surface-bright grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+<!-- COLUMN 1: Datos del Operador Registrado (frame_registro) [5 Columns] -->
+<section class="lg:col-span-5 flex flex-col gap-4">
+<!-- Header Profile Identity Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/40 shadow-sm relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-28 h-28 bg-surface-container rounded-full opacity-60 pointer-events-none"></div>
+<div class="flex items-center justify-between mb-4 pb-3 border-b border-outline-variant/20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="badge">badge</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Datos del Operador Registrado</h2>
+</div>
+<span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-telemetry-mono text-telemetry-mono font-medium border border-emerald-200">
+              ESTADO: VALIDADO
+            </span>
+</div>
+<!-- Operator Info Stack -->
+<div class="space-y-3.5">
+<div>
+<label class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-0.5">Nombre Completo</label>
+<div class="flex items-center gap-2">
+<p class="font-headline-sm text-headline-sm text-primary font-semibold">Ing. Carlos Hernán Forero</p>
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 pt-1">
+<div>
+<label class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-0.5">Cédula de Ciudadanía</label>
+<p class="font-telemetry-code text-telemetry-code text-on-surface font-semibold bg-surface-container-low px-2 py-1 rounded border border-outline-variant/30 inline-block">
+                  C.C. 79.845.210 de Ubaté
+                </p>
+</div>
+<div>
+<label class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-0.5">ID Minero / Carné</label>
+<p class="font-telemetry-code text-telemetry-code text-on-surface font-semibold bg-surface-container-low px-2 py-1 rounded border border-outline-variant/30 inline-block">
+                  UBT-OP-2024-998
+                </p>
+</div>
+</div>
+<div>
+<label class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-0.5">Empresa Minera &amp; Faena</label>
+<div class="flex items-center gap-2 text-on-surface bg-surface-bright p-2 rounded-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-secondary text-[20px]" data-icon="corporate_fare">corporate_fare</span>
+<span class="font-body-md text-body-md font-medium">C.I. Carbones San Fernando S.A.S. (Bocamina 3)</span>
+</div>
+</div>
+<div>
+<label class="font-label-sm text-label-sm text-outline uppercase tracking-wider block mb-0.5">Rol / Privilegios en el Sistema</label>
+<div class="flex items-center gap-2 bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-outline-variant/40">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="security">security</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Oficial de Seguridad Minera y Cumplimiento</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Security & Cryptographic Proofs Card -->
+<div class="bg-surface-container-lowest rounded-xl p-5 border border-outline-variant/40 shadow-sm flex flex-col gap-4">
+<div class="flex items-center gap-2 pb-2 border-b border-outline-variant/20">
+<span class="material-symbols-outlined text-primary text-[19px]" data-icon="enhanced_encryption">enhanced_encryption</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Validación Criptográfica &amp; Cumplimiento</h3>
+</div>
+<!-- Password Strength Meter -->
+<div>
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-sm text-label-sm text-outline">Robustez de Clave Maestra</span>
+<span class="font-telemetry-mono text-telemetry-mono text-emerald-600 font-semibold">NIVEL ÓPTIMO</span>
+</div>
+<!-- Progress Bar -->
+<div class="w-full h-2 bg-surface-container rounded-full overflow-hidden flex gap-0.5">
+<div class="h-full w-1/4 bg-primary rounded-full"></div>
+<div class="h-full w-1/4 bg-primary rounded-full"></div>
+<div class="h-full w-1/4 bg-primary rounded-full"></div>
+<div class="h-full w-1/4 bg-emerald-500 rounded-full"></div>
+</div>
+<p class="font-telemetry-mono text-telemetry-mono text-outline mt-1.5 text-[10px]">
+              Derivación: <span class="font-semibold text-on-surface">PBKDF2-HMAC-SHA512</span> (600,000 iteraciones)
+            </p>
+</div>
+<!-- Ley 1581 Consent Timestamp -->
+<div class="bg-surface-container-low rounded-lg p-3 border border-outline-variant/30 flex items-start gap-2.5">
+<span class="material-symbols-outlined text-emerald-600 text-[20px] mt-0.5 shrink-0" data-icon="verified_user">verified_user</span>
+<div class="flex-1">
+<p class="font-label-md text-label-md text-on-surface font-medium">Consentimiento Ley 1581 de 2012</p>
+<p class="font-body-sm text-body-sm text-outline mt-0.5 leading-snug">
+                Autorización expresa para custodia criptográfica de datos personales y huella pericial minera.
+              </p>
+<div class="flex items-center gap-2 mt-2 pt-2 border-t border-outline-variant/20 font-telemetry-mono text-telemetry-mono text-on-surface-variant text-[10px]">
+<span class="material-symbols-outlined text-[13px] text-outline" data-icon="history">history</span>
+<span>Firma Hash: <strong class="text-primary font-mono">0x9e8a...3f12</strong> • 2025-02-23 09:41:18 COT</span>
+</div>
+</div>
+</div>
+<!-- District Info Pill -->
+<div class="flex items-center justify-between text-telemetry-mono text-telemetry-mono px-3 py-2 bg-surface-bright rounded-lg border border-outline-variant/30 text-outline">
+<span class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary" data-icon="domain">domain</span>
+              Distrito Minero Ubaté #04
+            </span>
+<span class="text-on-surface font-semibold">Nodo Verificador 02-N</span>
+</div>
+</div>
+</section>
+<!-- COLUMN 2: Setup 2FA Obligatoria (frame_setup_2fa) [7 Columns] -->
+<section class="lg:col-span-7 flex flex-col gap-4">
+<div class="bg-surface-container-lowest rounded-xl p-5 lg:p-6 border border-primary-container/30 shadow-md relative">
+<!-- Top Warning / Requirement Banner -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-outline-variant/30">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]" data-icon="phonelink_lock">phonelink_lock</span>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">
+                  Configuración 2FA / TOTP Obligatoria
+                </h2>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">Estándar RFC 6238 • Intervalo temporal 30s • HMAC-SHA1</p>
+</div>
+<div class="shrink-0 bg-red-50 text-error border border-red-200 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]" data-icon="report_problem">report_problem</span>
+<span class="font-telemetry-mono text-telemetry-mono font-bold tracking-wide">MANDATORIO PARA ACCESO A BÓVEDA</span>
+</div>
+</div>
+<!-- Instructions & QR Code Grid -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-center bg-surface-container-low p-4 rounded-xl border border-outline-variant/40">
+<!-- Crisp Vector QR Code Container (5 Cols) -->
+<div class="md:col-span-5 flex flex-col items-center justify-center p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/50 shadow-sm">
+<div class="relative p-2 bg-white rounded-lg border border-outline-variant/30">
+<!-- SVG Precision QR Code Replica -->
+<svg class="w-36 h-36" fill="none" viewbox="0 0 148 148" xmlns="http://www.w3.org/2000/svg">
+<!-- QR Background -->
+<rect fill="white" height="148" width="148"></rect>
+<!-- Top-Left Target -->
+<rect fill="#0b1c30" height="34" rx="4" width="34" x="10" y="10"></rect>
+<rect fill="white" height="22" rx="2" width="22" x="16" y="16"></rect>
+<rect fill="#1d4ed8" height="10" rx="1" width="10" x="22" y="22"></rect>
+<!-- Top-Right Target -->
+<rect fill="#0b1c30" height="34" rx="4" width="34" x="104" y="10"></rect>
+<rect fill="white" height="22" rx="2" width="22" x="110" y="16"></rect>
+<rect fill="#1d4ed8" height="10" rx="1" width="10" x="116" y="22"></rect>
+<!-- Bottom-Left Target -->
+<rect fill="#0b1c30" height="34" rx="4" width="34" x="10" y="104"></rect>
+<rect fill="white" height="22" rx="2" width="22" x="16" y="110"></rect>
+<rect fill="#1d4ed8" height="10" rx="1" width="10" x="22" y="116"></rect>
+<!-- Timing Lines & Sync Pattern -->
+<g fill="#0b1c30">
+<rect height="4" width="4" x="50" y="22"></rect>
+<rect height="4" width="4" x="58" y="22"></rect>
+<rect height="4" width="4" x="66" y="22"></rect>
+<rect height="4" width="4" x="74" y="22"></rect>
+<rect height="4" width="4" x="82" y="22"></rect>
+<rect height="4" width="4" x="90" y="22"></rect>
+<rect height="4" width="4" x="22" y="50"></rect>
+<rect height="4" width="4" x="22" y="58"></rect>
+<rect height="4" width="4" x="22" y="66"></rect>
+<rect height="4" width="4" x="22" y="74"></rect>
+<rect height="4" width="4" x="22" y="82"></rect>
+<rect height="4" width="4" x="22" y="90"></rect>
+<!-- Internal Data Clusters -->
+<rect height="8" width="8" x="52" y="48"></rect>
+<rect fill="#1d4ed8" height="8" width="8" x="68" y="48"></rect>
+<rect height="8" width="8" x="84" y="48"></rect>
+<rect height="8" width="8" x="100" y="48"></rect>
+<rect height="8" width="8" x="48" y="64"></rect>
+<rect height="8" width="16" x="64" y="64"></rect>
+<rect fill="#1d4ed8" height="8" width="8" x="88" y="64"></rect>
+<rect height="8" width="8" x="104" y="64"></rect>
+<rect height="8" width="16" x="120" y="64"></rect>
+<rect fill="#1d4ed8" height="8" width="16" x="48" y="80"></rect>
+<rect height="8" width="8" x="72" y="80"></rect>
+<rect height="8" width="16" x="88" y="80"></rect>
+<rect height="8" width="8" x="112" y="80"></rect>
+<rect height="8" width="8" x="52" y="96"></rect>
+<rect fill="#1d4ed8" height="8" width="16" x="68" y="96"></rect>
+<rect height="8" width="8" x="92" y="96"></rect>
+<rect height="8" width="8" x="108" y="96"></rect>
+<rect height="8" width="8" x="124" y="96"></rect>
+<rect height="8" width="16" x="52" y="112"></rect>
+<rect height="8" width="8" x="76" y="112"></rect>
+<rect fill="#1d4ed8" height="8" width="16" x="92" y="112"></rect>
+<rect height="8" width="16" x="116" y="112"></rect>
+<rect height="8" width="8" x="52" y="128"></rect>
+<rect height="8" width="8" x="68" y="128"></rect>
+<rect height="8" width="16" x="84" y="128"></rect>
+<rect height="8" width="8" x="108" y="128"></rect>
+</g>
+<!-- Center Shield Token Brand Accent -->
+<circle cx="74" cy="74" fill="white" r="11"></circle>
+<circle cx="74" cy="74" fill="#1d4ed8" r="9"></circle>
+<path d="M74 69L70 71V74C70 76.5 71.7 78.8 74 79.5C76.3 78.8 78 76.5 78 74V71L74 69Z" fill="white"></path>
+</svg>
+</div>
+<span class="font-telemetry-mono text-telemetry-mono text-outline mt-2 text-center text-[10px]">
+                TOTP-URI: SHA1/6DIGIT/30S
+              </span>
+</div>
+<!-- Scanning Instructions & Secret Key Box (7 Cols) -->
+<div class="md:col-span-7 flex flex-col gap-3">
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-bold">1</span>
+                  Escanee el código QR en su app móvil
+                </p>
+<p class="font-body-sm text-body-sm text-outline mt-1 leading-snug">
+                  Compatible con Google Authenticator, Microsoft Authenticator, Aegis 2FA, Bitwarden o YubiKey Authenticator.
+                </p>
+</div>
+<!-- Manual Secret Key Box -->
+<div class="bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant/40 mt-1">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-sm text-label-sm text-outline">Clave Secreta Base32 manual</span>
+<span class="font-telemetry-mono text-telemetry-mono text-primary text-[10px]">RFC 4648</span>
+</div>
+<div class="flex items-center justify-between gap-2">
+<code class="font-telemetry-code text-telemetry-code text-primary font-bold tracking-wider select-all bg-surface-container-low px-2 py-1 rounded">
+                    JBSW Y3DP EHPK 3PXP 9KLT
+                  </code>
+<button class="px-2.5 py-1 rounded-md bg-surface-container text-primary hover:bg-surface-container-high transition-colors text-label-sm font-label-sm flex items-center gap-1 border border-outline-variant/30" id="copy-btn" onclick="navigator.clipboard.writeText('JBSWY3DPEHPK3PXP9KLT'); alert('Clave secreta copiada al portapapeles');" type="button">
+<span class="material-symbols-outlined text-[15px]" data-icon="content_copy">content_copy</span>
+<span>Copiar</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Step 2: Verification Digit Input Section -->
+<div class="mt-5 pt-4 border-t border-outline-variant/30">
+<div class="flex items-center justify-between mb-3">
+<div>
+<p class="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
+<span class="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[11px] font-bold">2</span>
+                  Ingrese el código de 6 dígitos generado
+                </p>
+<p class="font-body-sm text-body-sm text-outline">Sincronice el código actual visible en su pantalla autenticadora.</p>
+</div>
+<!-- 30-Second Ring Countdown Timer -->
+<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/40">
+<div class="relative w-5 h-5 flex items-center justify-center">
+<svg class="w-5 h-5 -rotate-90" viewbox="0 0 36 36">
+<circle cx="18" cy="18" fill="none" r="15" stroke="#e2e8f0" stroke-width="3"></circle>
+<circle cx="18" cy="18" fill="none" id="timer-circle" r="15" stroke="#1d4ed8" stroke-dasharray="94.2" stroke-dashoffset="28" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+</div>
+<span class="font-telemetry-mono text-telemetry-mono text-primary font-bold" id="countdown-text">21s</span>
+<span class="text-outline text-label-sm font-label-sm">restantes</span>
+</div>
+</div>
+<!-- 6 Distinct Square Digit Boxes with focus state -->
+<div class="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 my-4">
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-container-lowest border-2 border-primary rounded-lg flex items-center justify-center font-headline-md text-headline-md text-primary font-bold shadow-sm ring-2 ring-primary-fixed">
+                4
+              </div>
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-container-lowest border-2 border-primary rounded-lg flex items-center justify-center font-headline-md text-headline-md text-primary font-bold shadow-sm ring-2 ring-primary-fixed">
+                8
+              </div>
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-container-lowest border-2 border-primary rounded-lg flex items-center justify-center font-headline-md text-headline-md text-primary font-bold shadow-sm ring-2 ring-primary-fixed">
+                2
+              </div>
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-container-lowest border-2 border-primary rounded-lg flex items-center justify-center font-headline-md text-headline-md text-primary font-bold shadow-sm ring-2 ring-primary-fixed">
+                9
+              </div>
+<!-- Incomplete digits (pulse indicator) -->
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-bright border-2 border-primary/40 rounded-lg flex items-center justify-center text-outline font-headline-md text-headline-md">
+<span class="w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+</div>
+<div class="w-11 h-13 sm:w-12 sm:h-14 bg-surface-bright border-2 border-outline-variant rounded-lg flex items-center justify-center text-outline-variant font-headline-md text-headline-md">
+                •
+              </div>
+</div>
+</div>
+<!-- Emergency Offline Backup Codes Section -->
+<div class="mt-4 p-3.5 bg-surface-bright rounded-xl border border-outline-variant/40">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2 pb-2 border-b border-outline-variant/20">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="key">key</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Códigos de Emergencia Desconectados (Backup)</span>
+</div>
+<button class="text-primary hover:text-on-primary-fixed-variant flex items-center gap-1 font-telemetry-mono text-telemetry-mono font-medium" type="button">
+<span class="material-symbols-outlined text-[15px]" data-icon="download">download</span>
+<span>Descargar .TXT Cifrado</span>
+</button>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+<div class="bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/30 text-center font-telemetry-code text-telemetry-code text-on-surface">
+                9821-4410
+              </div>
+<div class="bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/30 text-center font-telemetry-code text-telemetry-code text-on-surface">
+                7104-9932
+              </div>
+<div class="bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/30 text-center font-telemetry-code text-telemetry-code text-on-surface">
+                5539-1288
+              </div>
+<div class="bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant/30 text-center font-telemetry-code text-telemetry-code text-on-surface">
+                3011-8764
+              </div>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-2 text-[11px] leading-tight">
+              Conserve estos códigos impresos en un lugar seguro. Cada código es de un solo uso en caso de daño o pérdida del terminal autenticador.
+            </p>
+</div>
+<!-- Primary CTA Button -->
+<div class="mt-6 flex flex-col sm:flex-row items-center gap-3">
+<button class="w-full sm:flex-1 py-3 px-4 bg-primary-container hover:bg-primary text-white rounded-lg font-headline-sm text-headline-sm font-semibold flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.99]" type="button">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle">check_circle</span>
+<span>Validar Código &amp; Activar Cuenta de Operador</span>
+</button>
+<button class="w-full sm:w-auto py-3 px-4 bg-surface-container-low hover:bg-surface-container text-on-surface-variant rounded-lg font-body-md text-body-md font-medium border border-outline-variant/40 transition-colors" type="button">
+              Cancelar
+            </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Telemetry Status Strip (Fixed at Bottom, 32px height) -->
+<footer class="h-8 bg-surface-container-lowest border-t border-outline-variant/30 px-3 flex items-center justify-between shrink-0 font-telemetry-mono text-telemetry-mono text-outline">
+<!-- Left Telemetry Cluster -->
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="text-primary font-bold">⌘</span>
+<span class="text-body-sm font-body-sm font-medium">DatenJäger OS</span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant/40"></div>
+<div class="flex items-center gap-1 text-emerald-700 font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span>Crypto Hardware Ready (HSM/TPM 2.0)</span>
+</div>
+<div class="hidden md:flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px] text-primary" data-icon="hub">hub</span>
+<span>Nodo: <strong class="text-on-surface">Ubaté Cluster-04</strong></span>
+</div>
+</div>
+<!-- Right Telemetry Cluster -->
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]" data-icon="memory">memory</span>
+<span>Cripto-Motor: <strong class="text-on-surface">OpenSSL 3.1.2 FIPS</strong></span>
+</div>
+<div class="h-3 w-[1px] bg-outline-variant/40 hidden sm:block"></div>
+<div class="flex items-center gap-1 text-primary font-semibold">
+<span class="text-outline">#</span>
+<span>v2.1-prod (+ubt)</span>
+</div>
+<div class="font-telemetry-code text-telemetry-code bg-surface-container px-1.5 py-0.5 rounded text-on-surface text-[10px]">
+          79bfddd
+        </div>
+</div>
+</footer>
+</div>
+<!-- Inline Script for 30s Countdown Simulation & Micro-Interactions -->
+<script>
+    (function initTOTPTimer() {
+      let secondsRemaining = 21;
+      const totalSeconds = 30;
+      const circle = document.getElementById('timer-circle');
+      const text = document.getElementById('countdown-text');
+      const circumference = 2 * Math.PI * 15; // 94.24
+
+      setInterval(() => {
+        secondsRemaining--;
+        if (secondsRemaining <= 0) {
+          secondsRemaining = totalSeconds;
+        }
+        
+        if (text) {
+          text.textContent = secondsRemaining + 's';
+        }
+
+        if (circle) {
+          const offset = circumference - (secondsRemaining / totalSeconds) * circumference;
+          circle.style.strokeDashoffset = offset;
+        }
+      }, 1000);
+    })();
+  </script>
+</body></html>

@@ -1,0 +1,35 @@
+# Artefactos que el agente no necesita indexar (Fase 0 de planning.md).
+# Los archivos siguen en disco: esto solo evita que el agente los lea como
+# contexto (entornos virtuales, builds, dependencias, binarios y secretos).
+
+# Entornos y dependencias
+.venv/
+venv/
+node_modules/
+
+# Compilados y artefactos
+dist/
+.vite/
+__pycache__/
+*.pyc
+*.pyo
+*.log
+package-lock.json
+
+# Datos locales y secretos
+base_datos_pdfs.db
+*.db
+*.db-wal
+*.db-shm
+tokens_confianza/
+config.json
+config.json.respaldo
+.env
+.env.*
+
+# Imagenes: los mockups y los iconos se leen por nombre y ruta, no como texto
+*.png
+*.ico
+assets/icons/
+assets/logo/
+assets/assets/

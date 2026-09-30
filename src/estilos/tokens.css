@@ -1,0 +1,79 @@
+/*
+ * Tokens de DatenJäger — generados desde los DESIGN.md del sistema de diseño
+ * ("DatenJäger Precision Desktop") con `@google/design.md export --format json-tailwind`.
+ * No editar a mano los valores: vienen del spec (SCRUM-27).
+ *
+ * El spec trae DOS sistemas, no un modo claro y otro oscuro del mismo:
+ * el claro usa Inter, escalas más densas y margen de 1rem; el oscuro usa
+ * Manrope, escalas mayores y margen de 1.25rem. La reconciliación adoptada
+ * (documentada en planning.md) es: tipografía y escalas del claro —Manrope no
+ * aparece en ningún mockup y una fuente que cambia con el tema es inviable—,
+ * colores de cada modo, y los roles que el oscuro añade (cristal, lienzo,
+ * semáforo) disponibles en ambos.
+ *
+ * Los valores se guardan como tripletes RGB para que Tailwind pueda aplicar
+ * opacidad (`bg-superficie/50`).
+ */
+:root {
+  /* claro */
+  --dj-fondo: 248 249 255;  /* #f8f9ff */
+  --dj-fondo-2: 239 244 255;  /* #eff4ff */
+  --dj-superficie: 255 255 255;  /* #ffffff */
+  --dj-superficie-2: 229 238 255;  /* #e5eeff */
+  --dj-superficie-3: 220 233 255;  /* #dce9ff */
+  --dj-superficie-4: 211 228 254;  /* #d3e4fe */
+  --dj-borde: 196 197 215;  /* #c4c5d7 */
+  --dj-borde-fuerte: 116 118 134;  /* #747686 */
+  --dj-texto: 11 28 48;  /* #0b1c30 */
+  --dj-texto-2: 67 70 85;  /* #434655 */
+  --dj-tenue: 116 118 134;  /* #747686 */
+  --dj-primario: 29 78 216;  /* #1d4ed8 */
+  --dj-primario-enfasis: 0 55 176;  /* #0037b0 */
+  --dj-primario-suave: 220 225 255;  /* #dce1ff */
+  --dj-sobre-primario: 255 255 255;  /* #ffffff */
+  --dj-acento: 0 99 152;  /* #006398 */
+  --dj-acento-suave: 204 229 255;  /* #cce5ff */
+  --dj-peligro: 186 26 26;  /* #ba1a1a */
+  --dj-peligro-suave: 255 218 214;  /* #ffdad6 */
+  --dj-sobre-peligro: 255 255 255;  /* #ffffff */
+  --dj-exito: 16 185 129;  /* #10b981 — status-verified, igual en ambos */
+  --dj-alerta: 217 119 6;  /* el spec no define rol de advertencia: se conserva el del proyecto */
+  --dj-cristal: 248 250 252;
+  --dj-cristal-alfa: 0.82;
+  --dj-lienzo: 248 250 252;
+  --dj-trafico-cerrar: 255 95 86;
+  --dj-trafico-minimizar: 255 189 46;
+  --dj-trafico-expandir: 39 201 63;
+}
+
+.tema-oscuro {
+  /* oscuro */
+  --dj-fondo: 11 19 38;  /* #0b1326 */
+  --dj-fondo-2: 19 27 46;  /* #131b2e */
+  --dj-superficie: 6 14 32;  /* #060e20 */
+  --dj-superficie-2: 23 31 51;  /* #171f33 */
+  --dj-superficie-3: 34 42 61;  /* #222a3d */
+  --dj-superficie-4: 45 52 73;  /* #2d3449 */
+  --dj-borde: 67 70 85;  /* #434655 */
+  --dj-borde-fuerte: 141 144 160;  /* #8d90a0 */
+  --dj-texto: 218 226 253;  /* #dae2fd */
+  --dj-texto-2: 195 198 215;  /* #c3c6d7 */
+  --dj-tenue: 141 144 160;  /* #8d90a0 */
+  --dj-primario: 37 99 235;  /* #2563eb */
+  --dj-primario-enfasis: 180 197 255;  /* #b4c5ff */
+  --dj-primario-suave: 219 225 255;  /* #dbe1ff */
+  --dj-sobre-primario: 0 42 120;  /* #002a78 */
+  --dj-acento: 78 222 163;  /* #4edea3 */
+  --dj-acento-suave: 111 251 190;  /* #6ffbbe */
+  --dj-peligro: 255 180 171;  /* #ffb4ab */
+  --dj-peligro-suave: 147 0 10;  /* #93000a */
+  --dj-sobre-peligro: 105 0 5;  /* #690005 */
+  --dj-exito: 16 185 129;  /* #10b981 — status-verified, igual en ambos */
+  --dj-alerta: 245 158 11;  /* el spec no define rol de advertencia: se conserva el del proyecto */
+  --dj-cristal: 15 23 42;
+  --dj-cristal-alfa: 0.78;
+  --dj-lienzo: 11 15 25;
+  --dj-trafico-cerrar: 255 95 86;
+  --dj-trafico-minimizar: 255 189 46;
+  --dj-trafico-expandir: 39 201 63;
+}
