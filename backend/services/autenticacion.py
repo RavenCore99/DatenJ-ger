@@ -1,5 +1,6 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/autenticacion.py - autenticación sin Tkinter
+# Trazabilidad Jira: SCRUM-57 (DatenJäger — Backend).
 
 """Servicio de autenticación (SCRUM-22).
 
