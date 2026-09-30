@@ -295,6 +295,31 @@ Raven revisó `/assets/mockups` completo y respondió:
    confianza, apariencia) **más las que tengan sentido** para este proyecto.
 5. **Iconos:** lo que mejor se adapte, priorizando rendimiento y estética.
 
+**Reconciliación del sistema de diseño (`SCRUM-27`).** El export oficial del
+spec reveló que los dos `DESIGN.md` **no son un modo claro y otro oscuro del
+mismo sistema**, sino dos sistemas que divergen: el claro usa **Inter**, escalas
+más densas (cuerpo 13px) y margen de `1rem`; el oscuro usa **Manrope**, escalas
+mayores (cuerpo 14px, título 28px en vez de 32px) y margen de `1.25rem`. El
+oscuro además añade diez roles propios (semáforo de ventana, superficies
+translúcidas, lienzos, `status-verified`). Se adoptó:
+
+* **tipografía y escalas del claro** — Manrope no aparece en ningún mockup, y
+  una fuente que cambia al cambiar de tema es inviable;
+* **colores de cada modo**, conservando los nombres de rol del spec y expuestos
+  como una capa semántica (`fondo`, `superficie`, `borde`, `texto`, `tenue`,
+  `primario`, `acento`, `exito`, `alerta`, `peligro`, ...);
+* **los roles que solo define el oscuro** disponibles en ambos modos (semáforo,
+  cristal, lienzo), y `alerta` conservada del proyecto porque el spec no define
+  un rol de advertencia;
+* los nombres antiguos (`tenue`, `panel`) se mantienen para que las pantallas ya
+  construidas sigan funcionando sin cambios.
+
+**Tipografías autoalojadas:** Space Grotesk (marca), Inter (cuerpo) y JetBrains
+Mono (telemetría) en `assets/fuentes/`, **tres archivos y 99,6 KB**. Se
+descubrió por hash que los nueve archivos que sirve Google eran tres contenidos
+distintos (fuentes variables): quedaron los tres y cada peso apunta al archivo
+de su familia, con el `unicode-range` de `latin`.
+
 **Deuda detectada en esta revisión:** la estadística y los gráficos viven hoy
 dentro de `ui_components.py` (`DashboardWidget`, líneas ~673-950): la regresión
 lineal, la predicción y **los colores de los gráficos están incrustados en la
@@ -439,7 +464,7 @@ pantallas principales (login, dashboard, PDFs).
 
 Base visual y movimiento:
 
-- [ ] `SCRUM-27` tokens visuales del `DESIGN.md` en Tailwind (paleta, tipografía, radios, densidades)
+- [x] `SCRUM-27` tokens visuales del `DESIGN.md` en Tailwind (paleta, tipografía, radios, densidades)
 - [ ] `SCRUM-28` layout base: barra lateral `240px`/`64px`, sub-cabecera `48px`, franja inferior `32px`, marco de ventana
 - [ ] `SCRUM-29` login, bienvenida/intro y verificación 2FA
 - [ ] `SCRUM-30` personas y auditoría
