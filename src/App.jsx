@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
+import Entrada from './components/Entrada.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
 import Personas from './pages/Personas.jsx'
@@ -26,6 +27,7 @@ export const SECCIONES = [
 export function App() {
   return (
     <ProveedorApp>
+      <Entrada />
       <Marco />
     </ProveedorApp>
   )

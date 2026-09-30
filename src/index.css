@@ -66,6 +66,43 @@ body {
     animation: entrar 260ms ease-out both;
   }
 
+  /* Animación de entrada (SCRUM-67): la cortina de arranque se desvanece y el
+   * anillo de la marca late una vez antes de retirarse. */
+  @keyframes entrada-salir {
+    to {
+      opacity: 0;
+      transform: scale(1.02);
+    }
+  }
+
+  .entrada-salida {
+    animation: entrada-salir 340ms ease-in both;
+  }
+
+  @keyframes entrada-anillo {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.35);
+    }
+  }
+
+  .entrada-anillo {
+    animation: entrada-anillo 900ms ease-out both;
+  }
+
+  /* Micro-interacción de pulsación (SCRUM-67): los controles se hunden un punto
+   * al pulsarlos. Es global, sutil y no altera el flujo de la página. */
+  button:not(:disabled):active {
+    transform: translateY(0.5px) scale(0.995);
+  }
+
   /* Cambio de tema suave (SCRUM-66): mientras la clase `cambiando-tema` está
    * puesta en la raíz, los colores transicionan en vez de saltar. Solo se
    * activa durante el cambio —una transición global permanente encarecería los

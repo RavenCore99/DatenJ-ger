@@ -99,9 +99,11 @@ function BotonTema({ plegada }) {
       onClick={alternarTema}
       title={etiqueta}
       aria-label={etiqueta}
-      className="flex h-9 w-full items-center justify-center gap-2 rounded-md border border-borde px-3 text-etiqueta-md text-tenue transition-colors hover:border-primario hover:text-primario"
+      className="group flex h-9 w-full items-center justify-center gap-2 rounded-md border border-borde px-3 text-etiqueta-md text-tenue transition-colors hover:border-primario hover:text-primario"
     >
-      <Icono nombre={tema === 'oscuro' ? 'sol' : 'luna'} tamano={16} />
+      <span className="transition-transform duration-300 group-hover:rotate-45">
+        <Icono nombre={tema === 'oscuro' ? 'sol' : 'luna'} tamano={16} />
+      </span>
       {!plegada && etiqueta}
     </button>
   )
