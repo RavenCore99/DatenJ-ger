@@ -8,6 +8,7 @@
 
 @import './estilos/fuentes.css';
 @import './estilos/tokens.css';
+@import './estilos/complementos.css';
 
 @tailwind base;
 @tailwind components;

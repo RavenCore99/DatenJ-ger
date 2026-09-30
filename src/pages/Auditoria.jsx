@@ -9,6 +9,7 @@ import Panel, {
   Pill,
   Tarjeta,
 } from '../components/Panel.jsx'
+import CajonDesplazable from '../components/CajonDesplazable.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { fechaCorta } from '../lib/formato.js'
@@ -288,9 +289,11 @@ export default function Auditoria() {
               <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-trafico-expandir" />
               <span className="ml-2 truncate font-mono text-telemetria text-tenue">{log.origen}</span>
             </div>
-            <pre className="max-h-96 overflow-auto px-4 py-3 font-mono text-codigo leading-relaxed text-texto-2">
-              {log.contenido || '(vacío)'}
-            </pre>
+            <CajonDesplazable alto="max-h-96" sinMarco>
+              <pre className="px-4 py-3 font-mono text-codigo leading-relaxed text-texto-2">
+                {log.contenido || '(vacío)'}
+              </pre>
+            </CajonDesplazable>
           </div>
         </Panel>
       )}

@@ -1,5 +1,7 @@
 import { useApp } from '../estado/ProveedorApp.jsx'
 import MarcoAcceso from '../components/MarcoAcceso.jsx'
+import BotonBiometrico from '../components/BotonBiometrico.jsx'
+import Particulas from '../components/Particulas.jsx'
 import logo from '../../assets/logo/logo.png'
 
 /**
@@ -17,6 +19,9 @@ export default function Bienvenida({ onEntrar }) {
   return (
     <MarcoAcceso titulo="Entorno de seguridad minera">
       <main className="aparecer relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8">
+        {/* Fondo de partículas (SCRUM-71): decorativo, no captura el puntero. */}
+        <Particulas className="pointer-events-none absolute inset-0 h-full w-full" />
+
         {/* Marca de agua tenue del fondo, como en el mockup. */}
         <span
           aria-hidden="true"
@@ -92,19 +97,17 @@ function Tarjeta({ etiqueta, titulo, descripcion, accion, onAccion, desactivada 
       <h2 className="font-marca text-titulo-sm">{titulo}</h2>
       <p className="flex-1 text-cuerpo-sm text-tenue">{descripcion}</p>
 
-      <button
-        type="button"
-        onClick={onAccion}
-        disabled={desactivada}
-        className={[
-          'rounded-md px-4 py-2 text-etiqueta-md font-medium transition-colors',
-          desactivada
-            ? 'cursor-not-allowed border border-borde text-tenue'
-            : 'bg-primario text-sobre-primario hover:bg-primario-enfasis',
-        ].join(' ')}
-      >
-        {accion}
-      </button>
+      {desactivada ? (
+        <button
+          type="button"
+          disabled
+          className="cursor-not-allowed rounded-md border border-borde px-4 py-2 text-etiqueta-md font-medium text-tenue"
+        >
+          {accion}
+        </button>
+      ) : (
+        <BotonBiometrico onCompletar={onAccion}>{accion}</BotonBiometrico>
+      )}
     </article>
   )
 }

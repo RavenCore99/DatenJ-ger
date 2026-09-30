@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import Panel, { Aviso, CabeceraPagina, Esqueleto, EstadoError, Pill } from '../components/Panel.jsx'
+import ConmutadorNotificaciones from '../components/ConmutadorNotificaciones.jsx'
+import { CampoSuave, FormularioSuave } from '../components/FormularioSuave.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
@@ -137,26 +139,13 @@ function Apariencia() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-borde pt-4">
-        <div>
-          <p className="text-cuerpo-md">Animaciones y transiciones</p>
-          <p className="text-cuerpo-sm text-tenue">
-            Desactivarlas reduce el movimiento en toda la aplicación.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={alternarAnimaciones}
-          aria-pressed={animaciones}
-          className={[
-            'rounded-lg border px-3 py-2 text-etiqueta-md font-medium transition-colors',
-            animaciones
-              ? 'border-primario/40 bg-primario/5 text-primario'
-              : 'border-borde text-tenue hover:border-primario hover:text-primario',
-          ].join(' ')}
-        >
-          {animaciones ? 'Activadas' : 'Desactivadas'}
-        </button>
+      <div className="border-t border-borde pt-4">
+        <ConmutadorNotificaciones
+          activo={animaciones}
+          onCambiar={() => alternarAnimaciones()}
+          etiqueta="Animaciones y transiciones"
+          descripcion="Desactivarlas reduce el movimiento en toda la aplicación."
+        />
       </div>
     </div>
   )
@@ -427,22 +416,22 @@ function CambiarContrasena({ tieneSegundoFactor, onCambio }) {
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={enviar}>
-      <Campo
+    <FormularioSuave onSubmit={enviar}>
+      <CampoSuave
         etiqueta="Contraseña actual"
         tipo="password"
         valor={actual}
         onCambio={setActual}
         autoComplete="current-password"
       />
-      <Campo
+      <CampoSuave
         etiqueta="Nueva contraseña"
         tipo="password"
         valor={nueva}
         onCambio={setNueva}
         autoComplete="new-password"
       />
-      <Campo
+      <CampoSuave
         etiqueta="Repite la nueva contraseña"
         tipo="password"
         valor={repetida}
@@ -468,7 +457,7 @@ function CambiarContrasena({ tieneSegundoFactor, onCambio }) {
           inhabilitado={corta || distinto || !actual || !codigo}
         />
       </div>
-    </form>
+    </FormularioSuave>
   )
 }
 
