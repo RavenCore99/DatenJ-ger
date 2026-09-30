@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DatenJäger v2.1 • Ubaté Minería — Autenticación</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed-variant": "#0039b5",
+            "surface-container-lowest": "#ffffff",
+            "tertiary-container": "#545c72",
+            "surface-bright": "#f8f9ff",
+            "on-error": "#ffffff",
+            "on-primary": "#ffffff",
+            "on-primary-fixed": "#001551",
+            "surface-container": "#e5eeff",
+            "on-tertiary-fixed-variant": "#3f465c",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#434655",
+            "error": "#ba1a1a",
+            "inverse-primary": "#b7c4ff",
+            "surface": "#f8f9ff",
+            "on-secondary": "#ffffff",
+            "surface-tint": "#2151da",
+            "inverse-surface": "#213145",
+            "inverse-on-surface": "#eaf1ff",
+            "on-error-container": "#93000a",
+            "secondary": "#006398",
+            "secondary-container": "#5bb8fe",
+            "secondary-fixed-dim": "#93ccff",
+            "on-secondary-fixed-variant": "#004b73",
+            "surface-dim": "#cbdbf5",
+            "surface-container-low": "#eff4ff",
+            "on-secondary-fixed": "#001d31",
+            "error-container": "#ffdad6",
+            "outline-variant": "#c4c5d7",
+            "primary-container": "#1d4ed8",
+            "on-secondary-container": "#00476e",
+            "primary": "#0037b0",
+            "surface-container-high": "#dce9ff",
+            "on-tertiary": "#ffffff",
+            "primary-fixed-dim": "#b7c4ff",
+            "tertiary-fixed-dim": "#bec6e0",
+            "primary-fixed": "#dce1ff",
+            "surface-variant": "#d3e4fe",
+            "on-primary-container": "#cad3ff",
+            "background": "#f8f9ff",
+            "tertiary": "#3d445a",
+            "surface-container-highest": "#d3e4fe",
+            "secondary-fixed": "#cce5ff",
+            "outline": "#747686",
+            "tertiary-fixed": "#dae2fd",
+            "on-tertiary-container": "#cdd5ef",
+            "on-background": "#0b1c30",
+            "on-tertiary-fixed": "#131b2e"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-sm": "0.5rem",
+            "space-xs": "0.25rem",
+            "gutter": "0.75rem",
+            "space-xl": "2rem",
+            "space-md": "0.75rem",
+            "margin": "1rem",
+            "space-lg": "1.25rem"
+          },
+          "fontFamily": {
+            "telemetry-mono": ["JetBrains Mono"],
+            "body-md": ["Inter"],
+            "label-sm": ["Inter"],
+            "display-hero": ["Space Grotesk"],
+            "body-lg": ["Inter"],
+            "telemetry-code": ["JetBrains Mono"],
+            "headline-sm": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "label-md": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-lg": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "telemetry-mono": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "500" }],
+            "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+            "body-lg": ["15px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "telemetry-code": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "600" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #c4c5d7;
+      border-radius: 9999px;
+    }
+    .mesh-subtle {
+      background-color: #f8f9ff;
+      background-image: 
+        radial-gradient(at 15% 15%, rgba(220, 233, 255, 0.7) 0px, transparent 55%),
+        radial-gradient(at 85% 85%, rgba(229, 238, 255, 0.8) 0px, transparent 60%);
+    }
+  </style>
+</head>
+<body class="h-full bg-surface-dim font-body-md text-on-surface antialiased flex items-center justify-center p-3 select-none overflow-hidden">
+<!-- macOS Native Window Container Shell -->
+<div class="w-full max-w-[1240px] h-[94vh] max-h-[880px] bg-surface-container-lowest rounded-[16px] border border-outline-variant/60 shadow-[0_12px_40px_-8px_rgba(11,28,48,0.12)] flex flex-col overflow-hidden relative">
+<!-- Window Chrome / Mac Header -->
+<header class="h-11 bg-surface-container-low/80 backdrop-blur-md border-b border-outline-variant/40 px-4 flex items-center justify-between z-30 flex-shrink-0">
+<div class="flex items-center gap-3">
+<!-- Traffic Light Buttons -->
+<div class="flex items-center gap-2 pr-2">
+<button aria-label="Cerrar ventana" class="w-3 h-3 rounded-full bg-[#ff5f57] border border-[#e0443e] hover:brightness-90 transition-all" type="button"></button>
+<button aria-label="Minimizar ventana" class="w-3 h-3 rounded-full bg-[#febc2e] border border-[#d89e24] hover:brightness-90 transition-all" type="button"></button>
+<button aria-label="Expandir ventana" class="w-3 h-3 rounded-full bg-[#28c840] border border-[#1aab29] hover:brightness-90 transition-all" type="button"></button>
+</div>
+<div class="h-3.5 w-px bg-outline-variant/40"></div>
+<!-- Window Title with Security Status -->
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[17px]">lock</span>
+<span class="font-headline-sm text-label-md text-on-surface font-semibold tracking-tight">DatenJäger v2.1</span>
+<span class="text-outline text-label-sm">•</span>
+<span class="font-body-sm text-on-surface-variant">Autenticación de Operador Minero</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-telemetry-mono text-[10px] tracking-wide border border-outline-variant/50">ENC: AES-256-GCM</span>
+</div>
+</div>
+<!-- Quick Link to Welcome Screen & System Indicators -->
+<div class="flex items-center gap-3">
+<a class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-primary hover:bg-surface-container text-label-sm transition-colors duration-150" href="#welcome">
+<span class="material-symbols-outlined text-[15px]">arrow_back</span>
+<span class="font-medium">Volver a Bienvenida</span>
+</a>
+<div class="h-3.5 w-px bg-outline-variant/40"></div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="p-1 rounded hover:bg-surface-container hover:text-on-surface transition-colors" title="Volumen del agente" type="button">
+<span class="material-symbols-outlined text-[17px]">volume_up</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container hover:text-on-surface transition-colors" title="Ajustes de terminal" type="button">
+<span class="material-symbols-outlined text-[17px]">settings</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container hover:text-on-surface transition-colors" title="Layout de panel" type="button">
+<span class="material-symbols-outlined text-[17px]">dock_to_right</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas: Split Layout (Informational & Central Login Card) -->
+<main class="flex-1 flex overflow-hidden mesh-subtle relative">
+<!-- Decorative Ambient Background Watermark -->
+<div class="absolute inset-0 pointer-events-none opacity-[0.035] flex items-center justify-center overflow-hidden">
+<span class="font-display-hero text-[280px] font-extrabold tracking-tighter text-primary">DATENJÄGER</span>
+</div>
+<!-- Left Visual / Regional District Context Sidepane -->
+<section class="hidden lg:flex w-[340px] border-r border-outline-variant/30 flex-col justify-between p-6 bg-surface-container-low/40 backdrop-blur-sm z-10 flex-shrink-0">
+<div>
+<!-- Emblem / District Header -->
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-xl bg-surface-container-high border border-outline-variant/60 flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">domain</span>
+</div>
+<div>
+<p class="font-headline-sm text-body-sm text-on-surface font-semibold leading-tight">Distrito Minero de Ubaté</p>
+<p class="font-telemetry-mono text-[11px] text-on-surface-variant">Cundinamarca • Nodo 04-NOR</p>
+</div>
+</div>
+<!-- Cryptographic Context Bento Tile -->
+<div class="p-4 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/50 shadow-sm space-y-3 mb-4">
+<div class="flex items-center justify-between">
+<span class="font-telemetry-mono text-[11px] text-primary font-semibold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse"></span>
+                GATEWAY LOCAL ACTIVO
+              </span>
+<span class="font-telemetry-mono text-[10px] text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">127.0.0.1:8391</span>
+</div>
+<p class="font-body-sm text-on-surface-variant text-[12px] leading-relaxed">
+              Instancia soberana para el análisis de títulos mineros, auditoría conforme a Ley 1581 y supervisión de regalías carboníferas.
+            </p>
+<div class="pt-2 border-t border-outline-variant/30 flex items-center justify-between font-telemetry-code text-[11px] text-on-surface-variant">
+<span>PBKDF2-HMAC-SHA512</span>
+<span class="text-primary font-medium">600K It</span>
+</div>
+</div>
+<!-- Legal & Privacy Shield Module -->
+<div class="p-3.5 rounded-xl bg-primary-fixed/40 border border-primary-fixed-dim/60 space-y-2">
+<div class="flex items-center gap-2 text-primary font-medium text-label-sm">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+<span>Cumplimiento Ley 1581 / Habeas Data</span>
+</div>
+<p class="font-body-sm text-on-surface-variant text-[11.5px] leading-tight">
+              Los expedientes son procesados en enclave seguro local. La llave simétrica no abandona esta estación.
+            </p>
+</div>
+</div>
+<!-- Left Footer Telemetry Mini-Card -->
+<div class="pt-4 border-t border-outline-variant/30 text-label-sm text-on-surface-variant space-y-1">
+<div class="flex justify-between items-center font-telemetry-mono text-[11px]">
+<span>Operadores Activos:</span>
+<span class="font-medium text-on-surface">3 en turno</span>
+</div>
+<div class="flex justify-between items-center font-telemetry-mono text-[11px]">
+<span>Hardware Sec-Token:</span>
+<span class="text-[#10b981] font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span> Conectado
+            </span>
+</div>
+</div>
+</section>
+<!-- Center & Right: Focused Authentication Stage -->
+<section class="flex-1 flex items-center justify-center p-6 md:p-10 overflow-y-auto custom-scroll z-10">
+<div class="w-full max-w-[480px] bg-surface-container-lowest rounded-2xl border border-outline-variant/70 shadow-[0_8px_30px_rgb(29,78,216,0.06),0_2px_8px_rgba(11,28,48,0.04)] p-8 relative overflow-hidden backdrop-blur-sm">
+<!-- Top subtle electric accent bar -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary-container to-secondary-container"></div>
+<!-- Header & Brand Logo with Image Placeholder -->
+<div class="flex flex-col items-center text-center mb-6">
+<div class="relative mb-3 group">
+<div class="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-primary to-secondary-container shadow-md flex items-center justify-center">
+<img alt="DatenJäger Sistema de Gestión Minero Logo" class="w-full h-full rounded-full object-cover bg-inverse-surface border-2 border-surface-container-lowest" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlbhv3_Oz-pZtc2DSKUYO9-pBqkq9erSN_luPbVLaVa1aqTnNM1NZLNXj2Hp4MGA0v5fQ5__vPQZxPXX71OJJwMiHebqilEG8o9iqcOmkMv93qThuPAXh9AnD1e0TWwZ2uID0SR9PewDVitf3d2IBS43AiFUhN4FosNrCIQCJXZe2AR4Dr_ydn3PGcfvpc35446JQk7MBmmhtlAAMURtqwxgbnm9wwdNkEwTfPSwwM3MU_MZ2NUVEQtrkSlUhNcP8bGQ"/>
+</div>
+<span class="absolute bottom-0 right-0 w-5 h-5 rounded-full bg-[#10b981] border-2 border-surface-container-lowest flex items-center justify-center text-white" title="Enclave Seguro Operativo">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+</div>
+<!-- Title & Subtitle -->
+<h1 class="font-display-hero text-headline-md font-bold text-primary tracking-tight">
+              Iniciar Sesión en DatenJäger
+            </h1>
+<p class="font-body-md text-body-sm text-on-surface-variant mt-1 flex items-center gap-1.5 justify-center">
+<span class="material-symbols-outlined text-[15px] text-secondary">token</span>
+<span>Bóveda local segura • Sector Minero de Ubaté</span>
+</p>
+</div>
+<!-- Form Fields -->
+<form class="space-y-4" onsubmit="event.preventDefault();">
+<!-- Campo 1: Identificador / Cédula -->
+<div class="space-y-1.5 text-left">
+<label class="block font-label-md text-label-sm text-on-surface font-semibold" for="cedula-input">
+                Identificador / Cédula de Ciudadanía
+              </label>
+<div class="relative flex items-center">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">badge</span>
+</div>
+<input class="w-full pl-9.5 pr-4 py-2 bg-surface-container-low/60 border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner font-body-md" id="cedula-input" name="operator_id" placeholder="Ingrese número de documento" type="text" value="79.845.210 (Ing. Carlos Mendoza)"/>
+<span class="absolute right-3 font-telemetry-mono text-[10px] text-primary px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/40">ROL: AUDITOR</span>
+</div>
+</div>
+<!-- Campo 2: Contraseña Maestra de Bóveda -->
+<div class="space-y-1.5 text-left">
+<div class="flex items-center justify-between">
+<label class="block font-label-md text-label-sm text-on-surface font-semibold" for="vault-password">
+                  Contraseña Maestra de Bóveda
+                </label>
+<span class="font-telemetry-mono text-[10.5px] text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span> PBKDF2 Verificado
+                </span>
+</div>
+<div class="relative flex items-center">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">key</span>
+</div>
+<input class="w-full pl-9.5 pr-10 py-2 bg-surface-container-low/60 border border-outline-variant rounded-lg text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner font-telemetry-code tracking-widest" id="vault-password" name="vault_key" placeholder="Contraseña criptográfica" type="password" value="••••••••••••••••••••••••"/>
+<button aria-label="Revelar u ocultar contraseña" class="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-on-surface transition-colors" id="toggle-password" onclick="const input = document.getElementById('vault-password'); input.type = input.type === 'password' ? 'text' : 'password';" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+</div>
+</div>
+<!-- Trust Device Checkbox -->
+<div class="flex items-center justify-between pt-1">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary focus:ring-offset-0 focus:ring-1" type="checkbox"/>
+<span class="font-body-sm text-[12.5px] text-on-surface-variant">
+                  Confiar en este equipo durante 12 horas <span class="text-primary font-medium">(Token seguro)</span>
+</span>
+</label>
+</div>
+<!-- Primary Action Button -->
+<div class="pt-2">
+<button class="w-full py-2.5 px-4 bg-primary hover:bg-[#1541c4] active:scale-[0.99] text-surface-container-lowest font-headline-sm text-label-md font-semibold rounded-lg shadow-sm shadow-primary/20 flex items-center justify-center gap-2 transition-all duration-150" type="submit">
+<span>Continuar a Verificación 2FA / TOTP</span>
+<span class="material-symbols-outlined text-[17px]">arrow_forward</span>
+</button>
+</div>
+<!-- Secondary Actions -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-outline-variant/30 text-center">
+<a class="font-body-sm text-[12px] text-primary hover:underline font-medium" href="#backup-codes">
+                ¿Olvidó su contraseña maestra? Use Códigos de Respaldo
+              </a>
+<a class="font-body-sm text-[12px] text-on-surface-variant hover:text-on-surface font-medium flex items-center gap-1" href="#register">
+<span class="material-symbols-outlined text-[14px]">person_add</span>
+<span>Registrar nuevo operador</span>
+</a>
+</div>
+<!-- Security & Compliance Callout Notice -->
+<div class="mt-4 p-3 rounded-lg bg-surface-container-low border border-outline-variant/50 flex items-start gap-2.5 text-left">
+<span class="material-symbols-outlined text-primary text-[18px] flex-shrink-0 mt-0.5">shield</span>
+<div class="text-[11.5px] leading-tight text-on-surface-variant font-body-sm">
+<span class="font-semibold text-on-surface">Ley 1581 de 2012 / Hábeas Data:</span>
+                Sus credenciales se derivan localmente con 600,000 rondas PBKDF2. Ninguna clave viaja por la red.
+              </div>
+</div>
+</form>
+<!-- Interactive Quick Switcher of Local Profiles -->
+<div class="mt-5 pt-3.5 border-t border-outline-variant/30 flex items-center justify-between text-label-sm">
+<span class="font-telemetry-mono text-[10.5px] text-on-surface-variant uppercase tracking-wider">Perfiles en este nodo</span>
+<div class="flex items-center gap-1.5">
+<button class="px-2 py-0.5 rounded text-[11px] font-telemetry-mono bg-surface-container-high text-primary font-medium hover:bg-surface-variant transition-colors" type="button">
+                C. Mendoza
+              </button>
+<button class="px-2 py-0.5 rounded text-[11px] font-telemetry-mono bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" type="button">
+                M. Suárez (Audit)
+              </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- macOS Telemetry Status Strip Tray -->
+<footer class="h-8 bg-surface-container-lowest border-t border-outline-variant/50 px-4 flex items-center justify-between font-telemetry-mono text-telemetry-mono text-on-surface-variant flex-shrink-0 z-30">
+<!-- Left Telemetry Cluster -->
+<div class="flex items-center gap-4">
+<span class="flex items-center gap-1 font-semibold text-on-surface">
+<span class="text-primary font-bold">⌘</span> Hermes Local Hub
+        </span>
+<span class="h-3 w-px bg-outline-variant/50"></span>
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="w-2 h-2 rounded-full bg-[#10b981] inline-block"></span>
+<span>Gateway ready</span>
+</span>
+<span class="h-3 w-px bg-outline-variant/50"></span>
+<span class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors cursor-default">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span>Agents: 4 cargados</span>
+</span>
+<span class="h-3 w-px bg-outline-variant/50"></span>
+<span class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface transition-colors cursor-default">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>Cron: Sincronización ANM</span>
+</span>
+</div>
+<!-- Right Telemetry Cluster -->
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px]">memory</span>
+<span>glm-5.1 ollama-cloud</span>
+</span>
+<span class="h-3 w-px bg-outline-variant/50"></span>
+<span class="text-primary font-semibold hover:underline cursor-pointer">
+          # v0.15.1 (+2)
+        </span>
+<span class="h-3 w-px bg-outline-variant/50"></span>
+<span class="font-telemetry-code text-[11px] text-outline">
+          79bfddd
+        </span>
+</div>
+</footer>
+</div>
+</body></html>

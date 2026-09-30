@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hermes Desktop Settings - DatenJäger v2.1</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Space+Grotesk:wght@100..900&display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface": "#f8f9ff",
+            "secondary-container": "#5bb8fe",
+            "inverse-on-surface": "#eaf1ff",
+            "background": "#f8f9ff",
+            "on-primary": "#ffffff",
+            "secondary-fixed": "#cce5ff",
+            "on-secondary-fixed-variant": "#004b73",
+            "tertiary": "#3d445a",
+            "secondary-fixed-dim": "#93ccff",
+            "primary-fixed-dim": "#b7c4ff",
+            "surface-bright": "#f8f9ff",
+            "on-primary-fixed-variant": "#0039b5",
+            "tertiary-container": "#545c72",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#434655",
+            "on-tertiary-fixed": "#131b2e",
+            "inverse-primary": "#b7c4ff",
+            "primary": "#0037b0",
+            "on-error-container": "#93000a",
+            "primary-container": "#1d4ed8",
+            "on-secondary": "#ffffff",
+            "error-container": "#ffdad6",
+            "surface-variant": "#d3e4fe",
+            "surface-container": "#e5eeff",
+            "on-secondary-container": "#00476e",
+            "on-tertiary": "#ffffff",
+            "tertiary-fixed": "#dae2fd",
+            "surface-tint": "#2151da",
+            "surface-dim": "#cbdbf5",
+            "primary-fixed": "#dce1ff",
+            "outline": "#747686",
+            "on-secondary-fixed": "#001d31",
+            "tertiary-fixed-dim": "#bec6e0",
+            "on-primary-container": "#cad3ff",
+            "on-background": "#0b1c30",
+            "inverse-surface": "#213145",
+            "surface-container-highest": "#d3e4fe",
+            "error": "#ba1a1a",
+            "surface-container-low": "#eff4ff",
+            "surface-container-high": "#dce9ff",
+            "on-tertiary-container": "#cdd5ef",
+            "on-primary-fixed": "#001551",
+            "surface-container-lowest": "#ffffff",
+            "on-error": "#ffffff",
+            "secondary": "#006398",
+            "on-tertiary-fixed-variant": "#3f465c",
+            "outline-variant": "#c4c5d7"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "space-xs": "0.25rem",
+            "space-lg": "1.25rem",
+            "margin": "1rem",
+            "space-xl": "2rem",
+            "space-sm": "0.5rem",
+            "space-md": "0.75rem",
+            "gutter": "0.75rem"
+          },
+          "fontFamily": {
+            "telemetry-mono": ["JetBrains Mono"],
+            "body-lg": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-sm": ["Space Grotesk"],
+            "label-md": ["Inter"],
+            "telemetry-code": ["JetBrains Mono"],
+            "body-md": ["Inter"],
+            "headline-lg": ["Space Grotesk"],
+            "label-sm": ["Inter"],
+            "headline-md": ["Space Grotesk"],
+            "display-hero": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "telemetry-mono": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "body-lg": ["15px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-sm": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+            "telemetry-code": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "body-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "500" }],
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c4c5d7;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #747686;
+    }
+  </style>
+</head>
+<body class="h-full bg-surface text-on-surface antialiased select-none overflow-hidden p-3 flex flex-col justify-center items-center">
+<!-- Desktop App Window Shell (Electron Frame) -->
+<div class="w-full max-w-[1440px] h-[96vh] bg-surface-container-lowest rounded-xl shadow-2xl flex flex-col overflow-hidden border border-surface-variant/70">
+<!-- macOS Window Chrome / Top Header -->
+<header class="h-11 bg-surface-container-low border-b border-surface-variant flex items-center justify-between px-4 shrink-0 select-none">
+<div class="flex items-center gap-3">
+<!-- Traffic Light Buttons -->
+<div class="flex items-center gap-2 mr-2">
+<span class="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e]/40 inline-block shadow-sm"></span>
+<span class="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123]/40 inline-block shadow-sm"></span>
+<span class="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29]/40 inline-block shadow-sm"></span>
+</div>
+<!-- Breadcrumbs & Window Title -->
+<div class="flex items-center gap-2 text-body-sm font-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary-container text-sm" data-icon="folder_open">folder_open</span>
+<span class="font-semibold text-on-surface">DatenJäger v2.1 • Ubaté Minería</span>
+<span class="text-outline-variant">/</span>
+<span class="text-primary font-medium">Configuración & Preferencias</span>
+</div>
+</div>
+<!-- Quick Search & Top Actions -->
+<div class="flex items-center gap-3">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2.5 text-outline text-sm pointer-events-none" data-icon="search">search</span>
+<input class="h-7 w-64 bg-surface-container-lowest border border-outline-variant rounded-md pl-8 pr-2.5 text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container" placeholder="Search settings... ⌘K" type="text"/>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="h-7 px-2.5 rounded-md hover:bg-surface-container-high flex items-center gap-1.5 text-label-sm font-label-sm text-primary-container font-semibold transition-colors">
+<span class="material-symbols-outlined text-xs" data-icon="terminal">terminal</span>
+<span>AES-256-GCM</span>
+</button>
+<button class="w-7 h-7 flex items-center justify-center rounded-md hover:bg-surface-container-high transition-colors" title="Cerrar Ajustes">
+<span class="material-symbols-outlined text-sm" data-icon="close">close</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Body: Split Sidebar & Content -->
+<div class="flex flex-1 min-h-0 overflow-hidden">
+<!-- Sidebar Settings Navigation (Hermes Structure) -->
+<aside class="w-60 bg-surface-container-low border-r border-surface-variant flex flex-col justify-between shrink-0 select-none overflow-y-auto">
+<!-- Settings Category List -->
+<div class="p-2 space-y-0.5">
+<div class="px-2 py-1.5 text-telemetry-mono font-telemetry-mono text-outline uppercase tracking-wider">Configuración Hermes</div>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span>Model</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat_bubble">chat_bubble</span>
+<span>Chat</span>
+</a>
+<!-- ACTIVE ITEM: Appearance -->
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md bg-surface-container-lowest text-primary-container font-semibold shadow-sm border border-outline-variant/40" href="#">
+<span class="material-symbols-outlined text-primary-container" data-icon="palette" style="font-variation-settings: 'FILL' 1;">palette</span>
+<span>Appearance</span>
+<span class="ml-auto w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="workspaces">workspaces</span>
+<span>Workspace</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+<span>Safety</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="language">language</span>
+<span>Browser</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#passwords">
+<span class="material-symbols-outlined" data-icon="key">key</span>
+<span>Passwords & Logins</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+<span>Memory & Context</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+<span>Voice</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+<span>Advanced</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span>Notifications</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="credit_card">credit_card</span>
+<span>Billing</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span>Providers</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="router">router</span>
+<span>Gateways</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="keyboard">keyboard</span>
+<span>Keyboard Shortcuts</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="extension">extension</span>
+<span>Tools & Keys</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="archive">archive</span>
+<span>Archived Chats</span>
+</a>
+<a class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-label-md font-label-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+<span>About</span>
+</a>
+</div>
+<!-- Sidebar Footer Action Buttons (Hermes Bottom Dock) -->
+<div class="p-3 border-t border-surface-variant bg-surface-container-low/70 flex gap-2">
+<button class="flex-1 h-8 rounded border border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 text-label-sm font-label-sm transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="file_download">file_download</span>
+<span>Export</span>
+</button>
+<button class="flex-1 h-8 rounded border border-outline-variant bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 text-label-sm font-label-sm transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="file_upload">file_upload</span>
+<span>Import</span>
+</button>
+</div>
+</aside>
+<!-- Main Canvas: Appearance & Settings Content -->
+<main class="flex-1 min-w-0 overflow-y-auto bg-surface p-8 space-y-8">
+<!-- Header Section -->
+<section class="border-b border-surface-variant pb-6">
+<div class="flex items-start justify-between">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Appearance</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+                Desktop-only. Mode is brightness; theme is palette and chat chrome.
+              </p>
+</div>
+<!-- Reference Indicator Badge -->
+<div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/60">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-telemetry-mono text-telemetry-mono text-primary font-semibold">Hermes Engine v2.1</span>
+</div>
+</div>
+</section>
+<!-- General Appearance Controls Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Language Selector -->
+<div class="bg-surface-container-lowest p-5 rounded-lg border border-surface-variant shadow-sm space-y-3">
+<label class="block font-headline-sm text-headline-sm text-on-surface">Language / Idioma</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Seleccione la localización jurídica y terminología minera regional.</p>
+<div class="relative">
+<select class="w-full appearance-none h-10 bg-surface-container-low border border-outline-variant rounded-md px-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container cursor-pointer">
+<option selected="">Español Minero (Ubaté)</option>
+<option>Español Estándar (Colombia - ANM)</option>
+<option>English (US Intelligence)</option>
+<option>Deutsch (DatenJäger Native)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<!-- Brightness Mode Selector -->
+<div class="bg-surface-container-lowest p-5 rounded-lg border border-surface-variant shadow-sm space-y-3">
+<label class="block font-headline-sm text-headline-sm text-on-surface">Mode</label>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Ajuste la luminancia de la interfaz de auditoría y visualización.</p>
+<div class="grid grid-cols-3 gap-2 bg-surface-container-low p-1 rounded-md border border-outline-variant">
+<!-- Selected: Light Mode -->
+<button class="h-8 rounded bg-primary-container text-on-primary font-label-md text-label-md flex items-center justify-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="light_mode">light_mode</span>
+<span>Light</span>
+</button>
+<!-- Dark Mode -->
+<button class="h-8 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="dark_mode">dark_mode</span>
+<span>Dark</span>
+</button>
+<!-- System Default -->
+<button class="h-8 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-label-md text-label-md flex items-center justify-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="desktop_windows">desktop_windows</span>
+<span>System</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Theme Gallery / Preset Matrix Section -->
+<section class="space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Themes & Visual Palettes</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Selecciona un esquema cromatico para los buffers de auditoría y chat Hermes.</p>
+</div>
+<!-- Search theme marketplace -->
+<div class="relative w-full sm:w-80">
+<span class="material-symbols-outlined absolute left-3 top-2 text-outline text-sm pointer-events-none" data-icon="manage_search">manage_search</span>
+<input class="w-full h-8 pl-9 pr-3 bg-surface-container-lowest border border-outline-variant rounded-md text-body-sm font-body-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container" placeholder="Search your themes or the VS Code Marketplace..." type="text"/>
+</div>
+</div>
+<!-- Theme Cards Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+<!-- 1. Active Theme: Nous / DatenJäger Blue -->
+<div class="group relative rounded-xl border-2 border-primary-container bg-surface-container-lowest p-3 shadow-md transition-all hover:shadow-lg flex flex-col justify-between">
+<div class="space-y-2.5">
+<!-- Theme Visual Mockup -->
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant relative bg-[#f8fafc]">
+<!-- Injected Reference Mini Image -->
+<img alt="Preview de Nous DatenJäger Blue" class="w-full h-full object-cover object-left-top opacity-90 group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida/AEtjO1Wn5aE_TjX85nojactLXz50jp4KoOIHkrLNLszU8Hr_N8UdybgfMgBiuFGCE15dEzUrBV645G7JkeQ55gTAYUizpSeY0SGTyDrYKL_tRUyrbl9jPf5VdxX-6tlAmp6lut4EGmjcX0AZU34nLW6QqePfdOAsnBd5v8EaRq03CrrGv-gWL5jIrAXFvdQrctbqGy8VQV7Oh8_ofyhdxrJzAxip3X3b0AcRAdRbNQ78FoJlWTVL-vhzIg4Kcjr6bfvVUNkX4Q-aweRI6g"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary-container/10 to-transparent pointer-events-none"></div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-primary">Nous / DatenJäger Blue</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Light • High Contrast Minería</span>
+</div>
+<span class="flex items-center justify-center w-6 h-6 rounded-full bg-primary-container text-on-primary shadow-sm" title="Tema Activo">
+<span class="material-symbols-outlined text-sm font-bold" data-icon="check">check</span>
+</span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-primary font-medium">
+<span>Instalado • Activo</span>
+<span>v2.1.0</span>
+</div>
+</div>
+<!-- 2. GitHub Light Default -->
+<div class="group relative rounded-xl border border-surface-variant hover:border-outline bg-surface-container-lowest p-3 shadow-sm transition-all hover:shadow flex flex-col justify-between cursor-pointer">
+<div class="space-y-2.5">
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant relative bg-white">
+<img alt="Preview de GitHub Light Default" class="w-full h-full object-cover object-left-top opacity-85 group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida/AEtjO1WJRD_q75UGnIBo0HhhM2ADCcovdsPPbtu6FExsejO-V-TlUpRUT-zZlYHK7gzhRyJOQwuvQ0xDNkSizRjIz-gR3Qj0h6J6qhqHDgosXyTSvQV3KnbvBoMaaOH2q7fWSQG8XJNsvC2Rl8xF6I6ElWdON-Xbs9LdIkFVsZYbyEf_t5GY0ZCO3ytGoCUw3cplY7OtDkI3gb7gu7-aBTPakgwalxunHHFg2Ggylxq4aEx2z9O_6Etk5TX0X5PTzE3K6NinUEvEcasF"/>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-on-surface">GitHub Light Default</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Official GitHub Palette</span>
+</div>
+<span class="w-5 h-5 rounded-full border border-outline-variant"></span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-on-surface-variant">
+<span>VS Code Bundled</span>
+<span class="hover:text-primary transition-colors">Activar</span>
+</div>
+</div>
+<!-- 3. Catppuccin Latte -->
+<div class="group relative rounded-xl border border-surface-variant hover:border-outline bg-surface-container-lowest p-3 shadow-sm transition-all hover:shadow flex flex-col justify-between cursor-pointer">
+<div class="space-y-2.5">
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant relative bg-[#eff1f5] flex items-center justify-center">
+<img alt="Preview de Catppuccin Latte" class="w-full h-full object-cover object-top opacity-80 group-hover:scale-105 transition-transform duration-300" src="https://lh3.googleusercontent.com/aida/AEtjO1Wf5Kblj4XEEawBzrNfwl356_plLcp-J3ts6sjgVZCOLG0oNO6S7WMGH9lexrMAdE7lCvC2MYT8FBp_CnGG6D2nttltL7iIpkYaa30Z2EYiTHw-tL_3NEquoPApj6uWo-n25bmbFkzfPXf3GKX8AsrNiyKR7a66Sh5DvvH9sqntNtI_avRCaUwWB0eem-gteeHFhuHTG_P6_mcnpWjAUNlRD3Q4JSrvFDNDJgr-tpRfTaQmxeeT-0S-h3Fxo3fyKLt4QgWB5sSQpg"/>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-on-surface">Catppuccin Latte</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Soothing Warm Pastels</span>
+</div>
+<span class="w-5 h-5 rounded-full border border-outline-variant"></span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-on-surface-variant">
+<span>Community Preset</span>
+<span class="hover:text-primary transition-colors">Activar</span>
+</div>
+</div>
+<!-- 4. Everforest Warm -->
+<div class="group relative rounded-xl border border-surface-variant hover:border-outline bg-surface-container-lowest p-3 shadow-sm transition-all hover:shadow flex flex-col justify-between cursor-pointer">
+<div class="space-y-2.5">
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant bg-[#fdf6e3] p-3 flex flex-col justify-between">
+<div class="flex gap-2">
+<span class="h-3 w-8 rounded bg-[#8da101]/40"></span>
+<span class="h-3 w-12 rounded bg-[#dfa000]/40"></span>
+<span class="h-3 w-6 rounded bg-[#3a94c5]/40"></span>
+</div>
+<div class="p-2 bg-white/70 rounded border border-[#e0dcce] text-telemetry-mono text-telemetry-mono text-[#5c6a72]">
+                    const mine = "Ubaté Basin";
+                  </div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-on-surface">Everforest Warm</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Natural Organic Light</span>
+</div>
+<span class="w-5 h-5 rounded-full border border-outline-variant"></span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-on-surface-variant">
+<span>Marketplace</span>
+<span class="hover:text-primary transition-colors">Activar</span>
+</div>
+</div>
+<!-- 5. Emerald Mining Ubaté -->
+<div class="group relative rounded-xl border border-surface-variant hover:border-outline bg-surface-container-lowest p-3 shadow-sm transition-all hover:shadow flex flex-col justify-between cursor-pointer">
+<div class="space-y-2.5">
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant bg-[#f0fdf4] p-3 flex flex-col justify-between">
+<div class="flex gap-2">
+<span class="h-3 w-10 rounded bg-[#10b981]/50"></span>
+<span class="h-3 w-8 rounded bg-[#059669]/40"></span>
+<span class="h-3 w-12 rounded bg-[#047857]/30"></span>
+</div>
+<div class="p-2 bg-white/80 rounded border border-[#bbf7d0] text-telemetry-mono text-telemetry-mono text-[#065f46]">
+                    Ley1581::SecurityAudit();
+                  </div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-on-surface">Emerald Mining Ubaté</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Regional Mineral Theme</span>
+</div>
+<span class="w-5 h-5 rounded-full border border-outline-variant"></span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-on-surface-variant">
+<span>Cluster Ubaté Edition</span>
+<span class="hover:text-primary transition-colors">Activar</span>
+</div>
+</div>
+<!-- 6. Cosmic Precision -->
+<div class="group relative rounded-xl border border-surface-variant hover:border-outline bg-surface-container-lowest p-3 shadow-sm transition-all hover:shadow flex flex-col justify-between cursor-pointer">
+<div class="space-y-2.5">
+<div class="h-28 rounded-lg overflow-hidden border border-outline-variant bg-[#f1f5f9] p-3 flex flex-col justify-between">
+<div class="flex gap-2">
+<span class="h-3 w-6 rounded bg-[#6366f1]/50"></span>
+<span class="h-3 w-14 rounded bg-[#3b82f6]/40"></span>
+<span class="h-3 w-8 rounded bg-[#9333ea]/30"></span>
+</div>
+<div class="p-2 bg-white/90 rounded border border-[#cbd5e1] text-telemetry-mono text-telemetry-mono text-[#334155]">
+                    Hermes::Inference(stream=True)
+                  </div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div>
+<h3 class="font-headline-sm text-body-md font-semibold text-on-surface">Cosmic Precision</h3>
+<span class="font-telemetry-mono text-telemetry-mono text-outline">Telemetry Scandinavian</span>
+</div>
+<span class="w-5 h-5 rounded-full border border-outline-variant"></span>
+</div>
+</div>
+<div class="mt-3 pt-2 border-t border-surface-variant flex items-center justify-between text-telemetry-mono text-telemetry-mono text-on-surface-variant">
+<span>Experimental</span>
+<span class="hover:text-primary transition-colors">Activar</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Lower Section: Passwords & Logins Vault Preview -->
+<section class="pt-4 border-t border-surface-variant space-y-4" id="passwords">
+<div class="flex items-center justify-between">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="lock">lock</span>
+<span>Passwords & Logins Integration</span>
+</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Conexión con gestores de credenciales y llaves de acceso para el cluster de Ubaté.</p>
+</div>
+<button class="h-8 px-3 rounded-md bg-primary-container text-on-primary text-label-md font-label-md font-medium hover:bg-primary transition-colors shadow-sm">
+              Configurar Bóvedas
+            </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- 1Password & Bitwarden Integration Status -->
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-surface-variant space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" data-icon="vpn_key">vpn_key</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">CLI Credential Providers</span>
+</div>
+<span class="px-2 py-0.5 rounded text-telemetry-mono text-telemetry-mono bg-surface-container text-outline">Local Daemon</span>
+</div>
+<!-- Item 1: 1Password -->
+<div class="p-2.5 rounded border border-outline-variant/60 bg-surface flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">1P</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">1Password CLI (op)</div>
+<div class="font-telemetry-mono text-telemetry-mono text-on-surface-variant">Not detected - Install CLI tool</div>
+</div>
+</div>
+<button class="text-label-sm font-label-sm text-primary hover:underline">Docs</button>
+</div>
+<!-- Item 2: Bitwarden -->
+<div class="p-2.5 rounded border border-outline-variant/60 bg-surface flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="w-6 h-6 rounded bg-sky-100 text-sky-800 flex items-center justify-center font-bold text-xs">BW</span>
+<div>
+<div class="font-body-sm text-body-sm font-medium text-on-surface">Bitwarden CLI (bw)</div>
+<div class="font-telemetry-mono text-telemetry-mono text-on-surface-variant">Not detected - Install CLI tool</div>
+</div>
+</div>
+<button class="text-label-sm font-label-sm text-primary hover:underline">Docs</button>
+</div>
+</div>
+<!-- DatenJäger Master Vault -->
+<div class="bg-surface-container-lowest p-4 rounded-lg border border-surface-variant flex flex-col justify-between">
+<div class="space-y-2.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="security">security</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">Bóveda Criptográfica Local</span>
+</div>
+<span class="px-2 py-0.5 rounded text-telemetry-mono text-telemetry-mono bg-emerald-100 text-emerald-800 font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    PBKDF2 Enforced
+                  </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                  Cifrado de credenciales de operadores de mina y tokens API de Hermes con llave de hardware YubiKey 5 NFC vinculada.
+                </p>
+<div class="font-telemetry-mono text-telemetry-mono text-outline bg-surface-container-low p-2 rounded border border-surface-variant">
+                  Slot: 0x8892 • Salt Iterations: 600,000 • Status: Hardware Key Ready
+                </div>
+</div>
+<div class="pt-3 flex items-center justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Oficial de Seguridad: Certificado</span>
+<button class="text-primary font-semibold hover:underline flex items-center gap-1">
+<span>Probar Llave</span>
+<span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Telemetry Status Strip / Footer -->
+<footer class="h-8 bg-surface-container-lowest border-t border-surface-variant flex items-center justify-between px-4 text-telemetry-mono font-telemetry-mono text-on-surface-variant shrink-0 select-none">
+<!-- Left cluster -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-xs" data-icon="keyboard_command_key">keyboard_command_key</span>
+<span class="text-on-surface font-semibold">Gateway ready</span>
+<span class="w-2 h-2 rounded-full bg-[#10b981] inline-block"></span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<span class="text-outline">Ollama local:</span>
+<span class="text-on-surface font-medium">3.2b listo</span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-primary-container" data-icon="verified_user">verified_user</span>
+<span>AES-256-GCM Hardware Vault</span>
+</div>
+</div>
+<!-- Right cluster -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1 text-outline">
+<span>Ubaté Cluster Node 04</span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1 font-semibold text-primary">
+<span># v2.1 (light)</span>
+</div>
+<div class="h-3.5 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-xs" data-icon="tag">tag</span>
+<span>git:79bfddd</span>
+</div>
+</div>
+</footer>
+</div>
+</body></html>

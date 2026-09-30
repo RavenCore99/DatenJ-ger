@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+
+<html class="h-full bg-surface" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DatenJäger v2.1 • Ubaté Minería - Panel de Auditoría Forense</title>
+<!-- Fonts: Space Grotesk, Inter, JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "surface": "#f8f9ff",
+          "secondary-container": "#5bb8fe",
+          "inverse-on-surface": "#eaf1ff",
+          "background": "#f8f9ff",
+          "on-primary": "#ffffff",
+          "secondary-fixed": "#cce5ff",
+          "on-secondary-fixed-variant": "#004b73",
+          "tertiary": "#3d445a",
+          "secondary-fixed-dim": "#93ccff",
+          "primary-fixed-dim": "#b7c4ff",
+          "surface-bright": "#f8f9ff",
+          "on-primary-fixed-variant": "#0039b5",
+          "tertiary-container": "#545c72",
+          "on-surface": "#0b1c30",
+          "on-surface-variant": "#434655",
+          "on-tertiary-fixed": "#131b2e",
+          "inverse-primary": "#b7c4ff",
+          "primary": "#0037b0",
+          "on-error-container": "#93000a",
+          "primary-container": "#1d4ed8",
+          "on-secondary": "#ffffff",
+          "error-container": "#ffdad6",
+          "surface-variant": "#d3e4fe",
+          "surface-container": "#e5eeff",
+          "on-secondary-container": "#00476e",
+          "on-tertiary": "#ffffff",
+          "tertiary-fixed": "#dae2fd",
+          "surface-tint": "#2151da",
+          "surface-dim": "#cbdbf5",
+          "primary-fixed": "#dce1ff",
+          "outline": "#747686",
+          "on-secondary-fixed": "#001d31",
+          "tertiary-fixed-dim": "#bec6e0",
+          "on-primary-container": "#cad3ff",
+          "on-background": "#0b1c30",
+          "inverse-surface": "#213145",
+          "surface-container-highest": "#d3e4fe",
+          "error": "#ba1a1a",
+          "surface-container-low": "#eff4ff",
+          "surface-container-high": "#dce9ff",
+          "on-tertiary-container": "#cdd5ef",
+          "on-primary-fixed": "#001551",
+          "surface-container-lowest": "#ffffff",
+          "on-error": "#ffffff",
+          "secondary": "#006398",
+          "on-tertiary-fixed-variant": "#3f465c",
+          "outline-variant": "#c4c5d7"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-xs": "0.25rem",
+          "space-lg": "1.25rem",
+          "margin": "1rem",
+          "space-xl": "2rem",
+          "space-sm": "0.5rem",
+          "space-md": "0.75rem",
+          "gutter": "0.75rem"
+        },
+        "fontFamily": {
+          "telemetry-mono": ["JetBrains Mono"],
+          "body-lg": ["Inter"],
+          "body-sm": ["Inter"],
+          "headline-sm": ["Space Grotesk"],
+          "label-md": ["Inter"],
+          "telemetry-code": ["JetBrains Mono"],
+          "body-md": ["Inter"],
+          "headline-lg": ["Space Grotesk"],
+          "label-sm": ["Inter"],
+          "headline-md": ["Space Grotesk"],
+          "display-hero": ["Space Grotesk"]
+        },
+        "fontSize": {
+          "telemetry-mono": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+          "body-lg": ["15px", { "lineHeight": "24px", "fontWeight": "400" }],
+          "body-sm": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+          "headline-sm": ["16px", { "lineHeight": "22px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+          "label-md": ["13px", { "lineHeight": "18px", "fontWeight": "500" }],
+          "telemetry-code": ["12px", { "lineHeight": "18px", "fontWeight": "400" }],
+          "body-md": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+          "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+          "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "500" }],
+          "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+          "display-hero": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.04em", "fontWeight": "700" }]
+        }
+      }
+    }
+  }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      vertical-align: middle;
+      display: inline-block;
+      line-height: 1;
+    }
+    /* Smooth custom scrollbars for audit table and logs */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #eff4ff;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c4c5d7;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #747686;
+    }
+  </style>
+</head>
+<body class="h-full font-body-md text-body-md text-on-surface bg-surface overflow-hidden antialiased select-none">
+<!-- Desktop Outer Window Frame (Radius 16px, macOS Chrome Container) -->
+<div class="h-screen w-screen flex flex-col bg-surface-container-lowest overflow-hidden border border-outline-variant/60 shadow-2xl">
+<!-- macOS Window Chrome & TopNavBar Shared Component -->
+<header class="flex justify-between items-center w-full px-4 select-none h-11 bg-surface-container-low border-b border-outline-variant/40 shrink-0 z-50">
+<!-- Window Controls (Traffic Lights) & Regional Identification -->
+<div class="flex items-center gap-4">
+<!-- macOS Traffic Lights -->
+<div class="flex items-center gap-2 pr-2">
+<span class="w-3 h-3 rounded-full bg-[#ff5f56] border border-[#e0443e] inline-block cursor-pointer hover:opacity-80 transition-opacity"></span>
+<span class="w-3 h-3 rounded-full bg-[#ffbd2e] border border-[#dea123] inline-block cursor-pointer hover:opacity-80 transition-opacity"></span>
+<span class="w-3 h-3 rounded-full bg-[#27c93f] border border-[#1aab29] inline-block cursor-pointer hover:opacity-80 transition-opacity"></span>
+</div>
+<!-- Product Name & Brand Identity -->
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+<span class="text-headline-sm font-headline-sm font-bold tracking-tight text-on-surface">DatenJäger v2.1 • Ubaté Minería</span>
+</div>
+</div>
+<!-- TopNavBar Navigation Links (Exact Shared Component Logic: Auditoría 1581 is ACTIVE) -->
+<nav class="hidden md:flex items-center gap-6 h-full text-label-md font-label-md">
+<a class="text-on-surface-variant hover:text-on-surface pb-1 transition-colors" href="#">Expedientes</a>
+<a class="text-on-surface-variant hover:text-on-surface pb-1 transition-colors" href="#">Hermes IA</a>
+<!-- Active Tab: Auditoría 1581 -->
+<a class="text-primary font-medium border-b-2 border-primary-container pb-1 flex items-center gap-1.5" href="#">
+<span>Auditoría 1581</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+</a>
+<a class="text-on-surface-variant hover:text-on-surface pb-1 transition-colors" href="#">Configuración</a>
+</nav>
+<!-- Right Header Actions (Trailing Actions + Security Badge) -->
+<div class="flex items-center gap-3">
+<!-- Badge AES-256-GCM -->
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container-high border border-outline-variant/60 text-primary font-telemetry-mono text-telemetry-mono">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>AES-256-GCM</span>
+</div>
+<!-- Primary Action Button -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary-container text-on-primary font-label-md text-label-md font-medium shadow-sm hover:bg-primary transition-all active:scale-95">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span>Nuevo Expediente</span>
+</button>
+<!-- Trailing Icon Cluster -->
+<div class="flex items-center gap-1 border-l border-outline-variant/60 pl-2">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Consola Terminal">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" title="Ajustes Rápidos">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+<button class="p-1 rounded text-primary hover:text-on-surface hover:bg-surface-container transition-colors" title="Avatar Oficial de Seguridad Minera y Cumplimiento">
+<span class="material-symbols-outlined text-[20px]">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- App Body: SideNavBar + Split Workspace Viewport -->
+<div class="flex-1 flex overflow-hidden relative">
+<!-- SideNavBar Shared Component (DatenJäger OS) -->
+<aside class="w-60 h-full bg-surface-container-low border-r border-outline-variant/50 flex flex-col justify-between p-3 select-none shrink-0 z-30">
+<!-- Sidebar Header & Top Cluster -->
+<div class="flex flex-col gap-4">
+<!-- District Shield & Info Header -->
+<div class="flex items-center gap-2.5 px-2 py-1 bg-surface-container rounded-lg border border-outline-variant/40">
+<div class="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-on-primary shadow-xs">
+<span class="material-symbols-outlined text-[20px]">shield</span>
+</div>
+<div class="flex flex-col overflow-hidden">
+<span class="text-headline-sm font-headline-sm font-bold text-on-surface leading-tight truncate">DatenJäger OS</span>
+<span class="text-label-sm font-label-sm text-on-surface-variant truncate">Cluster Minero v2.1 • Cundinamarca</span>
+</div>
+</div>
+<!-- Primary Navigation Tabs (6 Tabs according to JSON Blueprint) -->
+<nav class="flex flex-col gap-1">
+<!-- 1. Gestión Documental -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+<span class="text-label-md font-label-md flex-1">Gestión Documental</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-telemetry-mono font-telemetry-mono text-on-surface-variant">⌘1</span>
+</a>
+<!-- 2. Titulares Mineros -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">badge</span>
+<span class="text-label-md font-label-md flex-1">Titulares Mineros</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-telemetry-mono font-telemetry-mono text-on-surface-variant">⌘2</span>
+</a>
+<!-- 3. Empresas Mineras -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">corporate_fare</span>
+<span class="text-label-md font-label-md flex-1">Empresas Mineras</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-telemetry-mono font-telemetry-mono text-on-surface-variant">⌘3</span>
+</a>
+<!-- 4. Auditoría Ley 1581 (ACTIVE STATE STRICTLY APPLIED) -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-surface-container-high text-primary font-medium border border-secondary-container/30 shadow-xs" href="#">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+<span class="text-label-md font-label-md flex-1 font-semibold">Auditoría Ley 1581</span>
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+</a>
+<!-- 5. Hermes IA Semantic -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">neurology</span>
+<span class="text-label-md font-label-md flex-1">Hermes IA Semantic</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-telemetry-mono font-telemetry-mono text-on-surface-variant">⌘5</span>
+</a>
+<!-- 6. Ajustes Sistema -->
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="text-label-md font-label-md flex-1">Ajustes Sistema</span>
+</a>
+</nav>
+</div>
+<!-- Sidebar CTA and Footer Actions -->
+<div class="flex flex-col gap-2 pt-3 border-t border-outline-variant/40">
+<!-- CTA Hermes Button -->
+<button class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary-container text-on-primary font-label-md text-label-md font-medium shadow-xs hover:bg-primary transition-all active:scale-95">
+<span class="material-symbols-outlined text-[18px]">neurology</span>
+<span>Consola Hermes</span>
+</button>
+<!-- Footer Secondary Items -->
+<div class="flex flex-col gap-1 mt-1">
+<a class="flex items-center gap-2 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface text-body-sm font-body-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px] text-primary">security</span>
+<span>Seguridad Cripto</span>
+</a>
+<a class="flex items-center gap-2 px-2.5 py-1.5 rounded text-on-surface-variant hover:text-on-surface text-body-sm font-body-sm transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px]">code</span>
+<span>Terminal Gateway</span>
+</a>
+</div>
+<!-- Cryptographic Assurance Pill -->
+<div class="bg-surface-container-lowest p-2 rounded-md border border-outline-variant/40 text-center">
+<span class="text-telemetry-mono font-telemetry-mono text-tertiary text-[10px] block">HMAC-SHA256 • ENFORCED</span>
+<span class="text-telemetry-mono font-telemetry-mono text-primary text-[10px] font-semibold">CUD-MINING-KEYSTORE</span>
+</div>
+</div>
+</aside>
+<!-- Main Canvas Workspace (Audit Log & Forensics Explorer) -->
+<main class="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden">
+<!-- Top Header & Breadcrumbs -->
+<header class="px-6 py-4 bg-surface-container-lowest border-b border-outline-variant/40 flex flex-wrap justify-between items-center gap-4">
+<div>
+<div class="flex items-center gap-2 text-label-sm font-label-sm text-primary mb-1">
+<span>SISTEMA DE SEGURIDAD FORENSE</span>
+<span>•</span>
+<span class="font-semibold uppercase tracking-wider">Habeas Data Minero</span>
+</div>
+<div class="flex items-center gap-3">
+<h1 class="text-headline-md font-headline-md font-bold text-primary-container tracking-tight">
+                Log de Auditoría &amp; Trazabilidad Criptográfica
+              </h1>
+<!-- Badge WAL Database -->
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container text-primary font-telemetry-mono text-telemetry-mono border border-outline-variant/60 font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                log_auditoria.db (SQLite 3.45 WAL)
+              </span>
+</div>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-0.5">
+              Historial inmutable de acciones del sistema bajo estándares de la Ley 1581 de 2012 y verificación HMAC-SHA256.
+            </p>
+</div>
+<!-- Live Clock & Status Indicator -->
+<div class="flex items-center gap-3">
+<div class="px-3 py-1.5 rounded-lg bg-surface-container-low border border-outline-variant/50 text-right">
+<div class="text-telemetry-mono font-telemetry-mono text-on-surface-variant text-[10px]">TIMEZONE: UTC-05:00 (BOGOTÁ)</div>
+<div class="text-telemetry-code font-telemetry-code text-primary font-semibold" id="live-timestamp">2025-05-18 14:32:09.412</div>
+</div>
+<button class="px-3 py-2 rounded-lg border border-outline-variant/60 hover:bg-surface-container text-primary font-label-md text-label-md flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span>Sincronizar Hash</span>
+</button>
+</div>
+</header>
+<!-- KPI Forensics Bento Cards Grid -->
+<section class="px-6 py-4 bg-surface/50 border-b border-outline-variant/30">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- KPI 1: Acciones Registradas -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/50 shadow-xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-2">
+<span class="text-label-sm font-label-sm text-tertiary">Total Acciones Registradas</span>
+<span class="p-1 rounded bg-surface-container text-primary material-symbols-outlined text-[16px]">receipt_long</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-headline-lg font-bold text-primary">1,420</span>
+<span class="text-label-sm font-label-sm text-emerald-600 font-medium">+14 hoy</span>
+</div>
+<div class="mt-2 text-telemetry-mono font-telemetry-mono text-[11px] text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span>200 chunks en memoria persistente</span>
+</div>
+</div>
+<!-- KPI 2: 2FA Authorized -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/50 shadow-xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-2">
+<span class="text-label-sm font-label-sm text-tertiary">Accesos Autorizados 2FA</span>
+<span class="p-1 rounded bg-surface-container text-primary material-symbols-outlined text-[16px]">fingerprint</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-headline-lg font-bold text-primary">98.6%</span>
+<span class="text-label-sm font-label-sm text-emerald-600 font-medium">Nominal</span>
+</div>
+<div class="mt-2 text-telemetry-mono font-telemetry-mono text-[11px] text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span>Tokens PBKDF2 validados</span>
+</div>
+</div>
+<!-- KPI 3: Blocked Attempts -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/50 shadow-xs hover:border-error/40 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-2">
+<span class="text-label-sm font-label-sm text-tertiary">Intentos Bloqueados</span>
+<span class="p-1 rounded bg-error-container text-error material-symbols-outlined text-[16px]">gpp_bad</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-headline-lg font-bold text-error">3</span>
+<span class="text-label-sm font-label-sm text-error font-medium">Alerta Baja</span>
+</div>
+<div class="mt-2 text-telemetry-mono font-telemetry-mono text-[11px] text-error flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span>Nodos no autorizados (Ubaté LAN)</span>
+</div>
+</div>
+<!-- KPI 4: HMAC Integrity -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/50 shadow-xs hover:border-primary/40 transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between text-on-surface-variant mb-2">
+<span class="text-label-sm font-label-sm text-tertiary">Verificaciones HMAC</span>
+<span class="p-1 rounded bg-surface-container text-primary-container material-symbols-outlined text-[16px]">verified</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-headline-lg font-bold text-primary-container">100%</span>
+<span class="text-label-sm font-label-sm text-emerald-600 font-medium">Íntegras</span>
+</div>
+<div class="mt-2 text-telemetry-mono font-telemetry-mono text-[11px] text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span>SHA-256 Validado contra Registro</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Search, Range Filters & Export Bar -->
+<section class="px-6 py-3 bg-surface-container-lowest border-b border-outline-variant/40 flex flex-wrap items-center justify-between gap-3">
+<!-- Filters Group -->
+<div class="flex flex-wrap items-center gap-3">
+<!-- Search by Action / Cédula -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full pl-9 pr-3 py-1.5 bg-surface-container-low border border-outline-variant/60 rounded-lg text-body-sm font-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container focus:bg-surface-container-lowest transition-all" placeholder="Buscar por Acción / Cédula / IP..." type="text"/>
+</div>
+<!-- Date From / To Pickers -->
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1.5 rounded-lg border border-outline-variant/60 text-body-sm font-body-sm">
+<span class="text-on-surface-variant text-label-sm font-label-sm">Desde:</span>
+<input class="bg-transparent border-0 p-0 text-on-surface text-body-sm font-body-sm focus:ring-0 cursor-pointer" type="date" value="2025-05-01"/>
+<span class="text-outline mx-1">→</span>
+<span class="text-on-surface-variant text-label-sm font-label-sm">Hasta:</span>
+<input class="bg-transparent border-0 p-0 text-on-surface text-body-sm font-body-sm focus:ring-0 cursor-pointer" type="date" value="2025-05-18"/>
+</div>
+<!-- Quick Action Type Selector -->
+<select class="py-1.5 pl-3 pr-8 bg-surface-container-low border border-outline-variant/60 rounded-lg text-body-sm font-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container cursor-pointer">
+<option>Todas las Acciones</option>
+<option>DESENCRIPTAR_MEMORIA</option>
+<option>CONSULTA_RAG_HERMES</option>
+<option>CARGA_PDF_AES256</option>
+<option>LOGIN_2FA_EXITOSO</option>
+<option>INTENTO_NO_AUTORIZADO</option>
+</select>
+</div>
+<!-- Buttons Group: Export Forensics & View Log Toggle -->
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary text-primary hover:bg-surface-container font-label-md text-label-md transition-colors shadow-xs">
+<span class="material-symbols-outlined text-[16px]">file_download</span>
+<span>Exportar Reporte Forense (PDF/CSV)</span>
+</button>
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline-variant/60 text-primary-container hover:bg-surface-container font-label-md text-label-md transition-colors">
+<span class="material-symbols-outlined text-[16px]">terminal</span>
+<span>Visor Log del Sistema</span>
+</button>
+</div>
+</section>
+<!-- Middle Workspace: Split Table & Live Daemon Telemetry Log -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Main Pane: Forensic Immutable Audit Table -->
+<div class="flex-1 flex flex-col overflow-hidden border-r border-outline-variant/40">
+<div class="flex-1 overflow-y-auto">
+<table class="w-full border-collapse text-left text-body-sm font-body-sm">
+<thead class="sticky top-0 bg-surface-container-low border-b border-outline-variant/60 z-10">
+<tr class="text-tertiary font-label-sm text-label-sm uppercase tracking-wider">
+<th class="py-2.5 px-4 font-semibold">Timestamp (UTC-5)</th>
+<th class="py-2.5 px-4 font-semibold">Acción Realizada</th>
+<th class="py-2.5 px-4 font-semibold">Documento / Expediente</th>
+<th class="py-2.5 px-4 font-semibold">Operador / Cédula</th>
+<th class="py-2.5 px-4 font-semibold text-center">Firma HMAC-SHA256</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30 font-telemetry-mono text-[12px]">
+<!-- Row 1: DESENCRIPTAR_MEMORIA (Azul Eléctrico) -->
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">2025-05-18 14:28:44</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary-container font-semibold text-[11px] border border-primary/20">
+<span class="material-symbols-outlined text-[12px]">key</span>
+                        DESENCRIPTAR_MEMORIA
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-primary">EXP-MIN-UBAT-2024-0089</div>
+<div class="text-[10px] text-tertiary">Título Minero Concesión Carbón Mina El Roble</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Ing. Carlos Mendoza P.</div>
+<div class="text-[10px] text-on-surface-variant">C.C. 79.845.210 • Oficial Seg.</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-surface-container rounded text-primary text-[10px] font-telemetry-code" title="f4a7c88b7e2190db99a81">
+                        HMAC: e9d1...54c2 <span class="text-emerald-600 font-bold">✓</span>
+</span>
+</td>
+</tr>
+<!-- Row 2: CONSULTA_RAG_HERMES (Azul / Cyan) -->
+<tr class="hover:bg-surface-container/60 transition-colors bg-surface-container-low/20">
+<td class="py-3 px-4 text-on-surface-variant">2025-05-18 14:19:12</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-semibold text-[11px] border border-secondary/20">
+<span class="material-symbols-outlined text-[12px]">neurology</span>
+                        CONSULTA_RAG_HERMES
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-primary">VECTOR-STORE-EMB-Q3</div>
+<div class="text-[10px] text-tertiary">Consulta semántica: 'Cumplimiento vertimientos PH'</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Dra. Marcela Forero</div>
+<div class="text-[10px] text-on-surface-variant">C.C. 52.334.901 • Auditora Ext.</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-surface-container rounded text-primary text-[10px] font-telemetry-code">
+                        HMAC: 3b1a...88ff <span class="text-emerald-600 font-bold">✓</span>
+</span>
+</td>
+</tr>
+<!-- Row 3: CARGA_PDF_AES256 (Verde / Emerald) -->
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">2025-05-18 13:54:02</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-[11px] border border-emerald-300">
+<span class="material-symbols-outlined text-[12px]">enhanced_encryption</span>
+                        CARGA_PDF_AES256
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-primary">DOC-LEGAL-RESOL-2025-014</div>
+<div class="text-[10px] text-tertiary">Permiso Ambiental Corpoguavio 48 Págs (8.4MB)</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Daemon Ingesta Cron</div>
+<div class="text-[10px] text-on-surface-variant">NODE-SRV-01 • ServiceAccount</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-surface-container rounded text-primary text-[10px] font-telemetry-code">
+                        HMAC: 78fe...01a9 <span class="text-emerald-600 font-bold">✓</span>
+</span>
+</td>
+</tr>
+<!-- Row 4: LOGIN_2FA_EXITOSO (Verde) -->
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">2025-05-18 13:45:11</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-[11px] border border-emerald-200">
+<span class="material-symbols-outlined text-[12px]">verified_user</span>
+                        LOGIN_2FA_EXITOSO
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-primary">SESIÓN-KEY-AUTH-8874</div>
+<div class="text-[10px] text-tertiary">Autenticación Hardware TOTP Token RFC-6238</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Ing. Carlos Mendoza P.</div>
+<div class="text-[10px] text-on-surface-variant">C.C. 79.845.210 • IP 192.168.10.45</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-surface-container rounded text-primary text-[10px] font-telemetry-code">
+                        HMAC: c003...bb41 <span class="text-emerald-600 font-bold">✓</span>
+</span>
+</td>
+</tr>
+<!-- Row 5: INTENTO_NO_AUTORIZADO (Rojo / Error) -->
+<tr class="hover:bg-red-50/50 transition-colors bg-red-50/20">
+<td class="py-3 px-4 text-error font-medium">2025-05-18 12:11:39</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold text-[11px] border border-error/20">
+<span class="material-symbols-outlined text-[12px]">block</span>
+                        INTENTO_NO_AUTORIZADO
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-error">EXP-MIN-UBAT-SECRET-001</div>
+<div class="text-[10px] text-error/80">Acceso denegado: Firma HMAC no coincide</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-error">UNKNOWN_ACTOR</div>
+<div class="text-[10px] text-error/80">IP 10.20.1.99 • Clave PBKDF2 Inválida</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-error-container rounded text-error text-[10px] font-telemetry-code font-bold">
+                        INVALID_MAC ✗
+                      </span>
+</td>
+</tr>
+<!-- Row 6: DESENCRIPTAR_MEMORIA -->
+<tr class="hover:bg-surface-container/60 transition-colors">
+<td class="py-3 px-4 text-on-surface-variant">2025-05-18 11:30:18</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-highest text-primary-container font-semibold text-[11px] border border-primary/20">
+<span class="material-symbols-outlined text-[12px]">key</span>
+                        DESENCRIPTAR_MEMORIA
+                      </span>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-primary">ANEXO-TECNICO-TIT-2023</div>
+<div class="text-[10px] text-tertiary">Georreferenciación Pozos Subterráneos Cucunubá</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-medium text-on-surface">Ing. Hernando Silva</div>
+<div class="text-[10px] text-on-surface-variant">C.C. 19.450.881 • Topógrafo Reg.</div>
+</td>
+<td class="py-3 px-4 text-center">
+<span class="inline-block px-2 py-0.5 bg-surface-container rounded text-primary text-[10px] font-telemetry-code">
+                        HMAC: 19cc...770a <span class="text-emerald-600 font-bold">✓</span>
+</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination & Footer Telemetry -->
+<div class="px-4 py-2 bg-surface-container-low border-t border-outline-variant/50 flex items-center justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant text-telemetry-mono font-telemetry-mono text-[11px]">
+                Mostrando 1-6 de 1,420 eventos registrados en WAL SQLite
+              </span>
+<div class="flex items-center gap-1">
+<button class="px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface text-label-sm font-label-sm">Anterior</button>
+<button class="px-2.5 py-1 rounded bg-primary-container text-on-primary text-label-sm font-label-sm font-medium">1</button>
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-sm font-label-sm">2</button>
+<button class="px-2.5 py-1 rounded bg-surface-container-high text-on-surface text-label-sm font-label-sm">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="px-2 py-1 rounded bg-surface-container text-on-surface-variant hover:text-on-surface text-label-sm font-label-sm">Siguiente</button>
+</div>
+</div>
+</div>
+<!-- Right Integrated Column: Visor de Log en Vivo (app.log) -->
+<div class="w-96 bg-surface-container-low flex flex-col overflow-hidden">
+<!-- Log Terminal Header -->
+<div class="px-4 py-2.5 bg-surface-container border-b border-outline-variant/60 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+<span class="font-headline-sm text-[13px] font-bold text-primary">Visor de Log (app.log)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-highest text-primary font-telemetry-mono text-[10px]">DAEMON ACTIVE</span>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface" title="Limpiar Consola">
+<span class="material-symbols-outlined text-[15px]">clear_all</span>
+</button>
+</div>
+</div>
+<!-- Terminal Output Stream (Subtle light mode terminal with deep blue & emerald text) -->
+<div class="flex-1 p-3 overflow-y-auto font-telemetry-code text-[11px] leading-relaxed space-y-2 bg-surface">
+<div class="text-tertiary">
+<span class="text-outline">[14:32:01.102]</span>
+<span class="text-primary font-semibold">[INFO]</span>
+<span class="text-on-surface">hermes.daemon: Heartbeat tick OK. SQLite WAL size: 4.2 MB.</span>
+</div>
+<div class="text-tertiary">
+<span class="text-outline">[14:31:55.820]</span>
+<span class="text-emerald-700 font-semibold">[SEC]</span>
+<span class="text-on-surface">crypto.hmac: Verified token block #1419 against master seed.</span>
+</div>
+<div class="p-2 rounded bg-surface-container border border-outline-variant/40">
+<div class="text-outline">[14:31:40.091] <span class="text-primary font-semibold">[AUDIT_1581]</span></div>
+<div class="text-primary-container font-mono text-[10px]">EVENT: DESENCRIPTAR_MEMORIA</div>
+<div class="text-on-surface-variant text-[10px]">Subject: CC-79845210 (Ing. Carlos Mendoza)</div>
+<div class="text-emerald-700 font-mono text-[10px]">HMAC: e9d1a88b1f4920c84bc2 (VALID)</div>
+</div>
+<div class="text-tertiary">
+<span class="text-outline">[14:30:12.441]</span>
+<span class="text-secondary font-semibold">[RAG]</span>
+<span class="text-on-surface">hermes.vector: Retrieved 4 chunks from Ubaté mining index (similarity: 0.892).</span>
+</div>
+<div class="text-tertiary">
+<span class="text-outline">[14:28:44.209]</span>
+<span class="text-emerald-700 font-semibold">[CRYPTO]</span>
+<span class="text-on-surface">AES-256-GCM cipher initiated with ephemeral IV vector nonce.</span>
+</div>
+<div class="p-2 rounded bg-red-50 border border-red-200">
+<div class="text-outline">[14:26:01.002] <span class="text-error font-semibold">[SECURITY_ALERT]</span></div>
+<div class="text-error font-mono text-[10px]">BLOCKED_CONNECTION from 10.20.1.99</div>
+<div class="text-error/80 text-[10px]">Reason: HMAC mismatch on table payload insertion.</div>
+</div>
+<div class="text-tertiary">
+<span class="text-outline">[14:25:33.890]</span>
+<span class="text-primary font-semibold">[SQLITE]</span>
+<span class="text-on-surface">PRAGMA wal_checkpoint(PASSIVE) executed successfully.</span>
+</div>
+<div class="text-tertiary">
+<span class="text-outline">[14:22:10.119]</span>
+<span class="text-emerald-700 font-semibold">[AUTH]</span>
+<span class="text-on-surface">PBKDF2 key derivation iteration count: 210,000 passes verified.</span>
+</div>
+<div class="flex items-center gap-1.5 text-primary text-[11px] pt-2">
+<span class="animate-pulse">❯</span>
+<span class="font-semibold">Hermes Agent listening on unix:///tmp/hermes_forensic.sock</span>
+</div>
+</div>
+<!-- Terminal Command Pre-dock -->
+<div class="p-2.5 bg-surface-container border-t border-outline-variant/50">
+<div class="flex items-center gap-2 bg-surface-container-lowest px-2.5 py-1 rounded border border-outline-variant/60">
+<span class="text-primary font-telemetry-mono text-[12px] font-bold">❯</span>
+<input class="w-full bg-transparent border-0 p-0 text-telemetry-code text-[11px] text-on-surface focus:ring-0 placeholder:text-outline" placeholder="filtrar app.log (ej: grep 'ERROR')..." type="text"/>
+<span class="text-telemetry-mono text-[10px] text-outline font-medium">ESC</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Bottom Telemetry Status Strip Shared Component (Hermes Desktop Style Guidance) -->
+<footer class="h-8 bg-surface-container-low border-t border-outline-variant/60 flex items-center justify-between px-4 text-telemetry-mono font-telemetry-mono text-[11px] text-on-surface select-none shrink-0 z-40">
+<!-- Left Telemetry Cluster -->
+<div class="flex items-center gap-3">
+<!-- Gateway Ready Status -->
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-semibold text-primary">Hermes Agent Daemon</span>
+</div>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-emerald-600">dns</span>
+          Gateway ready
+        </span>
+<span class="text-outline-variant">|</span>
+<span class="text-primary font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+          HMAC-SHA256: Enforced
+        </span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">
+          SQLite: <span class="text-on-surface font-semibold">log_auditoria.db</span>
+</span>
+</div>
+<!-- Right Telemetry Cluster -->
+<div class="flex items-center gap-3">
+<span class="text-tertiary">Cluster Ubaté: Node 04 (Active)</span>
+<span class="text-outline-variant">|</span>
+<span class="text-primary-container font-semibold"># v2.1 (light)</span>
+<span class="text-outline-variant">|</span>
+<!-- Git Hash -->
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant border border-outline-variant/40">
+          git: 79bfddd
+        </span>
+</div>
+</footer>
+</div>
+<!-- Micro-Interactions Script for Live Real-Time Data Simulation -->
+<script>
+    // Live Clock Updater
+    function updateClock() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const padMilli = (n) => String(n).padStart(3, '0');
+      const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${padMilli(now.getMilliseconds())}`;
+      const elem = document.getElementById('live-timestamp');
+      if (elem) elem.textContent = dateStr;
+    }
+    setInterval(updateClock, 200);
+
+    // Keyboard Shortcuts Simulation for Native Desktop Feel
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[type="text"]');
+        if (searchInput) searchInput.focus();
+      }
+    });
+  </script>
+</body></html>

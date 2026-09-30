@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DatenJäger v2.1 — Hermes IA Semantic &amp; Asistente Conversacional</title>
+<!-- Tailwind CSS v3 with forms and container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cosmic: {
+              950: '#050811',
+              900: '#080e1e',
+              850: '#0b1326',
+              800: '#0e172e',
+              700: '#162244',
+              600: '#1e305e',
+            },
+            electric: {
+              400: '#60a5fa',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          },
+          fontFamily: {
+            display: ['Cinzel', 'Trajan Pro', 'Georgia', 'serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-decorations">
+    /* Subtle background grid and aesthetic Hermes typography styles */
+    .hermes-title {
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.12em;
+      text-shadow: 0 0 35px rgba(37, 99, 235, 0.45);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #080e1e;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1e305e;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+  </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden p-3 md:p-6 flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/40 via-slate-950 to-black select-none">
+<!-- BEGIN: ApplicationWindowContainer -->
+<!-- Outer window shell reproducing modern macOS desktop window chrome with realistic dark styling -->
+<div class="w-full max-w-[1580px] h-[92vh] max-h-[1050px] bg-cosmic-900 border border-slate-800/80 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_40px_rgba(37,99,235,0.12)] flex flex-col overflow-hidden backdrop-blur-xl" data-purpose="desktop-window-frame">
+<!-- BEGIN: TopBar -->
+<header class="h-12 border-b border-slate-800/80 bg-cosmic-850/90 flex items-center justify-between px-4 z-20 shrink-0">
+<!-- Window traffic lights & breadcrumb info -->
+<div class="flex items-center gap-4">
+<!-- macOS traffic lights -->
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-[#ff5f56] inline-block border border-[#e0443e]/50 cursor-pointer shadow-sm"></span>
+<span class="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block border border-[#dea123]/50 cursor-pointer shadow-sm"></span>
+<span class="w-3 h-3 rounded-full bg-[#27c93f] inline-block border border-[#1aab29]/50 cursor-pointer shadow-sm"></span>
+</div>
+<!-- Sidebar toggle & Window search icon -->
+<div class="flex items-center gap-2.5 text-slate-400 pl-2 border-l border-slate-800">
+<button class="p-1 hover:text-white hover:bg-slate-800/60 rounded transition" title="Alternar panel lateral">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6h16M4 12h10M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-white hover:bg-slate-800/60 rounded transition" title="Búsqueda rápida en memoria">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- Context Breadcrumb -->
+<div class="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-300">
+<span class="text-slate-500">Jurisdicción:</span>
+<span class="text-slate-300 hover:text-white transition cursor-pointer">Villa de San Diego de Ubaté</span>
+<span class="text-slate-600">/</span>
+<span class="text-electric-400 font-semibold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-electric-400 animate-pulse"></span>
+            Asistente Hermes IA (RAG Minero &amp; Criptografía)
+          </span>
+</div>
+</div>
+<!-- Center / Right Controls: Model Switcher & Action Pills -->
+<div class="flex items-center gap-3">
+<!-- Model Switcher Selector -->
+<div class="flex items-center bg-cosmic-900 border border-slate-700/80 rounded-lg px-2.5 py-1 text-xs shadow-inner">
+<span class="text-electric-400 font-bold mr-1.5">⚡</span>
+<select class="bg-transparent text-slate-200 border-0 p-0 text-xs font-mono focus:ring-0 cursor-pointer">
+<option class="bg-cosmic-900 text-slate-200">glm-5.1 ollama-cloud (Primario)</option>
+<option class="bg-cosmic-900 text-slate-200">Ollama Local 3.2b (Fallback offline)</option>
+<option class="bg-cosmic-900 text-slate-200">Hermes-Agent-Audit-7B (Fine-tuned)</option>
+</select>
+</div>
+<!-- Transhumano philosophical reflection shortcut button -->
+<button class="hidden lg:flex items-center gap-1.5 bg-electric-600/15 hover:bg-electric-600/25 border border-electric-500/30 text-electric-400 hover:text-white px-2.5 py-1 rounded-lg text-xs font-medium transition duration-150">
+<span>🧠</span>
+<span>Reflexión Ética</span>
+</button>
+<!-- Right System Utilities -->
+<div class="flex items-center gap-2 text-slate-400 border-l border-slate-800 pl-3">
+<button class="p-1 hover:text-slate-200 rounded" title="Silenciar audio / respuestas sintetizadas">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-slate-200 rounded" title="Cuenta y perfil del operador">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<button class="p-1 hover:text-slate-200 rounded" title="Configuración de parámetros RAG">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+</div>
+</header>
+<!-- END: TopBar -->
+<!-- Main Body Layout: Sidebar + Workspace -->
+<div class="flex-1 flex overflow-hidden">
+<!-- BEGIN: NavigationSidebar -->
+<!-- Left sidebar with circular DatenJäger raven logo and modules -->
+<aside class="w-64 lg:w-72 bg-cosmic-850/60 border-r border-slate-800/80 flex flex-col justify-between p-3.5 shrink-0" data-purpose="main-navigation-sidebar">
+<div class="space-y-4">
+<!-- DatenJäger Brand Header matching reference logo -->
+<div class="flex items-center gap-3 p-2 rounded-xl bg-cosmic-900/80 border border-slate-800">
+<img alt="DatenJäger Logo" class="w-11 h-11 rounded-full border border-electric-500/60 shadow-[0_0_12px_rgba(59,130,246,0.3)] object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqq383aydaf3jlh4c52ugR3VonW3bx4uXr4yiX0XQX-NKHetQp1o9lsj9oeHOAmVvb-GKSi4Ve9fFAnUbXhZ-qDJDzuNcnSmu2JJO90gdfIAITpoU2UM8K-CT_U6TDUdP9Vr5VM9WS0Iwpufdmr8MPU-fWGaM3Xpdo_tb1eErPqLf0u0mOH9SK2EauiUtrWaLsUzMMsx0QvZYOJ0up0L03uP46BFV_yzvqpF-atxvOAPSyPYieF2rnmXXNwvlxkg1J_A"/>
+<div class="overflow-hidden">
+<h1 class="text-sm font-extrabold tracking-wider text-white uppercase font-mono leading-tight">DATENJÄGER</h1>
+<p class="text-[11px] text-electric-400 font-medium">v2.1 Electron · Ubaté</p>
+</div>
+</div>
+<!-- Navigation Menu Tabs -->
+<nav class="space-y-1">
+<div class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2.5 py-1">Núcleo Hermes</div>
+<!-- Active Hermes IA tab with glowing indicator -->
+<a class="flex items-center justify-between px-3 py-2 rounded-lg bg-electric-600/20 border border-electric-500/40 text-white font-medium text-xs shadow-sm transition" href="#">
+<div class="flex items-center gap-2.5">
+<span class="text-electric-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</span>
+<span>Hermes IA Semantic</span>
+</div>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono bg-electric-500 text-slate-950 font-bold">ACTIVO</span>
+</a>
+<!-- Other system modules -->
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/40 text-xs font-medium transition" href="#">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Gestión Documental</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/40 text-xs font-medium transition" href="#">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Titulares / Cédulas</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/40 text-xs font-medium transition" href="#">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Empresas Mineras</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/40 text-xs font-medium transition" href="#">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Auditoría &amp; Ley 1581</span>
+</a>
+<a class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/40 text-xs font-medium transition" href="#">
+<svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Reportes &amp; Inventario</span>
+</a>
+</nav>
+</div>
+<!-- Sidebar bottom system info / hardware card -->
+<div class="bg-cosmic-900/90 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+<div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+<span>Motor Vectorial</span>
+<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+</div>
+<div class="space-y-1 font-mono text-[11px] text-slate-300">
+<div class="flex justify-between">
+<span class="text-slate-500">BD:</span>
+<span class="text-slate-200">SQLite-vss</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Embed:</span>
+<span class="text-slate-200 truncate ml-1">all-MiniLM-L6-v2</span>
+</div>
+<div class="flex justify-between">
+<span class="text-slate-500">Ollama Fallback:</span>
+<span class="text-emerald-400 font-semibold">Listo (Offline)</span>
+</div>
+</div>
+<div class="pt-1.5 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+            Cifrado AES-256-GCM Activado
+          </div>
+</div>
+</aside>
+<!-- END: NavigationSidebar -->
+<!-- BEGIN: MainContentArea -->
+<!-- Center workspace reproducing Hermes Agent layout with full dark theme & electric blue headers -->
+<main class="flex-1 flex flex-col bg-cosmic-900 relative overflow-hidden">
+<!-- Faint aesthetic background watermark representing the raven icon -->
+<div class="absolute inset-0 pointer-events-none opacity-[0.035] flex items-center justify-center">
+<img alt="Watermark" class="w-[680px] h-[680px] filter grayscale invert" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvWaNj7e-l0XklYMZrRmBn6Gs8LQqeYZf7JBVrCH4tWk8YKU6spo65cVJVoei6GKsUTIRdrs6A9ZzFAyL2g0poeq1RbhZNQgIPTZ1raUREe_Px0SkteL-b98WGoyWLfJcFUoirh9-WjfDTDxi_Z9paG4ZK2rhJ2eOxQ3oqoJGq6gEYvxnPaoieJCxqonR5ZZI7-UxpBNffh0JLxgmKKn1okDgw4W3nkGh4RXV5vc7KF9tlp2QpbEb9KT7o91_jgWcNZQ"/>
+</div>
+<!-- Scrollable dialogue and search workspace -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 space-y-8 z-10">
+<!-- Section: Header Banner matching reference Hermes Agent -->
+<div class="text-center pt-2 pb-4 space-y-2">
+<h1 class="hermes-title text-4xl sm:text-5xl lg:text-6xl font-extrabold text-electric-500 tracking-wider">
+              HERMES AGENT
+            </h1>
+<p class="text-sm sm:text-base text-slate-200 font-normal max-w-2xl mx-auto leading-relaxed">
+              Describe la tarea en tus propias palabras. Selecciono los expedientes normativos de Ubaté, audito contratos y verifico riesgos antes de procesar resoluciones.
+            </p>
+<!-- Vector similarity status badge -->
+<div class="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-cosmic-800/90 border border-electric-500/30 text-xs text-slate-300 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-electric-400 animate-ping"></span>
+<span class="text-slate-400">Índice Vectorial:</span>
+<span class="font-mono text-electric-400 font-semibold">148 Actas Mineras indexadas</span>
+<span class="text-slate-500">|</span>
+<span class="text-slate-400">Latencia RAG:</span>
+<span class="font-mono text-emerald-400">38ms</span>
+</div>
+</div>
+<!-- Section: Transhumano Philosophical Anchor Banner -->
+<div class="max-w-3xl mx-auto rounded-xl bg-gradient-to-r from-blue-950/40 via-cosmic-800 to-blue-950/40 border border-electric-500/25 p-3.5 flex items-start gap-3 shadow-lg" data-purpose="transhumano-reflection-card">
+<div class="w-8 h-8 rounded-lg bg-electric-600/20 border border-electric-500/40 flex items-center justify-center text-electric-400 shrink-0 text-base">
+              ⚖️
+            </div>
+<div class="text-xs space-y-0.5">
+<div class="flex items-center gap-2">
+<span class="text-[10px] uppercase font-mono font-bold tracking-wider text-electric-400">Postura Filosófica DatenJäger</span>
+<span class="text-[10px] text-slate-500">•</span>
+<span class="text-slate-300 font-medium">Responsabilidad &amp; Preservación de la Vida</span>
+</div>
+<p class="text-slate-300 italic font-sans leading-relaxed">
+                "La tecnología no sustituye el juicio humano en la bocamina; actúa como garante criptográfico para que ningún trabajador ingrese al socavón sin amparo de seguridad social y estricto apego a la Ley 1581."
+              </p>
+</div>
+</div>
+<!-- Section: Conversational Stream Area -->
+<div class="max-w-3xl mx-auto space-y-6">
+<!-- Message 1: User Query Bubble -->
+<div class="flex items-start justify-end gap-3" data-purpose="chat-user-message">
+<div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-electric-600 text-white p-4 shadow-md text-sm leading-relaxed">
+<p class="font-medium">
+                  Hermes, revisa la vigencia de la seguridad social y contratos laborales de los trabajadores de <span class="underline decoration-white/40 font-semibold">Mina San Jorge S.A.S.</span> para la auditoría de la ANM.
+                </p>
+<div class="text-right mt-1 text-[10px] text-blue-200 font-mono">10:42 AM · Operador Autorizado (Cédula: 79.482.***)</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-200 shrink-0 border border-slate-600">
+                OP
+              </div>
+</div>
+<!-- Message 2: Hermes Agent Structured Reasoning & Audit Bubble -->
+<div class="flex items-start gap-3" data-purpose="chat-assistant-message">
+<!-- Hermes avatar using raven badge -->
+<div class="w-9 h-9 rounded-full bg-cosmic-800 border border-electric-500/70 p-0.5 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(59,130,246,0.35)]">
+<img alt="Hermes Agent" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCaGbM8R2N17tJdpB0KsCBHkcFYZpiYO7MsgqfBszrQwSbTgWX3BfTFamC1j9ap56DL3lIc5u4a5G6MMQfGrj9v_8G4bg_VFBqRuOZaWCTR78yJ5KNyhBHKWPp2MgcVbNWo8CBGpJIfSu_DHgoBlBH7CyvwTM5-XuZAgDA2msrWkIlBQqkq6vP4dhtzq5zb44Uxd5vnQ0MENsu8lJNEj3RNLYyHAB3-hLhG1MKDk_ifKKaRYpxok2fq5mvfo-rbLb4aw"/>
+</div>
+<div class="flex-1 space-y-3">
+<div class="rounded-2xl rounded-tl-sm bg-cosmic-850 border border-slate-800 p-5 shadow-xl space-y-3.5">
+<!-- Reasoning Header with similarity badge -->
+<div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold uppercase tracking-wider text-electric-400 font-mono">Hermes Agent v2.1</span>
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
+                        ✓ RAG Minero Resuelto
+                      </span>
+</div>
+<div class="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+<span>Similitud Coseno:</span>
+<span class="text-electric-400 font-bold bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800">94.2%</span>
+</div>
+</div>
+<!-- Thinking process indicator -->
+<div class="text-xs text-slate-400 flex items-center gap-2 bg-cosmic-900/60 p-2 rounded-lg font-mono">
+<span class="w-1.5 h-1.5 rounded-full bg-electric-400 animate-ping"></span>
+<span>Recuperación en 3 vectores de expediente: <code>UBT-MIN-2026-SJ</code></span>
+</div>
+<!-- Conversational Findings -->
+<div class="text-sm text-slate-200 space-y-3 leading-relaxed">
+<p>
+                      He completado la auditoría semántica sobre los legajos digitales de <strong class="text-white">Mina San Jorge S.A.S. (Título Minero DJ-081-99)</strong>. A continuación presento el dictamen de cumplimiento normativo laboral y seguridad social:
+                    </p>
+<!-- Findings Checklist -->
+<div class="space-y-2 bg-cosmic-900/90 rounded-xl p-3.5 border border-slate-800/90 text-xs">
+<div class="flex items-start gap-2.5">
+<span class="text-emerald-400 mt-0.5 text-sm font-bold">✔</span>
+<div>
+<span class="font-semibold text-white">Seguridad Social Integral (ARL Nivel V Minería Subterránea):</span>
+<p class="text-slate-300 mt-0.5">Planilla PILA validada con pago al día hasta el 30 de marzo de 2026 para 38 operarios de socavón.</p>
+<div class="mt-1 text-[11px] font-mono text-electric-400">
+                            Archivo: <span class="text-slate-300">Certificado_Seguridad_Social_Minas_2026.pdf</span>
+<span class="text-slate-500">[SHA-256: 7f83b1c9...2a]</span>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-slate-800/80 flex items-start gap-2.5">
+<span class="text-amber-400 mt-0.5 text-sm font-bold">⚠</span>
+<div>
+<span class="font-semibold text-white">Contratos Laborales de Bocamina:</span>
+<p class="text-slate-300 mt-0.5">34 contratos a término indefinido conformes. 4 contratos de operarios electromecánicos presentan anexo de dotación pendiente de firma digital.</p>
+<div class="mt-1 text-[11px] font-mono text-electric-400">
+                            Archivo: <span class="text-slate-300">Contrato_Laboral_Extraccion_Bocamina.pdf</span>
+<span class="text-slate-500">[Fojas: 14 a 32]</span>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-slate-800/80 flex items-start gap-2.5">
+<span class="text-electric-400 mt-0.5 text-sm font-bold">⚖</span>
+<div>
+<span class="font-semibold text-white">Cumplimiento Ley Estatutaria 1581 de 2012 (Habeas Data):</span>
+<p class="text-slate-300 mt-0.5">Autorizaciones expresas para tratamiento de datos biométricos y de salud ocupacional archivadas con firma criptográfica local.</p>
+</div>
+</div>
+</div>
+<!-- Direct Action Recommendation -->
+<div class="text-xs bg-blue-950/30 border-l-2 border-electric-500 pl-3 py-1 text-slate-300">
+<strong class="text-white">Recomendación para la ANM:</strong> El expediente es admisible para radicación formal. Se sugiere anexar las 4 actas de dotación antes del cierre de auditoría a las 17:00 hrs.
+                    </div>
+</div>
+<!-- Action Buttons for the response -->
+<div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800">
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-electric-600 hover:bg-electric-500 text-white font-medium text-xs transition shadow-sm">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+                      Generar Certificado de Auditoría (PDF)
+                    </button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-cosmic-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs transition">
+                      Copiar Síntesis
+                    </button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-cosmic-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs transition">
+                      Ver Fojas Originales (2)
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- BEGIN: FloatingInputSection -->
+<!-- Floating desktop input container mimicking Hermes Desktop layout https://lh3.googleusercontent.com/aida-public/AB6AXuCtbbgNfFwmwKuyuPSDWccXA6w2p8xAwJwfS-5RREVLujeP6U8Q1It7TZHVXpl_cASd9X8JsmPEVY-s379oqJqQJyrxfMPPUg5y6p9i0D3ozHXIrgZW95M0oJH4rDu2oHuP3s-yCZFY4-gI_IjmJD_jYhYewnc7-7puU61AdtEOjN3ZacHpuM3u3ne0ytEHDtb5pVFO_s7-y47-_TVqXURzj0ja-4mQ5Uk67oIxmu8SKlMoH8txMB6cuv3OphirJJE-fQ -->
+<div class="p-4 sm:p-6 z-20 shrink-0 bg-gradient-to-t from-cosmic-900 via-cosmic-900/90 to-transparent" data-purpose="floating-input-bar-container">
+<div class="max-w-3xl mx-auto">
+<!-- Main Input Pill -->
+<div class="flex items-center bg-cosmic-850/95 border border-slate-700/80 hover:border-electric-500/60 focus-within:border-electric-500 rounded-full px-4 py-2.5 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.6),0_0_15px_rgba(37,99,235,0.15)] transition duration-200">
+<!-- Plus button / Attachment -->
+<button class="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition mr-2 shrink-0" title="Adjuntar expediente o acta PDF">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Text Area / Input -->
+<input class="flex-1 bg-transparent border-0 focus:ring-0 text-slate-100 placeholder-slate-400 text-sm py-1 px-2 font-normal focus:outline-none" placeholder="Pregunta a Hermes sobre normatividad minera, titularidad o auditoría de los PDF..." type="text"/>
+<!-- Dictation Microphone -->
+<button class="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-slate-800 transition shrink-0 ml-1" title="Dictado por voz">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- Hermes Waveform / Send Action Button -->
+<button class="w-8 h-8 rounded-full bg-electric-600 hover:bg-electric-500 text-white flex items-center justify-center shrink-0 ml-2 shadow-[0_0_12px_rgba(37,99,235,0.5)] transition duration-150 transform hover:scale-105" title="Enviar consulta semántica">
+<svg class="w-4 h-4" fill="currentColor" viewbox="0 0 24 24">
+<!-- Audio waveform icon matching reference bottom right button -->
+<path d="M12 3v18M8 6v12M16 6v12M4 10v4M20 10v4" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+<!-- Footer Keyboard hints -->
+<div class="flex items-center justify-between px-4 mt-2 text-[11px] text-slate-500 font-mono">
+<div class="flex items-center gap-3">
+<span><kbd class="px-1.5 py-0.5 rounded bg-cosmic-800 border border-slate-700 text-slate-400 text-[10px]">⌘ K</kbd> Comandos rápidos</span>
+<span><kbd class="px-1.5 py-0.5 rounded bg-cosmic-800 border border-slate-700 text-slate-400 text-[10px]">Enter</kbd> Enviar</span>
+</div>
+<div class="hidden sm:inline-flex items-center gap-1.5 text-slate-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span>RAG Híbrido: BM25 + Vectorial VSS</span>
+</div>
+</div>
+</div>
+</div>
+<!-- END: FloatingInputSection -->
+</main>
+<!-- END: MainContentArea -->
+</div>
+<!-- BEGIN: TechnicalStatusBar -->
+<!-- Bottom desktop status strip with system metrics from prompt -->
+<footer class="h-8 border-t border-slate-800 bg-cosmic-850 px-4 flex items-center justify-between text-[11px] font-mono text-slate-400 z-20 shrink-0" data-purpose="desktop-telemetry-statusbar">
+<!-- Left metrics -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 text-slate-300">
+<span class="text-electric-400">⌘</span>
+<span>Gateway Vectorial:</span>
+<span class="text-emerald-400 font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En línea
+          </span>
+</div>
+<span class="text-slate-700">|</span>
+<div class="hidden sm:flex items-center gap-1">
+<span class="text-slate-500">Tokens:</span>
+<span class="text-slate-200 font-semibold">420 t/s</span>
+</div>
+<span class="hidden sm:inline text-slate-700">|</span>
+<div class="hidden md:flex items-center gap-1">
+<span class="text-slate-500">SQLite-vss:</span>
+<span class="text-electric-400 font-semibold">148 vectores</span>
+</div>
+</div>
+<!-- Right system state -->
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 text-slate-300">
+<span class="text-slate-500">Ollama local:</span>
+<span class="text-emerald-400 font-semibold">3.2b listo</span>
+</div>
+<span class="text-slate-700">|</span>
+<div class="flex items-center gap-1 font-semibold text-slate-300">
+<span class="text-electric-400">#</span>
+<span class="text-electric-400">v2.1 (dark)</span>
+<span class="text-slate-500">79bfddd</span>
+</div>
+</div>
+</footer>
+<!-- END: TechnicalStatusBar -->
+</div>
+<!-- END: ApplicationWindowContainer -->
+</body></html>
