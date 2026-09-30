@@ -2,6 +2,8 @@
 
 import csv
 from datetime import datetime
+from pathlib import Path
+
 import fitz  # PyMuPDF 
 
 
@@ -12,6 +14,18 @@ _GRIS_CLARO  = (0.94, 0.94, 0.94)
 _BLANCO      = (1.0,  1.0,  1.0)
 _NEGRO       = (0.0,  0.0,  0.0)
 _GRIS_TEXTO  = (0.35, 0.35, 0.35)
+
+
+def ruta_logo() -> str | None:
+    """Ruta del logo del proyecto, o ``None`` si no está disponible.
+
+    El reporte se genera desde sitios distintos (la aplicación, la CLI de
+    ``scripts/``), así que la ruta se resuelve desde la ubicación de este
+    archivo, no desde el directorio de trabajo. Si el logo falta, el reporte
+    sale igual: solo pierde la marca.
+    """
+    ruta = Path(__file__).resolve().parent / "assets" / "logo" / "logo.png"
+    return str(ruta) if ruta.exists() else None
 
 # colores para el grafico
 _CHART_COLORS = [
@@ -41,7 +55,7 @@ class ReporteInventario:
 
         with open(dest_path, "w", newline="", encoding="utf-8-sig") as f:
             writer = csv.writer(f)
-            writer.writerow(["DatenJäger — Reporte de Inventario Documental"])
+            writer.writerow(["DatenJäger - Reporte de Inventario Documental"])
             writer.writerow([f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"])
             writer.writerow([f"Usuario: {usuario_nombre}"])
             writer.writerow([])
@@ -112,11 +126,22 @@ class _PDFGenerator:
                          "DatenJäger",
                          fontsize=30, fontname="hebo", color=_BLANCO)
         page.insert_text((self.MARGIN, 78),
-                         "Sistema de Gestión Documental — Sector Minero Ubaté",
+                         "Sistema de Gestión Documental - Sector Minero Ubaté",
                          fontsize=10, fontname="helv", color=(0.75, 0.85, 1.0))
         page.insert_text((self.MARGIN, 100),
                          f"Reporte de Inventario  ·  {self.fecha_gen}  ·  Usuario: {self.usuario}",
                          fontsize=8, fontname="helv", color=(0.65, 0.75, 0.95))
+
+        # Marca del proyecto: el logo sobre un disco blanco, porque el círculo
+        # navy del logo se perdería sobre la banda azul.
+        logo = ruta_logo()
+        if logo:
+            centro = fitz.Point(self.PAGE_W - 66, 56)
+            page.draw_circle(centro, 31, color=None, fill=_BLANCO)
+            page.insert_image(
+                fitz.Rect(centro.x - 26, centro.y - 26, centro.x + 26, centro.y + 26),
+                filename=logo,
+            )
 
         # tarjetas resumen
         y = 140
@@ -128,11 +153,14 @@ class _PDFGenerator:
                        color=_VERDE_CORP, width=1.5)
 
         y += 22
+        # Sin emoji: las fuentes base del PDF no tienen esos glifos y salían
+        # como «?» en la portada. El color de cada tarjeta ya distingue la
+        # métrica, y la etiqueta en mayúsculas casa con «RESUMEN EJECUTIVO».
         tarjetas = [
-            ("📄  Documentos",    str(stats.get("total_pdfs", 0))),
-            ("💾  Espacio",        stats.get("total_size_str", "0 B")),
-            ("👥  Personas",       str(stats.get("total_personas", 0))),
-            ("🏢  Empresas",       str(stats.get("total_empresas", 0))),
+            ("DOCUMENTOS", str(stats.get("total_pdfs", 0))),
+            ("ESPACIO",    stats.get("total_size_str", "0 B")),
+            ("PERSONAS",   str(stats.get("total_personas", 0))),
+            ("EMPRESAS",   str(stats.get("total_empresas", 0))),
         ]
         n       = len(tarjetas)
         gap     = 10
@@ -174,7 +202,7 @@ class _PDFGenerator:
                                color=None, fill=color)
                 page.insert_text(
                     (self.MARGIN + 16, y + 9),
-                    f"{emp or 'Sin empresa'}  —  {cnt} documento{'s' if cnt != 1 else ''}",
+                    f"{emp or 'Sin empresa'}  -  {cnt} documento{'s' if cnt != 1 else ''}",
                     fontsize=9, fontname="helv", color=_NEGRO
                 )
                 y += 18
@@ -210,7 +238,7 @@ class _PDFGenerator:
             page.draw_rect(fitz.Rect(0, 0, self.PAGE_W, 36),
                            color=None, fill=_AZUL_CORP)
             page.insert_text((self.MARGIN, 23),
-                             "DatenJäger  —  Inventario de Documentos",
+                             "DatenJäger  -  Inventario de Documentos",
                              fontsize=11, fontname="hebo", color=_BLANCO)
             page.insert_text((self.PAGE_W - 170, 23),
                              f"Generado: {self.fecha_gen}",
@@ -250,14 +278,14 @@ class _PDFGenerator:
                     val = format_size(raw)
                 elif idx == 4:
                     try:
-                        val = datetime.fromisoformat(raw).strftime("%d/%m/%Y") if raw else "—"
+                        val = datetime.fromisoformat(raw).strftime("%d/%m/%Y") if raw else "-"
                     except Exception:
-                        val = raw or "—"
+                        val = raw or "-"
                 else:
-                    val = str(raw) if raw else "—"
+                    val = str(raw) if raw else "-"
 
                 if trunc and len(val) > trunc:
-                    val = val[:trunc] + "…"
+                    val = val[:trunc] + "..."
 
                 page.insert_textbox(
                     fitz.Rect(x + 3, y + 2, x + w - 2, y + row_h - 1),
@@ -293,7 +321,7 @@ class _PDFGenerator:
         page.draw_rect(fitz.Rect(0, 0, self.PAGE_W, 36),
                        color=None, fill=_AZUL_CORP)
         page.insert_text((self.MARGIN, 23),
-                         "DatenJäger  —  Distribución de Documentos por Empresa",
+                         "DatenJäger  -  Distribución de Documentos por Empresa",
                          fontsize=11, fontname="hebo", color=_BLANCO)
 
         
