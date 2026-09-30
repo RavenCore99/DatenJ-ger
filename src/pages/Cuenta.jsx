@@ -1,20 +1,31 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import Panel, { EstadoError, Esqueleto } from '../components/Panel.jsx'
+import Panel, { Aviso, CabeceraPagina, Esqueleto, EstadoError, Pill } from '../components/Panel.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
 /**
- * Panel de cuenta (SCRUM-25): contraseña, doble factor, códigos de respaldo,
- * confianza del dispositivo y apariencia.
+ * Panel de cuenta y ajustes (SCRUM-31).
  *
- * Solo se construyen las secciones que tienen lógica real en el sistema; el
- * resto de la referencia visual de configuración no es alcance (CLAUDE.md
- * sección 6). La verificación y el cifrado ocurren siempre en el backend: esta
- * pantalla no calcula códigos ni maneja claves.
+ * Reúne las secciones que tienen lógica real en el sistema —apariencia, doble
+ * factor, códigos de respaldo, contraseña y confianza del dispositivo— con la
+ * composición del mockup de configuración: navegación de secciones a la
+ * izquierda y contenido a la derecha. El resto de secciones del mockup son
+ * referencia de estilo, no alcance (CLAUDE.md sección 6).
+ *
+ * La verificación y el cifrado ocurren siempre en el backend: esta pantalla no
+ * calcula códigos ni maneja claves.
  */
+const SECCIONES = [
+  { clave: 'apariencia', titulo: 'Apariencia', descripcion: 'Tema de la interfaz' },
+  { clave: 'doble_factor', titulo: 'Doble factor', descripcion: 'Segundo paso al entrar' },
+  { clave: 'codigos', titulo: 'Códigos de respaldo', descripcion: 'Acceso de emergencia' },
+  { clave: 'contrasena', titulo: 'Contraseña', descripcion: 'Cambio y re-cifrado' },
+  { clave: 'confianza', titulo: 'Dispositivos', descripcion: 'Equipos de confianza' },
+]
+
 export default function Cuenta() {
-  const { tema, alternarTema } = useApp()
+  const [seccion, setSeccion] = useState('apariencia')
   const [estado, setEstado] = useState(null)
   const [error, setError] = useState(null)
 
@@ -31,58 +42,108 @@ export default function Cuenta() {
     recargar()
   }, [recargar])
 
+  const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
+
   return (
-    <div className="flex flex-col gap-6">
-      <Panel titulo="Apariencia" descripcion="Tema de la interfaz">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-tenue">
-            Tema activo: <span className="font-mono">{tema}</span>
-          </p>
-          <button
-            type="button"
-            onClick={alternarTema}
-            className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium transition-colors hover:border-primario hover:text-primario"
-          >
-            Alternar tema
-          </button>
-        </div>
-      </Panel>
+    <div className="aparecer flex flex-col gap-6">
+      <CabeceraPagina
+        titulo="Cuenta y ajustes"
+        descripcion="Seguridad de la sesión, doble factor y apariencia"
+        acciones={
+          estado && (
+            <Pill tipo={estado.segundo_factor_habilitado ? 'exito' : 'alerta'}>
+              {estado.segundo_factor_habilitado ? '2FA activo' : '2FA inactivo'}
+            </Pill>
+          )
+        }
+      />
 
       {error && <EstadoError mensaje={error} onReintentar={recargar} />}
 
-      {!estado && !error && <Esqueleto lineas={3} />}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <nav
+          aria-label="Secciones de la cuenta"
+          className="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-panel border border-borde bg-superficie p-2 lg:w-60 lg:flex-col"
+        >
+          {SECCIONES.map(({ clave, titulo, descripcion }) => {
+            const activaEsta = clave === seccion
+            return (
+              <button
+                key={clave}
+                type="button"
+                onClick={() => setSeccion(clave)}
+                aria-current={activaEsta ? 'true' : undefined}
+                className={[
+                  'flex flex-col rounded-lg px-3 py-2 text-left transition-colors',
+                  activaEsta
+                    ? 'bg-primario-suave text-primario'
+                    : 'text-texto hover:bg-fondo-2',
+                ].join(' ')}
+              >
+                <span className="text-etiqueta-md font-medium">{titulo}</span>
+                <span className="hidden text-cuerpo-sm text-tenue lg:block">{descripcion}</span>
+              </button>
+            )
+          })}
+        </nav>
 
-      {estado && (
-        <>
-          <Panel titulo="Doble factor" descripcion="Segundo paso al iniciar sesión">
-            <SegundoFactor estado={estado} onCambio={recargar} />
-          </Panel>
+        <div className="min-w-0 flex-1">
+          {!estado && !error && (
+            <Panel titulo={activa.titulo} descripcion={activa.descripcion}>
+              <Esqueleto variante="texto" filas={4} />
+            </Panel>
+          )}
 
-          <Panel
-            titulo="Contraseña"
-            descripcion="Cambiarla vuelve a cifrar tus secretos y revoca la confianza"
-          >
-            <CambiarContrasena tieneSegundoFactor={estado.segundo_factor_habilitado}
-                               onCambio={recargar} />
-          </Panel>
-
-          <Panel titulo="Dispositivos de confianza"
-                 descripcion="Permiten omitir el segundo factor en este equipo">
-            <Confianza estado={estado} onCambio={recargar} />
-          </Panel>
-        </>
-      )}
+          {estado && (
+            <Panel titulo={activa.titulo} descripcion={activa.descripcion}>
+              {seccion === 'apariencia' && <Apariencia />}
+              {seccion === 'doble_factor' && <SegundoFactor estado={estado} onCambio={recargar} />}
+              {seccion === 'codigos' && <CodigosRespaldo estado={estado} onCambio={recargar} />}
+              {seccion === 'contrasena' && (
+                <CambiarContrasena
+                  tieneSegundoFactor={estado.segundo_factor_habilitado}
+                  onCambio={recargar}
+                />
+              )}
+              {seccion === 'confianza' && <Confianza estado={estado} onCambio={recargar} />}
+            </Panel>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 /* -------------------------------------------------------------------- */
 
+function Apariencia() {
+  const { tema, alternarTema } = useApp()
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-cuerpo-md">Tema de la interfaz</p>
+          <p className="text-cuerpo-sm text-tenue">
+            Tema activo: <span className="font-mono">{tema}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={alternarTema}
+          className="rounded-lg border border-borde px-3 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
+        >
+          {tema === 'oscuro' ? 'Usar tema claro' : 'Usar tema oscuro'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function SegundoFactor({ estado, onCambio }) {
   const [preparacion, setPreparacion] = useState(null)
   const [codigo, setCodigo] = useState('')
-  const [codigos, setCodigos] = useState(null)
-  const [pide, setPide] = useState(null) // 'activar' | 'desactivar' | 'regenerar'
+  const [pide, setPide] = useState(null) // 'activar' | 'desactivar'
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState(null)
 
@@ -103,14 +164,12 @@ function SegundoFactor({ estado, onCambio }) {
       setPreparacion(await backend.cuenta.prepararSegundoFactor())
       setPide('activar')
       setCodigo('')
-      setCodigos(null)
     })
 
   const activar = (evento) => {
     evento.preventDefault()
     ejecutar(async () => {
-      const resultado = await backend.cuenta.activarSegundoFactor(preparacion.secreto, codigo)
-      setCodigos(resultado.codigos_de_respaldo)
+      await backend.cuenta.activarSegundoFactor(preparacion.secreto, codigo)
       setPide(null)
       setPreparacion(null)
       setCodigo('')
@@ -118,15 +177,10 @@ function SegundoFactor({ estado, onCambio }) {
     })
   }
 
-  const conCodigo = (nombre) => (evento) => {
+  const desactivar = (evento) => {
     evento.preventDefault()
     ejecutar(async () => {
-      const resultado =
-        nombre === 'desactivar'
-          ? await backend.cuenta.desactivarSegundoFactor(codigo)
-          : await backend.cuenta.regenerarCodigos(codigo)
-
-      if (resultado?.codigos_de_respaldo) setCodigos(resultado.codigos_de_respaldo)
+      await backend.cuenta.desactivarSegundoFactor(codigo)
       setPide(null)
       setCodigo('')
       await onCambio()
@@ -136,17 +190,20 @@ function SegundoFactor({ estado, onCambio }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Insignia activo={estado.segundo_factor_habilitado} />
+        <Pill tipo={estado.segundo_factor_habilitado ? 'exito' : 'alerta'}>
+          {estado.segundo_factor_habilitado ? 'Activado' : 'Desactivado'}
+        </Pill>
         <div className="flex-1" />
         {estado.segundo_factor_habilitado ? (
-          <>
-            <BotonSecundario onClick={() => { setPide('regenerar'); setCodigo('') }} disabled={ocupado}>
-              Regenerar códigos
-            </BotonSecundario>
-            <BotonSecundario onClick={() => { setPide('desactivar'); setCodigo('') }} disabled={ocupado}>
-              Desactivar
-            </BotonSecundario>
-          </>
+          <BotonSecundario
+            onClick={() => {
+              setPide('desactivar')
+              setCodigo('')
+            }}
+            disabled={ocupado}
+          >
+            Desactivar
+          </BotonSecundario>
         ) : (
           <BotonPrincipal onClick={empezar} disabled={ocupado} texto="Activar doble factor" />
         )}
@@ -156,9 +213,9 @@ function SegundoFactor({ estado, onCambio }) {
 
       {pide === 'activar' && preparacion && (
         <form className="flex flex-col gap-4" onSubmit={activar}>
-          <p className="text-xs text-tenue">
-            Escanea el código con tu aplicación de autenticación y confirma con el
-            código de 6 dígitos que genera.
+          <p className="text-cuerpo-sm text-tenue">
+            Escanea el código con tu aplicación de autenticación y confirma con el código de 6
+            dígitos que genera.
           </p>
 
           <div className="flex flex-wrap items-start gap-6">
@@ -168,10 +225,8 @@ function SegundoFactor({ estado, onCambio }) {
               className="h-44 w-44 rounded-lg border border-borde bg-white p-2"
             />
             <div className="flex min-w-0 flex-col gap-2">
-              <span className="text-[11px] uppercase tracking-wider text-tenue">
-                Si no puedes escanearlo
-              </span>
-              <code className="break-all rounded-lg border border-borde bg-fondo px-3 py-2 font-mono text-[11px]">
+              <span className="text-etiqueta-sm text-texto">Si no puedes escanearlo</span>
+              <code className="break-all rounded-lg border border-borde bg-fondo px-3 py-2 font-mono text-codigo">
                 {preparacion.secreto}
               </code>
             </div>
@@ -181,7 +236,11 @@ function SegundoFactor({ estado, onCambio }) {
           <div className="flex gap-3">
             <BotonPrincipal ocupado={ocupado} texto="Confirmar y activar" />
             <BotonSecundario
-              onClick={() => { setPide(null); setPreparacion(null); setError(null) }}
+              onClick={() => {
+                setPide(null)
+                setPreparacion(null)
+                setError(null)
+              }}
               type="button"
             >
               Cancelar
@@ -190,25 +249,76 @@ function SegundoFactor({ estado, onCambio }) {
         </form>
       )}
 
-      {(pide === 'desactivar' || pide === 'regenerar') && (
-        <form className="flex flex-col gap-3" onSubmit={conCodigo(pide)}>
-          <p className="text-xs text-tenue">
-            {pide === 'desactivar'
-              ? 'Desactivar el doble factor deja la cuenta protegida solo por la contraseña.'
-              : 'Los códigos actuales dejarán de servir en cuanto se emitan los nuevos.'}
+      {pide === 'desactivar' && (
+        <form className="flex flex-col gap-3" onSubmit={desactivar}>
+          <p className="text-cuerpo-sm text-tenue">
+            Desactivar el doble factor deja la cuenta protegida solo por la contraseña.
           </p>
           <CampoCodigo valor={codigo} onCambio={setCodigo} autoFocus etiqueta="Código del autenticador" />
           <div className="flex gap-3">
-            <BotonPrincipal
-              ocupado={ocupado}
-              texto={pide === 'desactivar' ? 'Desactivar' : 'Generar códigos nuevos'}
-            />
-            <BotonSecundario onClick={() => { setPide(null); setError(null) }} type="button">
+            <BotonPrincipal ocupado={ocupado} texto="Desactivar" />
+            <BotonSecundario
+              onClick={() => {
+                setPide(null)
+                setError(null)
+              }}
+              type="button"
+            >
               Cancelar
             </BotonSecundario>
           </div>
         </form>
       )}
+    </div>
+  )
+}
+
+function CodigosRespaldo({ estado, onCambio }) {
+  const [codigo, setCodigo] = useState('')
+  const [codigos, setCodigos] = useState(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState(null)
+
+  if (!estado.segundo_factor_habilitado) {
+    return (
+      <p className="text-cuerpo-sm text-tenue">
+        Los códigos de respaldo se emiten al activar el doble factor. Actívalo primero en la
+        sección «Doble factor».
+      </p>
+    )
+  }
+
+  const regenerar = async (evento) => {
+    evento.preventDefault()
+    setOcupado(true)
+    setError(null)
+    try {
+      const resultado = await backend.cuenta.regenerarCodigos(codigo)
+      setCodigos(resultado?.codigos_de_respaldo ?? null)
+      setCodigo('')
+      await onCambio()
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-cuerpo-sm text-tenue">
+        Cada código sirve una sola vez y permite entrar sin el autenticador. Regenerarlos invalida
+        los anteriores de inmediato.
+      </p>
+
+      {error && <Aviso tipo="error">{error}</Aviso>}
+
+      <form className="flex flex-col gap-3" onSubmit={regenerar}>
+        <CampoCodigo valor={codigo} onCambio={setCodigo} autoFocus />
+        <div>
+          <BotonPrincipal ocupado={ocupado} texto="Generar códigos nuevos" />
+        </div>
+      </form>
 
       {codigos && <ListaDeCodigos codigos={codigos} />}
     </div>
@@ -235,18 +345,18 @@ function Confianza({ estado, onCambio }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Insignia activo={estado.confianza_guardada}
-                  activoTexto="Este equipo está en confianza"
-                  inactivoTexto="Este equipo pedirá el doble factor" />
+        <Pill tipo={estado.confianza_guardada ? 'exito' : 'neutro'}>
+          {estado.confianza_guardada ? 'Este equipo está en confianza' : 'Este equipo pedirá el 2FA'}
+        </Pill>
         <div className="flex-1" />
         <BotonSecundario onClick={revocar} disabled={ocupado || !estado.confianza_guardada}>
           Olvidar este equipo
         </BotonSecundario>
       </div>
       {error && <Aviso tipo="error">{error}</Aviso>}
-      <p className="text-[11px] text-tenue">
-        El token se guarda cifrado en el almacén local del servicio; la interfaz
-        solo informa de si existe y permite revocarlo.
+      <p className="text-cuerpo-sm text-tenue">
+        El token se guarda cifrado en el almacén local del servicio; la interfaz solo informa de si
+        existe y permite revocarlo.
       </p>
     </div>
   )
@@ -287,21 +397,36 @@ function CambiarContrasena({ tieneSegundoFactor, onCambio }) {
 
   if (!tieneSegundoFactor) {
     return (
-      <p className="text-xs text-tenue">
-        El cambio de contraseña exige tener el doble factor activo: es lo que impide
-        que una sesión abierta en un equipo ajeno se apropie de la cuenta.
+      <p className="text-cuerpo-sm text-tenue">
+        El cambio de contraseña exige tener el doble factor activo: es lo que impide que una sesión
+        abierta en un equipo ajeno se apropie de la cuenta.
       </p>
     )
   }
 
   return (
     <form className="flex flex-col gap-4" onSubmit={enviar}>
-      <Campo etiqueta="Contraseña actual" tipo="password" valor={actual}
-             onCambio={setActual} autoComplete="current-password" />
-      <Campo etiqueta="Nueva contraseña" tipo="password" valor={nueva}
-             onCambio={setNueva} autoComplete="new-password" />
-      <Campo etiqueta="Repite la nueva contraseña" tipo="password" valor={repetida}
-             onCambio={setRepetida} autoComplete="new-password" />
+      <Campo
+        etiqueta="Contraseña actual"
+        tipo="password"
+        valor={actual}
+        onCambio={setActual}
+        autoComplete="current-password"
+      />
+      <Campo
+        etiqueta="Nueva contraseña"
+        tipo="password"
+        valor={nueva}
+        onCambio={setNueva}
+        autoComplete="new-password"
+      />
+      <Campo
+        etiqueta="Repite la nueva contraseña"
+        tipo="password"
+        valor={repetida}
+        onCambio={setRepetida}
+        autoComplete="new-password"
+      />
       <CampoCodigo valor={codigo} onCambio={setCodigo} />
 
       {corta && <Aviso tipo="alerta">La contraseña debe tener al menos 8 caracteres.</Aviso>}
@@ -309,8 +434,8 @@ function CambiarContrasena({ tieneSegundoFactor, onCambio }) {
       {error && <Aviso tipo="error">{error}</Aviso>}
       {hecho && (
         <Aviso tipo="exito">
-          Contraseña actualizada. Se volvieron a cifrar tus secretos y se revocó la
-          confianza de este equipo.
+          Contraseña actualizada. Se volvieron a cifrar tus secretos y se revocó la confianza de
+          este equipo.
         </Aviso>
       )}
 
@@ -338,14 +463,16 @@ function ListaDeCodigos({ codigos }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-alerta/40 bg-alerta/5 px-4 py-3">
-      <p className="text-xs text-alerta">
+    <div className="aparecer flex flex-col gap-3 rounded-lg border border-alerta/40 bg-alerta/5 px-4 py-3">
+      <p className="text-cuerpo-sm text-alerta">
         Guarda estos códigos ahora: no se vuelven a mostrar y cada uno sirve una sola vez.
       </p>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {codigos.map((codigo) => (
-          <li key={codigo} className="rounded-lg border border-borde bg-fondo px-3 py-2
-                                      text-center font-mono text-sm tracking-widest">
+          <li
+            key={codigo}
+            className="rounded-lg border border-borde bg-fondo px-3 py-2 text-center font-mono text-cuerpo-md tracking-widest"
+          >
             {codigo}
           </li>
         ))}
@@ -361,44 +488,15 @@ function ListaDeCodigos({ codigos }) {
 
 /* ---------------------------- piezas sueltas --------------------------- */
 
-function Insignia({ activo, activoTexto = 'Activado', inactivoTexto = 'Desactivado' }) {
-  return (
-    <span
-      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-        activo
-          ? 'border-exito/40 bg-exito/10 text-exito'
-          : 'border-borde bg-fondo text-tenue'
-      }`}
-    >
-      {activo ? activoTexto : inactivoTexto}
-    </span>
-  )
-}
-
-function Aviso({ tipo, children }) {
-  const clases = {
-    error: 'border-peligro/40 bg-peligro/5 text-peligro',
-    alerta: 'border-alerta/40 bg-alerta/5 text-alerta',
-    exito: 'border-exito/40 bg-exito/5 text-exito',
-  }[tipo]
-
-  return (
-    <p role={tipo === 'error' ? 'alert' : undefined}
-       className={`rounded-lg border px-3 py-2 text-xs ${clases}`}>
-      {children}
-    </p>
-  )
-}
-
 function Campo({ etiqueta, valor, onCambio, tipo = 'text', ...resto }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wider text-tenue">{etiqueta}</span>
+      <span className="text-etiqueta-sm text-texto">{etiqueta}</span>
       <input
         type={tipo}
         value={valor}
         onChange={(evento) => onCambio(evento.target.value)}
-        className="rounded-lg border border-borde bg-fondo px-3 py-2 text-sm outline-none focus:border-primario"
+        className="rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none transition-colors focus:border-primario"
         {...resto}
       />
     </label>
@@ -427,8 +525,7 @@ function BotonPrincipal({ ocupado, texto, inhabilitado, ...resto }) {
       type="submit"
       disabled={ocupado || inhabilitado}
       {...resto}
-      className="rounded-lg bg-primario px-3 py-1.5 text-xs font-medium text-white
-                 transition-opacity disabled:opacity-50"
+      className="rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
     >
       {ocupado ? 'Procesando…' : texto}
     </button>
@@ -439,9 +536,7 @@ function BotonSecundario({ children, ...resto }) {
   return (
     <button
       type="button"
-      className="rounded-lg border border-borde px-3 py-1.5 text-xs font-medium
-                 transition-colors hover:border-primario hover:text-primario
-                 disabled:opacity-50"
+      className="rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
       {...resto}
     >
       {children}
