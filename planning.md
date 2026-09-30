@@ -242,8 +242,10 @@ Comprobado antes de abrir la Fase 3, para que lo anterior quede al día:
 > `SCRUM-32` del Sprint 3 siguen siendo el acabado visual de lo que ya
 > funciona.
 
-Estado: **por hacer** — Skill: `electron-react-migration` +
-`ui-states-animations`
+Estado: **en progreso** — Skill: `electron-react-migration` +
+`ui-states-animations`. La sección **Base visual y movimiento** (`SCRUM-27` a
+`SCRUM-32` y `SCRUM-65` a `SCRUM-71`) está cerrada y verificada; quedan abiertas
+las pantallas nuevas y el cierre de la fase.
 
 Objetivo: tomar cada pantalla ya funcional de la Fase 2 y llevarla a una
 identidad visual **inspirada** en `/assets/mockups`, con Tailwind.
@@ -467,16 +469,16 @@ Base visual y movimiento:
 - [x] `SCRUM-27` tokens visuales del `DESIGN.md` en Tailwind (paleta, tipografía, radios, densidades)
 - [x] `SCRUM-28` layout base: barra lateral `240px`/`64px`, sub-cabecera `48px`, franja inferior `32px`, marco de ventana
 - [x] `SCRUM-29` login, bienvenida/intro, verificación 2FA y panel documental
-- [ ] `SCRUM-30` personas y auditoría
-- [ ] `SCRUM-31` configuración y cuenta
-- [ ] `SCRUM-32` estados canónicos y transiciones
-- [ ] `SCRUM-65` logo, icono de aplicación y set de iconos
-- [ ] `SCRUM-66` transición suave entre tema claro y oscuro
-- [ ] `SCRUM-67` animación de entrada y micro-interacciones
-- [ ] `SCRUM-68` estados con color (base de datos, APIs, chatbot)
-- [ ] `SCRUM-69` esqueletos de carga
-- [ ] `SCRUM-70` barras laterales desplegables
-- [ ] `SCRUM-71` complementos de `assets/assets/` como componentes propios
+- [x] `SCRUM-30` personas y auditoría
+- [x] `SCRUM-31` configuración y cuenta
+- [x] `SCRUM-32` estados canónicos y transiciones
+- [x] `SCRUM-65` logo, icono de aplicación y set de iconos
+- [x] `SCRUM-66` transición suave entre tema claro y oscuro
+- [x] `SCRUM-67` animación de entrada y micro-interacciones
+- [x] `SCRUM-68` estados con color (base de datos, APIs, chatbot)
+- [x] `SCRUM-69` esqueletos de carga
+- [x] `SCRUM-70` barras laterales desplegables
+- [x] `SCRUM-71` complementos de `assets/assets/` como componentes propios
 
 Pantallas que faltan:
 
@@ -644,7 +646,7 @@ fase, el proyecto se considera entregable cuando:
 | 0. Preparación | por hacer (mockups pendientes de recibir) | 2026-09-28 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | por hacer (mockups recibidos) | 2026-09-28 |
+| 3. Frontend conforme a mockups | en progreso (base visual y movimiento hecha; faltan pantallas nuevas) | 2026-09-30 |
 | 4. Integración de APIs y modelos locales | por hacer | — |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
