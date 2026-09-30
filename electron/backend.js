@@ -142,6 +142,13 @@ class ServicioPython {
           `El puerto ${this.puerto} ya está ocupado por otro proceso. ` +
           'Cierra la instancia anterior o define otro puerto (DATENJAGER_PUERTO).'
         this.abortarEspera()
+      } else if (/DATENJAGER_ERROR/i.test(texto)) {
+        // Fallo anunciado por el propio servicio (p. ej. la base de datos no se
+        // pudo abrir). Se muestra su mensaje en vez de un genérico, porque es
+        // el único que explica por qué no se puede entrar.
+        const anuncio = texto.split('\n').find((linea) => linea.startsWith('DATENJAGER_ERROR'))
+        this.error = anuncio ?? 'El servicio local no pudo iniciarse'
+        this.abortarEspera()
       } else if (/Traceback|ModuleNotFoundError|ImportError/i.test(texto)) {
         this.error = 'El servicio local no pudo iniciarse (revisa la salida de Python)'
         this.abortarEspera()
