@@ -1,3 +1,5 @@
+// Trazabilidad Jira: SCRUM-58 (DatenJäger — Frontend).
+
 import { useState } from 'react'
 
 import { useApp } from '../estado/ProveedorApp.jsx'

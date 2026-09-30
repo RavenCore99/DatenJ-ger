@@ -1,3 +1,5 @@
+// Trazabilidad Jira: SCRUM-59 (DatenJäger — UI / UX).
+
 import { useEffect, useState } from 'react'
 
 import Icono from './Icono.jsx'

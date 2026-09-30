@@ -1,3 +1,5 @@
+// Trazabilidad Jira: SCRUM-61 (DatenJäger — Chatbot).
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import Panel, { CabeceraPagina, EstadoError, EstadoVacio, Esqueleto, Pill } from '../components/Panel.jsx'
