@@ -19,6 +19,11 @@ export function ProveedorApp({ children }) {
   const [tema, setTema] = useState(() => temaInicial())
   const [animaciones, setAnimaciones] = useState(() => animacionesIniciales())
   const [aviso, setAviso] = useState(null)
+  // Estado de las piezas del sistema (SCRUM-68): la base de datos se comprueba
+  // leyendo de verdad el archivo; las conexiones de modelos y el chatbot no
+  // tienen configuración todavía (llegan en la Fase 4), así que su estado real
+  // hoy es «sin configurar».
+  const [baseDatos, setBaseDatos] = useState('sin_verificar')
 
   const montado = useRef(true)
 
@@ -44,15 +49,33 @@ export function ProveedorApp({ children }) {
       try {
         const actual = await backend.sesion.actual(senal)
         if (montado.current) setSesion(actual)
+
+        // La base solo se da por buena cuando una lectura real responde
+        // (SCRUM-68): un conteo es barato y prueba que el archivo está abierto
+        // y consultable. Sin sesión no se puede leer, así que queda sin verificar.
+        if (actual?.autenticado) {
+          try {
+            await backend.documentos.contar()
+            if (montado.current) setBaseDatos('ok')
+          } catch {
+            if (montado.current) setBaseDatos('error')
+          }
+        } else if (montado.current) {
+          setBaseDatos('sin_verificar')
+        }
       } catch {
         // El servicio respondió: si la sesión no se puede leer, no hay sesión.
-        if (montado.current) setSesion(null)
+        if (montado.current) {
+          setSesion(null)
+          setBaseDatos('sin_verificar')
+        }
       }
     } catch (error) {
       if (error?.name === 'AbortError') return
       if (!montado.current) return
       setEstadoBackend('sin_conexion')
       setSesion(null)
+      setBaseDatos('error')
       if (!(error instanceof ErrorBackend)) setAviso(String(error))
     }
   }, [])
@@ -136,11 +159,18 @@ export function ProveedorApp({ children }) {
       alternarTema,
       animaciones,
       alternarAnimaciones,
+      componentes: {
+        baseDatos,
+        // Sin punto de conexión ni clave configurados todavía (Fase 4): el
+        // estado honesto es «sin configurar», no un verde que no se ha ganado.
+        apis: 'sin_configurar',
+        chatbot: 'sin_configurar',
+      },
       aviso,
       limpiarAviso: () => setAviso(null),
       recargarSalud: () => consultarSalud(),
     }),
-    [estadoBackend, version, sesion, tema, animaciones, aviso, alternarTema, alternarAnimaciones, consultarSalud],
+    [estadoBackend, version, sesion, tema, animaciones, baseDatos, aviso, alternarTema, alternarAnimaciones, consultarSalud],
   )
 
   return <ContextoApp.Provider value={valor}>{children}</ContextoApp.Provider>
