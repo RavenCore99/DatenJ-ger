@@ -61,4 +61,27 @@ async function guardarDocumento(ventana, { nombre, contenido_b64: contenidoB64 }
   return { cancelado: false, destino: filePath }
 }
 
-module.exports = { elegirDocumento, guardarDocumento }
+/**
+ * Elige una ruta de destino sin escribir nada (SCRUM-61).
+ *
+ * Los reportes los genera el servicio de Python en su propio proceso, así que
+ * el renderer solo necesita la ruta: pedirla con el diálogo nativo es lo que
+ * mantiene al usuario eligiendo dónde queda el archivo.
+ */
+async function elegirDestino(ventana, { nombre, formato = 'pdf' } = {}) {
+  const filtros =
+    formato === 'csv'
+      ? [{ name: 'Valores separados por comas', extensions: ['csv'] }]
+      : FILTROS_PDF
+
+  const { canceled, filePath } = await dialog.showSaveDialog(ventana, {
+    title: 'Guardar reporte',
+    defaultPath: nombre || `reporte.${formato}`,
+    filters: filtros,
+  })
+
+  if (canceled || !filePath) return { cancelado: true }
+  return { cancelado: false, destino: filePath }
+}
+
+module.exports = { elegirDocumento, guardarDocumento, elegirDestino }

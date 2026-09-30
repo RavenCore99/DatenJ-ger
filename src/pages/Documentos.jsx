@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
 import Icono from '../components/Icono.jsx'
+import VisorPdf from '../components/VisorPdf.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { elegirArchivo, guardarArchivo } from '../lib/escritorio.js'
@@ -36,6 +37,8 @@ export default function Documentos() {
   const [aviso, setAviso] = useState(null)
   const [ocupado, setOcupado] = useState(null)
   const [seleccion, setSeleccion] = useState(null)
+  // Documento abierto en el visor interno (SCRUM-60).
+  const [visor, setVisor] = useState(null)
 
   const cargar = useCallback(async (texto) => {
     setEstado('cargando')
@@ -320,18 +323,31 @@ export default function Documentos() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={(evento) => {
-                          evento.stopPropagation()
-                          descargar(fila)
-                        }}
-                        disabled={ocupado === 'descargar'}
-                        className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
-                      >
-                        <Icono nombre="descargar" tamano={13} />
-                        Descargar
-                      </button>
+                      <span className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(evento) => {
+                            evento.stopPropagation()
+                            setVisor(fila)
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario"
+                        >
+                          <Icono nombre="ojo" tamano={13} />
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(evento) => {
+                            evento.stopPropagation()
+                            descargar(fila)
+                          }}
+                          disabled={ocupado === 'descargar'}
+                          className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
+                        >
+                          <Icono nombre="descargar" tamano={13} />
+                          Descargar
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -374,6 +390,14 @@ export default function Documentos() {
               <div className="flex items-center gap-2 border-t border-borde pt-3">
                 <button
                   type="button"
+                  onClick={() => setVisor(seleccionada)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario"
+                >
+                  <Icono nombre="ojo" tamano={13} />
+                  Ver aquí
+                </button>
+                <button
+                  type="button"
                   onClick={() => descargar(seleccionada)}
                   disabled={ocupado === 'descargar'}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
@@ -410,6 +434,9 @@ export default function Documentos() {
           </aside>
         )}
       </div>
+
+      {/* Visor interno (SCRUM-60): capa modal sobre el panel, no una ventana aparte. */}
+      {visor && <VisorPdf documento={visor} onCerrar={() => setVisor(null)} />}
     </div>
   )
 }

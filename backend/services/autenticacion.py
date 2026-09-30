@@ -35,6 +35,7 @@ import qrcode
 
 from backend.services import auditoria
 from backend.errors import (
+    ConflictoError,
     DatosInvalidosError,
     CredencialesInvalidasError,
     CuentaBloqueadaError,
@@ -79,6 +80,11 @@ ACCION_2FA_FALLIDO = "2FA fallido: código incorrecto o expirado"
 ACCION_2FA_OMITIDO = "Login con token de confianza (2FA omitido)"
 ACCION_RESPALDO_OK = "Login con código de respaldo"
 ACCION_RESPALDO_FALLIDO = "Código de respaldo inválido"
+ACCION_REGISTRO = "Usuario registrado"
+
+#: Longitud mínima del nombre de usuario y de la contraseña al dar de alta.
+LONGITUD_MINIMA_NOMBRE = 3
+PUNTAJE_MINIMO_CONTRASENA = 2
 
 
 def _auditar(conn, cursor, accion: str, usuario_id: Optional[int]) -> None:
@@ -135,6 +141,65 @@ def _migrar_material_2fa(
         conn.commit()
 
     return migrado
+
+
+def registrar_usuario(
+    conn,
+    cursor,
+    *,
+    nombre: str,
+    contrasena: str,
+) -> dict[str, Any]:
+    """Da de alta una cuenta nueva y deriva su clave de sesión (SCRUM-57).
+
+    Es la última operación que todavía vivía en ``main.py``. Repite sus mismas
+    reglas —nombre de 3 caracteres como mínimo, contraseña de 8 con fortaleza
+    al menos «Regular»— y el mismo formato de hash PBKDF2, de modo que una
+    cuenta creada aquí es idéntica a las que ya existen.
+
+    La clave de sesión se deriva del ``salt`` del hash recién creado y **no**
+    se persiste: solo viaja al estado en memoria para que el alta continúe con
+    la configuración del segundo factor.
+
+    Returns:
+        dict con ``usuario_id``, ``nombre`` y ``clave_sesion``.
+
+    Raises:
+        DatosInvalidosError: nombre o contraseña fuera de las reglas.
+        ConflictoError: ya existe una cuenta con ese nombre.
+    """
+    nombre = (nombre or "").strip()
+    contrasena = (contrasena or "").strip()
+
+    if not nombre or not contrasena:
+        raise DatosInvalidosError("Ingresa nombre de usuario y contraseña")
+
+    if len(nombre) < LONGITUD_MINIMA_NOMBRE:
+        raise DatosInvalidosError(
+            f"El nombre de usuario debe tener al menos {LONGITUD_MINIMA_NOMBRE} caracteres")
+
+    puntaje, etiqueta, _color = password_strength(contrasena)
+    if len(contrasena) < LONGITUD_MINIMA_CONTRASENA or puntaje < PUNTAJE_MINIMO_CONTRASENA:
+        raise DatosInvalidosError(
+            f"Contraseña insegura (fortaleza: {etiqueta}). Usa al menos "
+            f"{LONGITUD_MINIMA_CONTRASENA} caracteres con mayúsculas, números y símbolos.")
+
+    cursor.execute("SELECT id FROM Usuarios WHERE nombre = ?", (nombre,))
+    if cursor.fetchone():
+        raise ConflictoError(f"El usuario '{nombre}' ya existe")
+
+    hash_pass = hash_contrasena(contrasena)
+    cursor.execute(
+        "INSERT INTO Usuarios (nombre, contrasena, fecha_creacion) VALUES (?, ?, ?)",
+        (nombre, hash_pass, datetime.now().isoformat()),
+    )
+    conn.commit()
+    usuario_id = cursor.lastrowid
+
+    clave_sesion = _derivar_clave_sesion(contrasena, hash_pass, nombre)
+
+    _auditar(conn, cursor, ACCION_REGISTRO, usuario_id)
+    return {"usuario_id": usuario_id, "nombre": nombre, "clave_sesion": clave_sesion}
 
 
 def autenticar(

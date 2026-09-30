@@ -145,9 +145,9 @@ class TestFlujoCompleto(BaseBackendTest):
         for operacion in ("setup_2fa", "cambio_contrasena", "confianza_dispositivo"):
             self.assertNotIn(operacion, pendientes)
 
-        # Lo único que queda fuera es el alta de usuario.
-        self.assertEqual(list(pendientes), ["registro"])
-        self.assertTrue(all(pendientes.values()))
+        # Desde SCRUM-57 el alta de usuario también vive aquí: no queda nada
+        # declarado como pendiente en la interfaz.
+        self.assertEqual(pendientes, {})
 
 
 

@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('datenjager', {
   /** Guarda en disco, con diálogo nativo, un archivo recibido en base64. */
   guardarArchivo: (datos) => ipcRenderer.invoke('archivo:guardar', datos),
 
+  /** Elige una ruta de destino sin escribir nada (reportes, SCRUM-61). */
+  elegirDestino: (datos) => ipcRenderer.invoke('archivo:destino', datos),
+
   /** Solo lectura, sin IPC: datos del entorno de Electron. */
   versionElectron: process.versions.electron,
   versionNode: process.versions.node,

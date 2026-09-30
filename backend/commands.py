@@ -17,12 +17,10 @@ Contrato:
     - Los comandos retornan datos simples (``dict``/``list``/``bytes``),
       nunca widgets.
 
-La verificación de credenciales, el bloqueo por intentos y el segundo
-factor (TOTP o código de respaldo) ya forman parte de esta capa (SCRUM-22).
-La clave de sesión se retiene aquí: nunca se entrega al cliente.
-
-Alcance pendiente: el alta de usuario con derivación de claves y el cambio
-de contraseña (SCRUM-25).
+La verificación de credenciales, el bloqueo por intentos, el segundo
+factor (TOTP o código de respaldo) y el **alta de usuario** forman ya parte
+de esta capa (SCRUM-22, SCRUM-25 y SCRUM-57). La clave de sesión se retiene
+aquí: nunca se entrega al cliente.
 """
 
 from __future__ import annotations
@@ -34,6 +32,7 @@ from typing import Any, Optional
 from backend.errors import NoAutenticadoError, SegundoFactorInvalidoError
 from backend.services import auditoria as _auditoria
 from backend.services import autenticacion as _autenticacion
+from backend.services import modelos as _modelos
 from backend import tokens as _tokens
 from backend.services import documentos as _documentos
 from backend.services import personas as _personas
@@ -41,9 +40,11 @@ from backend.services import reportes as _reportes
 from chatbot import ChatbotService, crear_servicio
 
 #: Operaciones que todavía viven en la interfaz y su motivo.
-OPERACIONES_PENDIENTES = {
-    "registro": "Alta de usuario con derivación de claves (flujo de autenticación)",
-}
+#:
+#: Vacío desde SCRUM-57: el alta de usuario era la última. Se conserva el
+#: catálogo para que cualquier trabajo futuro que vuelva a quedarse en la
+#: interfaz se declare aquí en vez de quedar implícito.
+OPERACIONES_PENDIENTES: dict[str, str] = {}
 
 
 class ComandosDatenJager:
@@ -110,6 +111,37 @@ class ComandosDatenJager:
             "tema": self.state.tema,
             "minutos_inactividad": self.state.minutos_inactividad(),
         }
+
+    def estado_base_datos(self) -> str:
+        """Comprueba la base con una lectura real: ``ok`` o ``error``.
+
+        Vive aquí porque es lo único que puede distinguir «el servicio está
+        arriba» de «el servicio está arriba pero la base no responde»: la
+        barra de telemetría del frontend usa esta lectura para pintar su
+        semáforo, en lugar de asumir que todo va bien porque el proceso vive.
+        """
+        try:
+            with self.state.db_lock:
+                self.state.cursor.execute("SELECT 1")
+                self.state.cursor.fetchone()
+            return "ok"
+        except Exception:
+            return "error"
+
+    def registrar_usuario(self, nombre: str, contrasena: str) -> dict:
+        """Da de alta una cuenta nueva y abre su sesión (SCRUM-57).
+
+        Es el único comando de sesión que no exige sesión previa: crea la
+        cuenta y, con ella, la sesión desde la que se configura el segundo
+        factor. La clave de sesión se queda en el estado, como en el acceso.
+        """
+        resultado = self._ejecutar(
+            _autenticacion.registrar_usuario, nombre=nombre, contrasena=contrasena)
+
+        self.state.iniciar_sesion(
+            resultado["usuario_id"], resultado["nombre"], resultado["clave_sesion"])
+
+        return {"estado": "registrado", **self.sesion_actual()}
 
     # ------------------------------------------------------------------ #
     # Documentos
@@ -355,9 +387,15 @@ class ComandosDatenJager:
     # ------------------------------------------------------------------ #
 
     def iniciar_chat(self, contexto: str = "") -> ChatbotService:
-        """Inicia (o reinicia) la conversación del usuario autenticado."""
+        """Inicia (o reinicia) la conversación del usuario autenticado.
+
+        La clave de API se resuelve aquí, en cada arranque de conversación:
+        así el panel de conexión de modelos (SCRUM-64) cambia el modelo activo
+        **sin reiniciar la aplicación** — basta con volver a iniciar el chat.
+        """
         self._exigir_sesion()
-        self._chat = crear_servicio(self._usuario_nombre, contexto)
+        self._chat = crear_servicio(
+            self._usuario_nombre, contexto, api_key=_modelos.clave(self._raiz))
         return self._chat
 
     def enviar_mensaje(self, texto: str) -> str:
@@ -588,6 +626,20 @@ class ComandosDatenJager:
         estado["confianza_guardada"] = _tokens.hay_almacen(
             self._raiz, self.state.usuario_nombre)
         return estado
+
+    # ------------------------------------------------------------------ #
+    # Conexión de modelos (SCRUM-64)
+    # ------------------------------------------------------------------ #
+
+    def estado_de_modelos(self) -> dict:
+        """Conexión de modelos vigente, sin la clave (nunca sale del proceso)."""
+        self._exigir_sesion()
+        return _modelos.estado(self._raiz)
+
+    def guardar_conexion_de_modelos(self, **campos) -> dict:
+        """Guarda la conexión de modelos elegida y devuelve el estado nuevo."""
+        self._exigir_sesion()
+        return _modelos.guardar(self._raiz, **campos)
 
     # ------------------------------------------------------------------ #
     # Catálogo

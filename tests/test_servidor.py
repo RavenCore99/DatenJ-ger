@@ -117,6 +117,8 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(estado, 200)
         self.assertEqual(cuerpo["estado"], "ok")
         self.assertFalse(cuerpo["autenticado"])
+        # El servicio puede estar vivo con la base caída: la salud lo dice.
+        self.assertEqual(cuerpo["base_datos"], "ok")
 
     def test_sin_token_no_se_puede_operar(self):
         estado, cuerpo = self.pedir("GET", "/api/documentos", token=None)
@@ -370,6 +372,82 @@ class TestServidor(BaseBackendTest):
                                     {"destino": destino, "formato": "csv"})
         self.assertEqual(estado, 200)
         self.assertEqual(cuerpo["destino"], destino)
+
+    def test_distribucion_y_serie_por_http(self):
+        self.heredar_sesion()
+        self.pedir("POST", "/api/documentos", {
+            "nombre": "uno.pdf",
+            "contenido_b64": base64.b64encode(PDF_MINIMO).decode(),
+            "cedula": "1023", "nombres": "Ana Diaz", "empresa": "Minera Ubaté",
+        })
+
+        estado, por_empresa = self.pedir("GET", "/api/reportes/por-empresa")
+        self.assertEqual(estado, 200)
+        self.assertEqual(por_empresa[0]["empresa"], "Minera Ubaté")
+        self.assertEqual(por_empresa[0]["total"], 1)
+
+        estado, por_dia = self.pedir("GET", "/api/reportes/por-dia")
+        self.assertEqual(estado, 200)
+        self.assertEqual(por_dia[0]["total"], 1)
+        self.assertTrue(por_dia[0]["dia"])
+
+    # ------------------------------------------------------------------ #
+    # Alta de cuenta (SCRUM-57)
+    # ------------------------------------------------------------------ #
+
+    def test_registro_por_http(self):
+        estado, cuerpo = self.pedir("POST", "/api/registro",
+                                    {"nombre": "naciente", "contrasena": CONTRASENA})
+
+        self.assertEqual(estado, 201)
+        self.assertEqual(cuerpo["estado"], "registrado")
+        self.assertTrue(cuerpo["autenticado"])
+        self.assertEqual(cuerpo["usuario_nombre"], "naciente")
+        self.assertNotIn("clave_sesion", cuerpo)
+
+        # Con la sesión del alta abierta ya se puede configurar el 2FA.
+        self.assertEqual(self.pedir("GET", "/api/cuenta")[0], 200)
+        self.assertEqual(self.pedir("POST", "/api/cuenta/2fa/preparar")[0], 200)
+
+    def test_registro_duplicado_responde_409(self):
+        self.pedir("POST", "/api/registro",
+                   {"nombre": "naciente", "contrasena": CONTRASENA})
+        estado, cuerpo = self.pedir("POST", "/api/registro",
+                                    {"nombre": "naciente", "contrasena": CONTRASENA})
+
+        self.assertEqual(estado, 409)
+        self.assertEqual(cuerpo["detail"]["tipo"], "ConflictoError")
+
+    def test_registro_con_contrasena_debil_responde_422(self):
+        estado, cuerpo = self.pedir("POST", "/api/registro",
+                                    {"nombre": "naciente", "contrasena": "debil"})
+        self.assertEqual(estado, 422)
+        self.assertEqual(cuerpo["detail"]["tipo"], "DatosInvalidosError")
+
+    # ------------------------------------------------------------------ #
+    # Conexión de modelos (SCRUM-64)
+    # ------------------------------------------------------------------ #
+
+    def test_conexion_de_modelos_por_http(self):
+        self.heredar_sesion()
+
+        estado, antes = self.pedir("GET", "/api/modelos")
+        self.assertEqual(estado, 200)
+        self.assertFalse(antes["clave_configurada"])
+        self.assertNotIn("api_key", antes)
+
+        estado, despues = self.pedir("POST", "/api/modelos", {
+            "proveedor": "gemini", "modelo": "gemini-1.5-flash",
+            "endpoint": "https://ejemplo.invalido/v1", "api_key": "secreto-de-prueba",
+        })
+        self.assertEqual(estado, 200)
+        self.assertTrue(despues["clave_configurada"])
+        self.assertEqual(despues["modelo"], "gemini-1.5-flash")
+        self.assertNotIn("secreto-de-prueba", str(despues))
+
+        estado, _cuerpo = self.pedir("POST", "/api/modelos", {"quitar_clave": True})
+        self.assertEqual(estado, 200)
+        self.assertFalse(self.pedir("GET", "/api/modelos")[1]["clave_configurada"])
 
 
 class TestServidorSinToken(BaseBackendTest):

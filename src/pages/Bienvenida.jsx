@@ -9,12 +9,11 @@ import logo from '../../assets/logo/logo.png'
  * estado del servicio y las dos rutas del sistema —entrar a la bóveda o
  * registrar un operador—.
  *
- * El registro todavía no existe en el frontend (`SCRUM-57`), así que su tarjeta
- * se muestra desactivada con el motivo a la vista, en lugar de un botón que no
- * lleva a ninguna parte.
+ * El registro ya está disponible (SCRUM-57): la segunda tarjeta lleva al alta
+ * de operador, que encadena la configuración del segundo factor (SCRUM-58).
  */
-export default function Bienvenida({ onEntrar }) {
-  const { conectado } = useApp()
+export default function Bienvenida({ onEntrar, onRegistrar }) {
+  const { conectado, aviso, recargarSalud, limpiarAviso } = useApp()
 
   return (
     <MarcoAcceso titulo="Entorno de seguridad minera">
@@ -49,6 +48,32 @@ export default function Bienvenida({ onEntrar }) {
             </p>
           </header>
 
+          {/* El motivo real, no solo «sin conexión»: el proceso principal sabe
+              por qué no arrancó el servicio (puerto ocupado, base caída…). */}
+          {!conectado && (
+            <div
+              role="status"
+              className="w-full rounded-lg border border-peligro/40 bg-peligro/5 px-4 py-3 text-left text-cuerpo-sm text-peligro"
+            >
+              <p className="font-medium">El servicio local no está disponible</p>
+              <p className="mt-1 text-texto-2">
+                {aviso
+                  ? aviso
+                  : 'Todavía se está comprobando. Si persiste, cierra cualquier instancia anterior de la aplicación y reintenta.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  limpiarAviso()
+                  recargarSalud()
+                }}
+                className="mt-2 rounded-md border border-peligro/40 px-3 py-1 text-etiqueta-sm font-medium transition-colors hover:bg-peligro/10"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
           <div className="grid w-full gap-4 sm:grid-cols-2">
             <Tarjeta
               etiqueta="PBKDF2-SHA256"
@@ -61,9 +86,9 @@ export default function Bienvenida({ onEntrar }) {
             <Tarjeta
               etiqueta="2FA · TOTP"
               titulo="Registro de operador"
-              descripcion="El alta de cuentas todavía se hace desde la aplicación de escritorio; llega al frontend en la siguiente sección."
-              accion="No disponible todavía"
-              desactivada
+              descripcion="Crea una cuenta nueva y configura el doble factor con su código QR y los códigos de respaldo, sin salir de la aplicación."
+              accion="Registrar operador"
+              onAccion={onRegistrar}
             />
           </div>
 

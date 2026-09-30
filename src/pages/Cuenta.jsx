@@ -3,8 +3,9 @@ import { useCallback, useEffect, useState } from 'react'
 import Panel, { Aviso, CabeceraPagina, Esqueleto, EstadoError, Pill } from '../components/Panel.jsx'
 import ConmutadorNotificaciones from '../components/ConmutadorNotificaciones.jsx'
 import { CampoSuave, FormularioSuave } from '../components/FormularioSuave.jsx'
+import Icono from '../components/Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
-import { backend } from '../lib/api.js'
+import { backend, urlBase } from '../lib/api.js'
 
 /**
  * Panel de cuenta y ajustes (SCRUM-31).
@@ -19,11 +20,18 @@ import { backend } from '../lib/api.js'
  * calcula códigos ni maneja claves.
  */
 const SECCIONES = [
-  { clave: 'apariencia', titulo: 'Apariencia', descripcion: 'Tema de la interfaz' },
+  { clave: 'apariencia', titulo: 'Apariencia', descripcion: 'Tema y movimiento' },
   { clave: 'doble_factor', titulo: 'Doble factor', descripcion: 'Segundo paso al entrar' },
   { clave: 'codigos', titulo: 'Códigos de respaldo', descripcion: 'Acceso de emergencia' },
   { clave: 'contrasena', titulo: 'Contraseña', descripcion: 'Cambio y re-cifrado' },
   { clave: 'confianza', titulo: 'Dispositivos', descripcion: 'Equipos de confianza' },
+  // Secciones añadidas en SCRUM-63: las que el sistema puede respaldar con
+  // datos reales (sesión, almacenamiento, atajos y «Acerca de»), no las ~18 del
+  // mockup de configuración, que son referencia de estilo (CLAUDE.md §6).
+  { clave: 'sesion', titulo: 'Sesión', descripcion: 'Inactividad y cierre' },
+  { clave: 'almacenamiento', titulo: 'Almacenamiento', descripcion: 'Bóveda y volumen' },
+  { clave: 'atajos', titulo: 'Atajos', descripcion: 'Teclado' },
+  { clave: 'acerca', titulo: 'Acerca de', descripcion: 'Versión y entorno' },
 ]
 
 export default function Cuenta() {
@@ -108,6 +116,10 @@ export default function Cuenta() {
                 />
               )}
               {seccion === 'confianza' && <Confianza estado={estado} onCambio={recargar} />}
+              {seccion === 'sesion' && <Sesion estado={estado} />}
+              {seccion === 'almacenamiento' && <Almacenamiento />}
+              {seccion === 'atajos' && <Atajos />}
+              {seccion === 'acerca' && <AcercaDe />}
             </Panel>
           )}
         </div>
@@ -493,6 +505,188 @@ function ListaDeCodigos({ codigos }) {
           {copiado ? 'Copiados' : 'Copiar todos'}
         </BotonSecundario>
       </div>
+    </div>
+  )
+}
+
+/* --------------------- secciones añadidas (SCRUM-63) -------------------- */
+
+/** Sesión: inactividad real del sistema y cierre desde aquí. */
+function Sesion({ estado }) {
+  const { sesion, recargarSalud } = useApp()
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState(null)
+
+  const salir = async () => {
+    setOcupado(true)
+    setError(null)
+    try {
+      await backend.sesion.salir()
+      await recargarSalud()
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="flex flex-col gap-2 text-cuerpo-sm">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-tenue">Operador en sesión</dt>
+          <dd className="font-mono">{sesion?.usuario_nombre ?? estado?.nombre ?? '—'}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-tenue">Cierre por inactividad</dt>
+          <dd className="font-mono">
+            {sesion?.minutos_inactividad ?? 10} minuto(s) sin actividad
+          </dd>
+        </div>
+      </dl>
+
+      {error && <Aviso tipo="error">{error}</Aviso>}
+
+      <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
+        El temporizador lo lleva el servicio, no la interfaz: cerrar la ventana no deja la sesión
+        abierta en el proceso de Python.
+      </p>
+
+      <div>
+        <button
+          type="button"
+          onClick={salir}
+          disabled={ocupado}
+          className="inline-flex items-center gap-2 rounded-lg border border-peligro/40 px-3.5 py-2 text-etiqueta-md font-medium text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
+        >
+          <Icono nombre="candado" tamano={14} />
+          {ocupado ? 'Cerrando…' : 'Cerrar la sesión'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Almacenamiento: volumen real del archivo y dónde vive la bóveda. */
+function Almacenamiento() {
+  const { conectado, autenticado } = useApp()
+  const [metricas, setMetricas] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!conectado || !autenticado) return
+    backend.reportes
+      .estadisticas()
+      .then(setMetricas)
+      .catch((fallo) => setError(fallo.message))
+  }, [conectado, autenticado])
+
+  return (
+    <div className="flex flex-col gap-4">
+      {error && <Aviso tipo="error">{error}</Aviso>}
+
+      <dl className="flex flex-col gap-2 text-cuerpo-sm">
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-tenue">Documentos cifrados</dt>
+          <dd className="font-mono">{metricas?.total_pdfs ?? '—'}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-tenue">Volumen en reposo</dt>
+          <dd className="font-mono">{metricas?.total_size_str ?? '—'}</dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3">
+          <dt className="text-tenue">Servicio local</dt>
+          <dd className="truncate font-mono" title={urlBase()}>
+            {urlBase()}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
+        La bóveda (documentos), el almacén de tokens de confianza y el de la conexión de modelos
+        viven en el directorio del servicio, cifrados. La aplicación no guarda copias fuera de ahí.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Atajos de teclado: solo se marcan como activos los que funcionan hoy.
+ * El resto está documentado en `paneles_datenjager.md` y es `SCRUM-85`.
+ */
+const ATAJOS = [
+  { combinacion: 'Ctrl / ⌘ + B', accion: 'Plegar o desplegar la barra lateral', activo: true },
+  { combinacion: 'Enter', accion: 'Enviar el mensaje en el asistente', activo: true },
+  { combinacion: 'Mayús + Enter', accion: 'Salto de línea en el asistente', activo: true },
+  { combinacion: 'Escape', accion: 'Cerrar el visor de documentos', activo: true },
+  { combinacion: 'Ctrl + F', accion: 'Búsqueda global', activo: false },
+  { combinacion: 'Ctrl + N', accion: 'Nuevo documento', activo: false },
+  { combinacion: 'F11', accion: 'Pantalla completa', activo: false },
+]
+
+function Atajos() {
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col divide-y divide-borde">
+        {ATAJOS.map(({ combinacion, accion, activo }) => (
+          <li key={combinacion} className="flex items-center justify-between gap-4 py-2">
+            <span className="text-cuerpo-sm text-texto-2">{accion}</span>
+            <span className="flex shrink-0 items-center gap-2">
+              <kbd className="rounded border border-borde bg-fondo px-2 py-0.5 font-mono text-codigo">
+                {combinacion}
+              </kbd>
+              <Pill tipo={activo ? 'exito' : 'neutro'}>{activo ? 'activo' : 'pendiente'}</Pill>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
+        Los atajos marcados como pendientes están documentados en el inventario funcional
+        (<span className="font-mono">paneles_datenjager.md</span> §4.7) pero todavía no existen en el
+        frontend: se marcan así en lugar de anunciarlos como si funcionaran.
+      </p>
+    </div>
+  )
+}
+
+/** «Acerca de»: versiones reales del build y del entorno de escritorio. */
+function AcercaDe() {
+  const { version } = useApp()
+
+  return (
+    <div className="flex flex-col gap-4">
+      <dl className="flex flex-col gap-2 text-cuerpo-sm">
+        <DatoFila etiqueta="Aplicación" valor={`DatenJäger v${__VERSION__}`} />
+        <DatoFila etiqueta="Build" valor={__HASH__} />
+        <DatoFila etiqueta="Servicio local" valor={version ? `v${version}` : 'sin conexión'} />
+        <DatoFila
+          etiqueta="Entorno de escritorio"
+          valor={
+            globalThis.datenjager
+              ? `Electron ${globalThis.datenjager.versionElectron} · Node ${globalThis.datenjager.versionNode}`
+              : 'navegador de desarrollo'
+          }
+        />
+        <DatoFila etiqueta="Cifrado" valor="AES-256-GCM · PBKDF2-SHA256 (260 000 rondas)" />
+        <DatoFila etiqueta="Marco legal" valor="Ley 1581 de 2012 / Hábeas Data" />
+      </dl>
+
+      <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
+        Sistema de Gestión Documental para el sector minero de la Villa de San Diego de Ubaté.
+        Universidad de Cundinamarca, seccional Ubaté — Ciclo III, 2026-2.
+      </p>
+    </div>
+  )
+}
+
+function DatoFila({ etiqueta, valor }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="shrink-0 text-tenue">{etiqueta}</dt>
+      <dd className="truncate text-right font-mono" title={valor}>
+        {valor}
+      </dd>
     </div>
   )
 }
