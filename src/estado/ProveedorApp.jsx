@@ -24,6 +24,10 @@ export function ProveedorApp({ children }) {
   // tienen configuración todavía (llegan en la Fase 4), así que su estado real
   // hoy es «sin configurar».
   const [baseDatos, setBaseDatos] = useState('sin_verificar')
+  // Conexión de modelos (SCRUM-64): el panel la guarda y la franja de
+  // telemetría la muestra. Sin sesión no se puede consultar, así que su estado
+  // honesto es «sin configurar».
+  const [modelos, setModelos] = useState(null)
 
   const montado = useRef(true)
 
@@ -46,6 +50,10 @@ export function ProveedorApp({ children }) {
       setEstadoBackend('conectado')
       setVersion(info?.version ?? null)
 
+      // La salud ya dice si la base responde (SCRUM-89): un servicio vivo con
+      // la base caída dejaba cada pantalla fallando por su cuenta.
+      if (info?.base_datos === 'error') setBaseDatos('error')
+
       try {
         const actual = await backend.sesion.actual(senal)
         if (montado.current) setSesion(actual)
@@ -60,14 +68,23 @@ export function ProveedorApp({ children }) {
           } catch {
             if (montado.current) setBaseDatos('error')
           }
-        } else if (montado.current) {
-          setBaseDatos('sin_verificar')
+
+          try {
+            const conexion = await backend.modelos.estado()
+            if (montado.current) setModelos(conexion)
+          } catch {
+            if (montado.current) setModelos(null)
+          }
+        } else {
+          if (montado.current) setBaseDatos(info?.base_datos === 'error' ? 'error' : 'sin_verificar')
+          if (montado.current) setModelos(null)
         }
       } catch {
         // El servicio respondió: si la sesión no se puede leer, no hay sesión.
         if (montado.current) {
           setSesion(null)
-          setBaseDatos('sin_verificar')
+          setModelos(null)
+          if (info?.base_datos !== 'error') setBaseDatos('sin_verificar')
         }
       }
     } catch (error) {
@@ -75,6 +92,7 @@ export function ProveedorApp({ children }) {
       if (!montado.current) return
       setEstadoBackend('sin_conexion')
       setSesion(null)
+      setModelos(null)
       setBaseDatos('error')
       if (!(error instanceof ErrorBackend)) setAviso(String(error))
     }
@@ -161,16 +179,18 @@ export function ProveedorApp({ children }) {
       alternarAnimaciones,
       componentes: {
         baseDatos,
-        // Sin punto de conexión ni clave configurados todavía (Fase 4): el
-        // estado honesto es «sin configurar», no un verde que no se ha ganado.
-        apis: 'sin_configurar',
-        chatbot: 'sin_configurar',
+        // Con la conexión de modelos guardada (SCRUM-64) el estado deja de ser
+        // un supuesto: verde solo si el servicio confirma que hay credencial.
+        apis: modelos ? (modelos.clave_configurada ? 'ok' : 'sin_configurar') : 'sin_configurar',
+        chatbot: modelos ? (modelos.clave_configurada ? 'ok' : 'sin_configurar') : 'sin_configurar',
       },
+      modelos,
+      recargarModelos: () => consultarSalud(),
       aviso,
       limpiarAviso: () => setAviso(null),
       recargarSalud: () => consultarSalud(),
     }),
-    [estadoBackend, version, sesion, tema, animaciones, baseDatos, aviso, alternarTema, alternarAnimaciones, consultarSalud],
+    [estadoBackend, version, sesion, tema, animaciones, baseDatos, modelos, aviso, alternarTema, alternarAnimaciones, consultarSalud],
   )
 
   return <ContextoApp.Provider value={valor}>{children}</ContextoApp.Provider>

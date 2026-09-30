@@ -11,17 +11,29 @@ import Auditoria from './pages/Auditoria.jsx'
 import Cuenta from './pages/Cuenta.jsx'
 import Acceso from './pages/Acceso.jsx'
 import Bienvenida from './pages/Bienvenida.jsx'
+import Registro from './pages/Registro.jsx'
+import Chatbot from './pages/Chatbot.jsx'
+import Reportes from './pages/Reportes.jsx'
+import Estadisticas from './pages/Estadisticas.jsx'
+import Modelos from './pages/Modelos.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
  * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
+ *
+ * Las cinco primeras son los paneles migrados en el Sprint 2; de «Asistente» en
+ * adelante son las pantallas que faltaban (Sprint 5, `SCRUM-57` a `SCRUM-64`).
  */
 export const SECCIONES = [
   { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', icono: 'inicio', Componente: Inicio },
   { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', icono: 'documentos', Componente: Documentos },
   { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', icono: 'personas', Componente: Personas },
   { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', icono: 'auditoria', Componente: Auditoria },
-  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', icono: 'cuenta', Componente: Cuenta },
+  { clave: 'chatbot', titulo: 'Asistente', descripcion: 'Chat por API', icono: 'chatbot', Componente: Chatbot },
+  { clave: 'reportes', titulo: 'Reportes', descripcion: 'Inventario exportable', icono: 'lista', Componente: Reportes },
+  { clave: 'estadisticas', titulo: 'Estadísticas', descripcion: 'Datos y gráficos', icono: 'grafico', Componente: Estadisticas },
+  { clave: 'modelos', titulo: 'Modelos', descripcion: 'Conexión de APIs', icono: 'globo', Componente: Modelos },
+  { clave: 'cuenta', titulo: 'Ajustes', descripcion: 'Cuenta y seguridad', icono: 'cuenta', Componente: Cuenta },
 ]
 
 export function App() {
@@ -40,11 +52,12 @@ export function App() {
  * pegada al borde inferior.
  */
 function Marco() {
-  const { tema, autenticado } = useApp()
+  const { tema, autenticado, recargarSalud } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
   const [plegada, setPlegada] = useBarraLateral()
-  // Portal de entrada: bienvenida → acceso. No se recuerda entre arranques,
-  // porque la pantalla de bienvenida es la presentación de la aplicación.
+  // Portal de entrada: bienvenida → acceso, o bienvenida → registro. No se
+  // recuerda entre arranques, porque la bienvenida es la presentación de la
+  // aplicación.
   const [portal, setPortal] = useState('bienvenida')
 
   useEffect(() => {
@@ -69,13 +82,33 @@ function Marco() {
     return () => globalThis.removeEventListener('keydown', alPulsar)
   }, [setPlegada])
 
+  // El portal manda mientras el alta no haya terminado: crear la cuenta abre
+  // sesión en el backend de inmediato, así que hay que seguir mostrando el paso
+  // del segundo factor aunque `autenticado` ya sea cierto (SCRUM-57/58).
+  if (portal === 'bienvenida') {
+    return (
+      <Bienvenida
+        onEntrar={() => setPortal('acceso')}
+        onRegistrar={() => setPortal('registro')}
+      />
+    )
+  }
+
+  if (portal === 'registro') {
+    return (
+      <Registro
+        onVolver={() => setPortal('bienvenida')}
+        onTerminar={async () => {
+          await recargarSalud()
+          setPortal('sistema')
+        }}
+      />
+    )
+  }
+
   // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
   if (!autenticado) {
-    return portal === 'bienvenida' ? (
-      <Bienvenida onEntrar={() => setPortal('acceso')} />
-    ) : (
-      <Acceso onVolver={() => setPortal('bienvenida')} />
-    )
+    return <Acceso onVolver={() => setPortal('bienvenida')} />
   }
 
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]

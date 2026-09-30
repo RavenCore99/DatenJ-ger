@@ -159,6 +159,10 @@ export const backend = {
         metodo: 'POST',
         cuerpo: { nombre, contrasena, token_confianza: tokenConfianza },
       }),
+    // Alta de una cuenta nueva (SCRUM-57). El servicio abre la sesión del
+    // usuario recién creado, que es desde la que se configura el 2FA.
+    registrar: (nombre, contrasena) =>
+      solicitar('/api/registro', { metodo: 'POST', cuerpo: { nombre, contrasena } }),
     verificarCodigo: (codigo) =>
       solicitar('/api/sesion/2fa', { metodo: 'POST', cuerpo: { codigo } }),
     usarCodigoDeRespaldo: (codigo) =>
@@ -227,14 +231,25 @@ export const backend = {
   reportes: {
     estadisticas: () => solicitar('/api/reportes/estadisticas'),
     inventario: () => solicitar('/api/reportes/inventario'),
+    // Distribución y serie temporal para el panel de datos y estadísticas.
+    porEmpresa: () => solicitar('/api/reportes/por-empresa'),
+    porDia: () => solicitar('/api/reportes/por-dia'),
     exportar: (destino, formato) =>
       solicitar('/api/reportes/exportar', { metodo: 'POST', cuerpo: { destino, formato } }),
+  },
+
+  // Conexión de modelos de IA (SCRUM-64). El servicio nunca devuelve la clave:
+  // solo informa de si está configurada y de dónde sale.
+  modelos: {
+    estado: () => solicitar('/api/modelos'),
+    guardar: (datos) => solicitar('/api/modelos', { metodo: 'POST', cuerpo: datos }),
   },
 
   chat: {
     iniciar: (contexto = '') =>
       solicitar('/api/chat', { metodo: 'POST', cuerpo: { contexto } }),
     enviar: (mensaje) => solicitar('/api/chat/mensajes', { metodo: 'POST', cuerpo: { mensaje } }),
+    limpiar: () => solicitar('/api/chat', { metodo: 'DELETE' }),
   },
 }
 

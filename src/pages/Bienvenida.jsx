@@ -9,11 +9,10 @@ import logo from '../../assets/logo/logo.png'
  * estado del servicio y las dos rutas del sistema —entrar a la bóveda o
  * registrar un operador—.
  *
- * El registro todavía no existe en el frontend (`SCRUM-57`), así que su tarjeta
- * se muestra desactivada con el motivo a la vista, en lugar de un botón que no
- * lleva a ninguna parte.
+ * El registro ya está disponible (SCRUM-57): la segunda tarjeta lleva al alta
+ * de operador, que encadena la configuración del segundo factor (SCRUM-58).
  */
-export default function Bienvenida({ onEntrar }) {
+export default function Bienvenida({ onEntrar, onRegistrar }) {
   const { conectado } = useApp()
 
   return (
@@ -61,9 +60,9 @@ export default function Bienvenida({ onEntrar }) {
             <Tarjeta
               etiqueta="2FA · TOTP"
               titulo="Registro de operador"
-              descripcion="El alta de cuentas todavía se hace desde la aplicación de escritorio; llega al frontend en la siguiente sección."
-              accion="No disponible todavía"
-              desactivada
+              descripcion="Crea una cuenta nueva y configura el doble factor con su código QR y los códigos de respaldo, sin salir de la aplicación."
+              accion="Registrar operador"
+              onAccion={onRegistrar}
             />
           </div>
 
