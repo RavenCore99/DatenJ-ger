@@ -27,6 +27,13 @@ Decisiones de diseño:
   acceso que no exige sesión previa.
 * ``GET /api/salud`` informa también del estado de la base de datos, porque
   un servicio vivo con la base caída fallaba al iniciar sesión sin decirlo.
+* **CORS por petición del lanzador.** En `npm run dev` el renderer se sirve
+  desde el servidor de Vite y su origen deja de ser `file://`, así que las
+  peticiones al servicio son de otro origen. La variable
+  ``DATENJAGER_CORS_ORIGENES`` (orígenes separados por comas, nunca ``*``) las
+  habilita; `electron/main.js` solo la define en modo desarrollo. Sin ella el
+  navegador bloquea las peticiones y la interfaz dice «sin conexión» aunque el
+  servicio esté levantado.
 
 Arranque:
 
@@ -42,6 +49,7 @@ import argparse
 import base64
 import binascii
 import logging
+import os
 import secrets
 import sys
 import threading
@@ -49,6 +57,7 @@ import time
 from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -248,6 +257,24 @@ def crear_app(
         redoc_url=None,
         openapi_url=None,
     )
+
+    # CORS solo si el lanzador lo pide, y solo para orígenes concretos de bucle
+    # local (nunca `*`).
+    #
+    # Motivo: en `npm run dev` el renderer se sirve desde el servidor de Vite
+    # (`http://127.0.0.1:5273`), así que su origen deja de ser `file://` y las
+    # peticiones al servicio pasan a ser de otro origen. Sin esta cabecera el
+    # navegador las bloquea y la interfaz dice «sin conexión» aunque el servicio
+    # esté levantado. En producción el renderer carga desde `file://` y no hace
+    # falta: `electron/main.js` solo define la variable en modo desarrollo.
+    origenes = os.environ.get("DATENJAGER_CORS_ORIGENES", "").strip()
+    if origenes:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[origen.strip() for origen in origenes.split(",") if origen.strip()],
+            allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Content-Type", "X-DatenJager-Token"],
+        )
 
     # ---------------------------------------------------------------- #
     # Errores

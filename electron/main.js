@@ -45,6 +45,16 @@ const PUERTO_VITE = 5273
 
 const enDesarrollo = process.argv.includes('--dev') && !app.isPackaged
 
+// En desarrollo el renderer se sirve desde el servidor de Vite, así que su
+// origen deja de ser `file://` y las peticiones al servicio pasan a ser de otro
+// origen: hay que habilitar CORS para ese origen concreto, o el navegador las
+// bloquea y la interfaz se queda en «sin conexión» con el servicio levantado.
+// Solo se define en desarrollo; en producción el servicio no habilita CORS.
+if (enDesarrollo) {
+  process.env.DATENJAGER_CORS_ORIGENES =
+    `http://127.0.0.1:${PUERTO_VITE},http://localhost:${PUERTO_VITE}`
+}
+
 /** Servicio Python local. Se arranca al estar lista la aplicación. */
 const servicio = new ServicioPython({ puerto: PUERTO_BACKEND })
 
