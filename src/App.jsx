@@ -55,6 +55,20 @@ function Marco() {
     }
   }, [tema])
 
+  // Atajo para plegar y desplegar la barra lateral (SCRUM-70): Ctrl/⌘ + B,
+  // el mismo gesto que usan los editores para el panel lateral.
+  useEffect(() => {
+    const alPulsar = (evento) => {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'b') {
+        evento.preventDefault()
+        setPlegada((valor) => !valor)
+      }
+    }
+
+    globalThis.addEventListener('keydown', alPulsar)
+    return () => globalThis.removeEventListener('keydown', alPulsar)
+  }, [setPlegada])
+
   // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
   if (!autenticado) {
     return portal === 'bienvenida' ? (
@@ -77,7 +91,7 @@ function Marco() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <SubCabecera seccion={activa} />
+        <SubCabecera seccion={activa} plegada={plegada} onPlegar={() => setPlegada((v) => !v)} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
@@ -94,18 +108,32 @@ function Marco() {
   )
 }
 
-/** Sub-cabecera fija: migas de pan a la izquierda, insignia de cifrado a la derecha. */
-function SubCabecera({ seccion }) {
+/** Sub-cabecera fija: control de la barra lateral, migas de pan e insignia de cifrado. */
+function SubCabecera({ seccion, plegada, onPlegar }) {
   return (
     <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
-      <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
-        <span className="font-marca text-tenue">DatenJäger</span>
-        <span aria-hidden="true" className="text-borde-fuerte">
-          /
-        </span>
-        <span className="truncate font-medium">{seccion.titulo}</span>
-        <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
-      </nav>
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onPlegar}
+          aria-expanded={!plegada}
+          aria-keyshortcuts="Control+B"
+          aria-label={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
+          title={`${plegada ? 'Desplegar' : 'Recoger'} la barra lateral (Ctrl+B)`}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
+        >
+          <Icono nombre={plegada ? 'chevron-derecha' : 'chevron-izquierda'} tamano={15} />
+        </button>
+
+        <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
+          <span className="font-marca text-tenue">DatenJäger</span>
+          <span aria-hidden="true" className="text-borde-fuerte">
+            /
+          </span>
+          <span className="truncate font-medium">{seccion.titulo}</span>
+          <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
+        </nav>
+      </div>
 
       <span
         className="flex shrink-0 items-center gap-1.5 rounded border border-borde bg-fondo px-2 py-1 font-mono text-telemetria text-tenue"
