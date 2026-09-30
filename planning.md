@@ -251,6 +251,60 @@ Dos reglas de alcance confirmadas por Raven:
   **sigue como Fase 5, en evaluación** — que ya tenga un ítem diseñado
   en el mockup no la promueve a compromiso cerrado.
 
+### Decisiones cerradas (2026-09-30, revisión del material de diseño)
+
+Raven revisó `/assets/mockups` completo y respondió:
+
+1. **Los mockups son referencias, no especificaciones.** El diseño y la
+   estructura del dashboard, los paneles y los subpaneles están **inspirados en
+   Hermes Desktop**; lo que manda es el sistema de diseño (`DESIGN.md`) más el
+   patrón de Hermes Desktop. No se replican pixel a pixel.
+2. **Gráficos, reportes y estadística: la lógica en Python, el diseño en el
+   frontend.** Los gráficos y reportes se generan con Python (numpy,
+   matplotlib, PyMuPDF) y el frontend los viste con la paleta del sistema. Los
+   métodos de datos y estadística siguen el mismo enfoque que ya usa el código
+   actual (regresión lineal con `numpy`).
+3. **Nada de modelos locales todavía.** Hasta que el frontend y el backend no
+   estén completos al 100 %, el chatbot funciona **solo por API**; el respaldo
+   local vía Ollama se retoma después. El objetivo ahora es tener todos los
+   paneles y secciones listos.
+4. **Ajustes:** las cuatro secciones reales (contraseña, códigos 2FA,
+   confianza, apariencia) **más las que tengan sentido** para este proyecto.
+5. **Iconos:** lo que mejor se adapte, priorizando rendimiento y estética.
+
+**Deuda detectada en esta revisión:** la estadística y los gráficos viven hoy
+dentro de `ui_components.py` (`DashboardWidget`, líneas ~673-950): la regresión
+lineal, la predicción y **los colores de los gráficos están incrustados en la
+capa de UI**. Para que el frontend nuevo dibuje los gráficos con la paleta del
+sistema, esa lógica debe subir al backend (nueva sección de este plan).
+
+### Paleta: el `DESIGN.md` es la fuente, no la estimación
+
+La paleta que figuraba aquí (`#F5F7FB`/`#0D0F1A`, primario `#2F6FED`) era una
+**estimación** hecha antes de recibir el material. El `DESIGN.md` que acompaña a
+los mockups ("DatenJäger Precision Desktop") la reemplaza:
+
+| Rol | Claro | Oscuro |
+| --- | --- | --- |
+| Fondo / superficie | `#f8f9ff` | `#0b1326` |
+| Superficie de contenedor | `#e5eeff` | `#171f33` |
+| Texto principal | `#0b1c30` | `#dae2fd` |
+| Texto secundario | `#434655` | `#c3c6d7` |
+| Primario (acción) | `#1d4ed8` | `#2563eb` |
+| Primario (énfasis) | `#0037b0` | `#b4c5ff` |
+| Secundario | `#0284c7` | `#4edea3` |
+| Borde | `#e2e8f0` | `#434655` |
+| Error | `#ba1a1a` | `#ffb4ab` |
+| Éxito | `#10b981` | `#10b981` |
+
+Tipografía: **Space Grotesk** (títulos y marca), **Inter** (cuerpo y controles),
+**JetBrains Mono** (telemetría, hashes, atajos). Radios: `4/6/8/12/16px` y
+`full`. Densidad: barra lateral `240px` (colapsable a `64px`), sub-cabecera
+`48px`, franja de telemetría inferior `32px`.
+
+Los tokens `--dj-*` de `src/index.css` se construyeron con la estimación: hay
+que reemplazarlos por estos valores.
+
 ### Paleta extraída del logo y los mockups
 
 El logo (círculo navy oscuro, anillo azul, ave blanca) es la fuente de
@@ -324,12 +378,28 @@ Secciones sugeridas:
      biométrico, sistema de partículas, conmutador de notificaciones, cajón
      desplazable y formulario suave.
 
-5. **Estados que informan de verdad**: indicadores con color para la conexión
+5. **Dashboard, estadística y reportes** (con el criterio de la decisión 2):
+
+   * la **lógica** de datos y estadística en Python: métricas, distribución por
+     empresa, serie temporal, **regresión lineal con predicción y R²**
+     (`numpy`), y los gráficos que hagan falta (`matplotlib`);
+   * el **diseño** en el frontend: gauges, donut, barras y línea de tendencia
+     dibujados con la paleta del sistema, no con los colores incrustados hoy en
+     `ui_components.py`;
+   * el **reporte PDF** conserva estructura de portada, inventario y gráfico por
+     empresa, con los colores y la organización del sistema (`PyMuPDF`);
+   * se valora incorporar métodos de aprendizaje automático para datos y
+     estadística, con el mismo enfoque que ya usa el código actual.
+
+6. **Visor de PDF dentro de la aplicación**: hoy no existe; los documentos se
+   descifran y se abren por fuera.
+
+7. **Estados que informan de verdad**: indicadores con color para la conexión
    con la base de datos, el estado de las conexiones de API y el estado del
    chatbot; *skeletons* de carga en las listas; iconos de acción para
    desplegar y recoger las barras laterales.
 
-6. **Estados canónicos y transiciones**: vacío, error, carga
+8. **Estados canónicos y transiciones**: vacío, error, carga
    (*skeleton*), y animaciones (fade, hover, easing) — implementados
    directamente en React/Tailwind, con opción de deshabilitarlas desde
    configuración de usuario.
@@ -346,9 +416,14 @@ pantallas principales (login, dashboard, PDFs).
 
 Estado: **por hacer** — Skill: `chatbot-streaming` + `local-llm-fallback`
 
-Incluye el **panel de conexión** (pantalla propia, no un ajuste suelto): cargar
-claves y puntos de conexión de APIs, elegir entre proveedor por API o modelo
-local, y que el chatbot los adopte **sin reiniciar** la aplicación.
+**Alcance inmediato: solo API (decisión 2026-09-30).** Hasta que el frontend y
+el backend estén completos al 100 %, el chatbot funciona por API y **no** se
+implementan modelos locales: el respaldo vía Ollama (`SCRUM-37` a `SCRUM-39`)
+queda aparcado. Lo que sí se construye ahora es el **panel de conexión**
+(pantalla propia, no un ajuste suelto): cargar clave y punto de conexión,
+elegir el modelo por API y que el chatbot los adopte **sin reiniciar** la
+aplicación. El panel se diseñará de forma que añadir proveedores locales
+después sea una extensión, no una reescritura.
 
 Se deja para el final porque depende de tener ya un frontend real (Fase 3)
 donde mostrar el panel de modelos, y porque no bloquea el resto del
@@ -477,7 +552,7 @@ fase, el proyecto se considera entregable cuando:
 | 4. Integración de APIs y modelos locales | por hacer | — |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
-
+| 7. Empaquetado y publicación en GitHub Packages | por hacer (la app debe quedar como instalador listo para usarse) | 2026-09-30 |
 Actualiza esta tabla al cerrar cada fase o hito relevante, y refleja el
 cambio en `CLAUDE.md` (sección 12) en la misma sesión.
 

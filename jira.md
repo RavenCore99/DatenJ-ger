@@ -215,6 +215,10 @@ feat(SCRUM-32): añade estados y transiciones
 | `SCRUM-38` | Definir criterio de fallback Gemini → Ollama | `ollama`, `rf-17`, `arquitectura` |
 | `SCRUM-39` | Implementar prototipo de fallback local | `ollama`, `rf-17`, `evaluacion` |
 
+> **`SCRUM-37` a `SCRUM-39` aparcados (2026-09-30).** Raven decidió que no se
+> implementan modelos locales hasta que el frontend y el backend estén completos
+> al 100 %; por ahora el chatbot funciona **solo por API** (`SCRUM-85`/`SCRUM-86`).
+
 ## Bloque B — APIs y backend
 
 | Jira | Tarea | Etiquetas adicionales |
@@ -328,7 +332,63 @@ documentos y dejar el proyecto instalable y publicable.
 | `SCRUM-73` | Prototipar la clasificación con embeddings | `ml`, `embeddings`, `evaluacion` |
 | `SCRUM-74` | Medir resultados y decidir continuidad | `ml`, `evaluacion`, `decision` |
 
-## Bloque D — Empaquetado y publicación
+## Bloque D — Diseño, datos y cierre de la Fase 3
+
+> Registrado el 2026-09-30 tras revisar `/assets/mockups` completo con Raven.
+> Los mockups son **referencias** (estructura inspirada en Hermes Desktop), el
+> sistema de diseño está en `DESIGN.md` y la lógica de datos vive en Python.
+
+| Jira | Tarea | Etiquetas adicionales |
+|---|---|---|
+| `SCRUM-79` | Versionar el material de diseño y de marca | `assets`, `documentacion`, `hito` |
+| `SCRUM-80` | Definir e integrar el set de iconos del frontend | `ui`, `iconos`, `rendimiento` |
+| `SCRUM-81` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` |
+| `SCRUM-82` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` |
+| `SCRUM-83` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` |
+| `SCRUM-84` | Incorporar el visor de PDF interno | `pdf`, `visor`, `feat` |
+| `SCRUM-85` | Construir el panel del chatbot sobre API | `chatbot`, `api`, `feat` |
+| `SCRUM-86` | Construir el panel de conexión de APIs de modelos | `modelos`, `api`, `feat` |
+| `SCRUM-87` | Completar el panel de ajustes | `configuracion`, `ui`, `feat` |
+| `SCRUM-88` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` |
+
+### Commits esperados (Bloque D)
+
+```text
+chore(SCRUM-79): versiona el material de diseño
+ui(SCRUM-80): integra el set de iconos
+refactor(SCRUM-81): extrae la estadística al backend
+feat(SCRUM-82): construye el dashboard
+feat(SCRUM-83): genera los reportes del sistema
+feat(SCRUM-84): incorpora el visor de PDF
+feat(SCRUM-85): construye el panel del chatbot
+feat(SCRUM-86): crea el panel de conexión de APIs
+feat(SCRUM-87): completa el panel de ajustes
+feat(SCRUM-88): habilita el restablecimiento de contraseña
+```
+
+### Notas del Bloque D
+
+* `SCRUM-79` no es opcional: los mockups y el logo están en el árbol de trabajo
+  **sin versionar**, mientras las copias anteriores figuran como borradas. Si se
+  confirma ese borrado sin añadir la carpeta nueva, el material desaparece del
+  historial.
+* `SCRUM-80`: los mockups usan la fuente de iconos *Material Symbols*; el
+  proyecto ya tiene 44 iconos PNG estilo lucide. La decisión de Raven es usar lo
+  que mejor rinda y mejor se vea. **El set elegido debe cubrir todos los nombres
+  que el sistema pide** — hoy faltan `arrow-right` y `trash`.
+* `SCRUM-81`: hoy la regresión lineal, la predicción y **los colores de los
+  gráficos** están dentro de `ui_components.py` (`DashboardWidget`). Sube al
+  backend para que el frontend dibuje con la paleta del sistema.
+* `SCRUM-87`: las cuatro secciones reales (contraseña, códigos 2FA, confianza,
+  apariencia) más las que tengan sentido — candidatas con lógica real detrás:
+  sesión e inactividad (`session_timeout_minutes`), notificaciones,
+  almacenamiento y bóveda (espacio, ruta, cifrado), conexión de modelos, atajos
+  de teclado y «Acerca de».
+* `SCRUM-85`/`SCRUM-86`: **solo API**. El respaldo local vía Ollama no se
+  implementa hasta que el frontend y el backend estén completos (decisión de
+  Raven del 2026-09-30).
+
+## Bloque E — Empaquetado y publicación
 
 | Jira | Tarea | Etiquetas adicionales |
 |---|---|---|
