@@ -620,6 +620,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     servidor = uvicorn.Server(configuracion)
 
+    def puerto_efectivo() -> int:
+        """Puerto realmente enlazado.
+
+        Cuando se pide `--puerto 0` el sistema elige uno libre: el número que
+        se pasó por línea de comandos no sirve para anunciar nada.
+        """
+        for servidor_uvicorn in getattr(servidor, "servers", ()) or ():
+            for enchufe in getattr(servidor_uvicorn, "sockets", None) or ():
+                try:
+                    return enchufe.getsockname()[1]
+                except Exception:
+                    continue
+        return argumentos.puerto
+
     def anunciar_cuando_escuche() -> None:
         # uvicorn ejecuta el ciclo de vida antes de enlazar el socket, así que
         # el hook de la aplicación no sirve para anunciar: hay que esperar a
@@ -628,7 +642,10 @@ def main(argv: list[str] | None = None) -> int:
         while not servidor.started and not servidor.should_exit:
             time.sleep(0.05)
         if servidor.started:
-            print(f"DATENJAGER_LISTO puerto={argumentos.puerto} token={token}", flush=True)
+            print(
+                f"DATENJAGER_LISTO puerto={puerto_efectivo()} token={token}",
+                flush=True,
+            )
 
     threading.Thread(target=anunciar_cuando_escuche, daemon=True).start()
     servidor.run()

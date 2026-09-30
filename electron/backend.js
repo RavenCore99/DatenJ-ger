@@ -41,6 +41,19 @@ const { randomBytes } = require('node:crypto')
 /** Tiempo máximo de espera del anuncio de arranque. */
 const ESPERA_ARRANQUE_MS = 25000
 
+/**
+ * Puertos que se prueban, en orden, hasta que uno quede libre.
+ *
+ * Si el puerto preferido está ocupado (una instancia anterior que no se cerró
+ * bien, o el `main.py` antiguo), antes la aplicación se quedaba **sin servicio**
+ * y la interfaz decía «sin conexión» sin más. Probando el siguiente puerto, y
+ * dejando el último en manos del sistema (`0`), arrancar deja de depender de que
+ * nadie tenga ocupado el 8756.
+ */
+function puertosCandidatos(preferido) {
+  return [preferido, preferido + 1, preferido + 2, preferido + 3, 0]
+}
+
 const RAIZ = path.join(__dirname, '..')
 
 /**
@@ -95,10 +108,29 @@ class ServicioPython {
   async arrancar() {
     if (this.proceso) return this.configuracion
 
+    for (const puerto of puertosCandidatos(this.puerto)) {
+      this.puertoIntento = puerto
+      const listo = await this.intentarEn(puerto)
+      if (listo) return this.configuracion
+
+      // Un fallo que no sea el puerto ocupado no se arregla probando otro.
+      if (!/puerto .* ya está ocupado/i.test(this.error ?? '')) return this.configuracion
+    }
+
+    return this.configuracion
+  }
+
+  /**
+   * Un intento de arranque en un puerto concreto.
+   *
+   * @returns `true` si el servicio llegó a anunciarse; `false` si hay que probar
+   *   otro puerto (el proceso fallido se descarta antes de devolver).
+   */
+  async intentarEn(puerto) {
     const orden = [
       '-m', 'backend.server',
       '--host', '127.0.0.1',
-      '--puerto', String(this.puerto),
+      '--puerto', String(puerto),
       '--token', this.token,
     ]
 
@@ -112,7 +144,7 @@ class ServicioPython {
       })
     } catch (error) {
       this.error = `No se pudo lanzar Python: ${error.message}`
-      return this.configuracion
+      return false
     }
 
     VIVOS.add(this.proceso)
@@ -139,7 +171,7 @@ class ServicioPython {
       const texto = datos.toString()
       if (/address already in use|error while attempting to bind/i.test(texto)) {
         this.error =
-          `El puerto ${this.puerto} ya está ocupado por otro proceso. ` +
+          `El puerto ${puerto} ya está ocupado por otro proceso. ` +
           'Cierra la instancia anterior o define otro puerto (DATENJAGER_PUERTO).'
         this.abortarEspera()
       } else if (/DATENJAGER_ERROR/i.test(texto)) {
@@ -156,7 +188,22 @@ class ServicioPython {
     })
 
     await this.esperarAnuncio()
-    return this.configuracion
+
+    if (this.puertoReal) return true
+
+    // El intento falló: se descarta el proceso antes de probar otro puerto.
+    const fallido = this.proceso
+    this.proceso = null
+    this.puertoReal = null
+    if (fallido) {
+      VIVOS.delete(fallido)
+      try {
+        fallido.kill('SIGKILL')
+      } catch {
+        /* el proceso ya no existe */
+      }
+    }
+    return false
   }
 
   /** Corta la espera del anuncio cuando ya se sabe que el servicio no arranca. */

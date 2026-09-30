@@ -22,7 +22,7 @@ import logo from '../../assets/logo/logo.png'
  * sesión no llega nunca al renderer.
  */
 export default function Acceso({ onVolver }) {
-  const { conectado, recargarSalud } = useApp()
+  const { conectado, recargarSalud, aviso, limpiarAviso } = useApp()
 
   const [paso, setPaso] = useState('credenciales')
   const [nombre, setNombre] = useState('')
@@ -101,9 +101,18 @@ export default function Acceso({ onVolver }) {
               {!conectado && (
                 <Aviso tipo="peligro">
                   Sin conexión con el servicio local: no es posible iniciar sesión.
+                  {aviso && (
+                    <>
+                      <br />
+                      <span className="font-mono text-codigo">{aviso}</span>
+                    </>
+                  )}
                   <button
                     type="button"
-                    onClick={() => recargarSalud()}
+                    onClick={() => {
+                      limpiarAviso()
+                      recargarSalud()
+                    }}
                     className="ml-2 font-medium underline underline-offset-2"
                   >
                     Reintentar

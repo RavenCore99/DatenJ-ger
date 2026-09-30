@@ -13,7 +13,7 @@ import logo from '../../assets/logo/logo.png'
  * de operador, que encadena la configuración del segundo factor (SCRUM-58).
  */
 export default function Bienvenida({ onEntrar, onRegistrar }) {
-  const { conectado } = useApp()
+  const { conectado, aviso, recargarSalud, limpiarAviso } = useApp()
 
   return (
     <MarcoAcceso titulo="Entorno de seguridad minera">
@@ -47,6 +47,32 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
               Villa de San Diego de Ubaté, con todo el procesamiento en este equipo.
             </p>
           </header>
+
+          {/* El motivo real, no solo «sin conexión»: el proceso principal sabe
+              por qué no arrancó el servicio (puerto ocupado, base caída…). */}
+          {!conectado && (
+            <div
+              role="status"
+              className="w-full rounded-lg border border-peligro/40 bg-peligro/5 px-4 py-3 text-left text-cuerpo-sm text-peligro"
+            >
+              <p className="font-medium">El servicio local no está disponible</p>
+              <p className="mt-1 text-texto-2">
+                {aviso
+                  ? aviso
+                  : 'Todavía se está comprobando. Si persiste, cierra cualquier instancia anterior de la aplicación y reintenta.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  limpiarAviso()
+                  recargarSalud()
+                }}
+                className="mt-2 rounded-md border border-peligro/40 px-3 py-1 text-etiqueta-sm font-medium transition-colors hover:bg-peligro/10"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
 
           <div className="grid w-full gap-4 sm:grid-cols-2">
             <Tarjeta
