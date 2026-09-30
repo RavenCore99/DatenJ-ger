@@ -138,6 +138,27 @@ export function Esqueleto({ filas = 4, variante = 'filas' }) {
     )
   }
 
+  if (variante === 'tabla') {
+    // Esqueleto de tabla (SCRUM-69): una franja de cabecera y filas con la
+    // forma del listado real, para que el reemplazo no dé un salto visual.
+    return (
+      <div className="flex flex-col gap-2" aria-busy="true" aria-label="Cargando">
+        <div className="mb-1 flex items-center gap-3">
+          <div className="h-3 w-24 animate-pulse rounded bg-fondo-2" />
+          <div className="h-3 w-40 animate-pulse rounded bg-fondo-2" />
+          <div className="ml-auto h-3 w-16 animate-pulse rounded bg-fondo-2" />
+        </div>
+        {Array.from({ length: filas }, (_, indice) => (
+          <div
+            key={indice}
+            className="h-9 animate-pulse rounded-lg bg-fondo-2"
+            style={{ animationDelay: `${Math.min(indice, 8) * 60}ms` }}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-2" aria-busy="true" aria-label="Cargando">
       {Array.from({ length: filas }, (_, indice) => (

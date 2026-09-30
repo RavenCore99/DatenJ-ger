@@ -55,7 +55,7 @@ export default function Inicio({ onNavegar }) {
   return (
     <div className="flex flex-col gap-6">
       <Panel titulo="Resumen documental" descripcion="Métricas del archivo cifrado">
-        {estado === 'cargando' && <Esqueleto filas={2} />}
+        {estado === 'cargando' && <Esqueleto filas={4} variante="tarjetas" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar()} />}
         {estado === 'listo' && (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

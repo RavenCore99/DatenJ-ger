@@ -229,7 +229,7 @@ export default function Documentos() {
         <section className="min-w-0 flex-1 overflow-hidden rounded-panel border border-borde bg-superficie">
           {estado === 'cargando' && filas.length === 0 && (
             <div className="p-5">
-              <Esqueleto filas={5} />
+              <Esqueleto filas={5} variante="tabla" />
             </div>
           )}
 

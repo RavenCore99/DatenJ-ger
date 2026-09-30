@@ -223,7 +223,7 @@ export default function Auditoria() {
         titulo="Historial"
         descripcion={`${eventos.length} mostrados de ${total} registro(s)`}
       >
-        {estado === 'cargando' && <Esqueleto filas={6} />}
+        {estado === 'cargando' && <Esqueleto filas={6} variante="tabla" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar(filtros)} />}
 
         {estado === 'listo' && eventos.length === 0 && (

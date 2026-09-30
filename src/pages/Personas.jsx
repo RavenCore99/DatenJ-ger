@@ -202,7 +202,7 @@ export default function Personas() {
       </Panel>
 
       <Panel titulo="Listado de titulares" descripcion={`${filas.length} persona(s)`}>
-        {estado === 'cargando' && <Esqueleto filas={4} />}
+        {estado === 'cargando' && <Esqueleto filas={4} variante="tabla" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar(busqueda)} />}
 
         {estado === 'listo' && filas.length === 0 && (
