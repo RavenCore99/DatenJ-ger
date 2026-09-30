@@ -1,5 +1,6 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/server.py - servidor local que expone la capa de comandos por HTTP
+# Trazabilidad Jira: SCRUM-62 (DatenJäger — API / Servicios).
 
 """Puente Python <-> Electron (SCRUM-21).
 
