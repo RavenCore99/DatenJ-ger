@@ -28,3 +28,4 @@ npm-debug.log*
 # Tokens de confianza cifrados (SCRUM-25): son secretos locales
 /tokens_confianza/
 config.json.respaldo
+jira.md
