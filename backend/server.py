@@ -23,10 +23,17 @@ Decisiones de diseño:
   nunca viaja en la respuesta: permanece en el proceso Python.
 * ``POST /api/sesion/heredar`` se conserva para que la aplicación de
   escritorio pueda entregar una sesión ya autenticada durante la transición.
+* ``POST /api/registro`` da de alta una cuenta nueva (SCRUM-57): es el único
+  acceso que no exige sesión previa.
+* ``GET /api/salud`` informa también del estado de la base de datos, porque
+  un servicio vivo con la base caída fallaba al iniciar sesión sin decirlo.
 
 Arranque:
 
     python -m backend.server --puerto 8756 [--token TOKEN] [--db RUTA]
+
+Si la base no se puede abrir, el proceso lo anuncia como
+``DATENJAGER_ERROR base de datos: …`` y termina con código 2.
 """
 
 from __future__ import annotations
@@ -48,6 +55,7 @@ from pydantic import BaseModel, Field
 from backend.commands import ComandosDatenJager
 from backend.errors import (
     BackendError,
+    BaseDeDatosError,
     ConflictoError,
     CredencialesInvalidasError,
     CuentaBloqueadaError,
@@ -96,6 +104,27 @@ class Acceso(BaseModel):
     nombre: str
     contrasena: str
     token_confianza: Optional[str] = None
+
+
+class Registro(BaseModel):
+    """Alta de una cuenta nueva (SCRUM-57)."""
+
+    nombre: str
+    contrasena: str
+
+
+class ConexionModelos(BaseModel):
+    """Conexión de modelos: proveedor, modelo, punto de conexión y clave.
+
+    La clave es opcional; ``quitar_clave`` descarta la guardada sin necesidad
+    de enviar una nueva.
+    """
+
+    proveedor: Optional[str] = None
+    modelo: Optional[str] = None
+    endpoint: Optional[str] = None
+    api_key: Optional[str] = None
+    quitar_clave: bool = False
 
 
 class SegundoFactorNuevo(BaseModel):
@@ -258,11 +287,17 @@ def crear_app(
 
     @app.get("/api/salud")
     async def salud() -> dict[str, Any]:
-        """Disponibilidad del servicio. Sin datos sensibles: sin token."""
+        """Disponibilidad del servicio. Sin datos sensibles: sin token.
+
+        Incluye el estado de la base de datos porque «el servicio responde» y
+        «la base responde» no son lo mismo: sin esta lectura, una base caída
+        se veía como un servicio sano y el fallo aparecía al iniciar sesión.
+        """
         return {
             "estado": "ok",
             "version": VERSION_API,
             "autenticado": comandos.sesion_actual()["autenticado"],
+            "base_datos": comandos.estado_base_datos(),
         }
 
     @app.get("/api/sesion", dependencies=protegido)
@@ -279,6 +314,16 @@ def crear_app(
         """
         return comandos.iniciar_sesion_credenciales(
             cuerpo.nombre, cuerpo.contrasena, cuerpo.token_confianza)
+
+    @app.post("/api/registro", status_code=201, dependencies=protegido)
+    async def registrar_usuario(cuerpo: Registro) -> dict[str, Any]:
+        """Da de alta una cuenta y abre su sesión (SCRUM-57).
+
+        Es el único acceso que no exige sesión previa; con ella se configura
+        el segundo factor. La clave de sesión, como en el acceso, se queda en
+        el proceso de Python.
+        """
+        return comandos.registrar_usuario(cuerpo.nombre, cuerpo.contrasena)
 
     @app.post("/api/sesion/2fa", dependencies=protegido)
     async def verificar_segundo_factor(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
@@ -325,6 +370,20 @@ def crear_app(
     async def revocar_confianza() -> dict[str, Any]:
         """Olvida este dispositivo: el próximo acceso pedirá el segundo factor."""
         return comandos.revocar_confianza()
+
+    # ---------------------------------------------------------------- #
+    # Conexión de modelos (SCRUM-64)
+    # ---------------------------------------------------------------- #
+
+    @app.get("/api/modelos", dependencies=protegido)
+    async def estado_de_modelos() -> dict[str, Any]:
+        """Conexión de modelos vigente. La clave nunca viaja en la respuesta."""
+        return comandos.estado_de_modelos()
+
+    @app.post("/api/modelos", dependencies=protegido)
+    async def guardar_conexion_de_modelos(cuerpo: ConexionModelos) -> dict[str, Any]:
+        """Guarda la conexión de modelos; el chatbot la adopta al reiniciar el chat."""
+        return comandos.guardar_conexion_de_modelos(**cuerpo.model_dump())
 
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:
@@ -458,6 +517,22 @@ def crear_app(
         filas, metricas = comandos.datos_inventario()
         return {"filas": filas, "metricas": metricas}
 
+    @app.get("/api/reportes/por-empresa", dependencies=protegido)
+    async def documentos_por_empresa() -> list[dict[str, Any]]:
+        """Distribución de documentos por empresa, para el gráfico de barras."""
+        return [
+            {"empresa": empresa, "total": total}
+            for empresa, total in comandos.documentos_por_empresa()
+        ]
+
+    @app.get("/api/reportes/por-dia", dependencies=protegido)
+    async def documentos_por_dia() -> list[dict[str, Any]]:
+        """Documentos subidos por día, para la serie temporal."""
+        return [
+            {"dia": dia, "total": total}
+            for dia, total in comandos.documentos_por_dia()
+        ]
+
     @app.post("/api/reportes/exportar", dependencies=protegido)
     async def exportar_reporte(cuerpo: Exportacion) -> dict[str, str]:
         destino = comandos.exportar_inventario(cuerpo.destino, cuerpo.formato)
@@ -493,8 +568,18 @@ def crear_servicio(
     db_path: str | None = None,
     token: str | None = None,
 ) -> tuple[FastAPI, ComandosDatenJager]:
-    """Abre la base de datos y devuelve (aplicación, fachada de comandos)."""
-    conn, cursor = conectar_db(db_path)
+    """Abre la base de datos y devuelve (aplicación, fachada de comandos).
+
+    Raises:
+        BaseDeDatosError: la base no se pudo abrir o preparar. Se distingue del
+            resto de fallos de arranque porque es el único que deja el servicio
+            sin ninguna operación posible (ver `main`).
+    """
+    try:
+        conn, cursor = conectar_db(db_path)
+    except Exception as error:
+        raise BaseDeDatosError(str(error)) from error
+
     comandos = ComandosDatenJager(
         AppState(conn=conn, cursor=cursor, db_lock=threading.Lock())
     )
@@ -516,7 +601,17 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     token = argumentos.token or secrets.token_urlsafe(32)
-    app, _comandos = crear_servicio(argumentos.db, token)
+
+    try:
+        app, _comandos = crear_servicio(argumentos.db, token)
+    except BaseDeDatosError as error:
+        # Fallo de arranque, no de operación: sin base no hay nada que servir.
+        # Se anuncia con una línea propia para que el lanzador (Electron) lo
+        # distinga de un error de importación y lo muestre tal cual, en lugar
+        # de dejar la interfaz en «servicio no disponible» sin motivo.
+        print(f"DATENJAGER_ERROR base de datos: {error.mensaje}", flush=True)
+        LOG.error("No se pudo abrir la base de datos: %s", error.mensaje)
+        return 2
 
     import uvicorn
 

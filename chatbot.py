@@ -125,8 +125,9 @@ def contenido_reflexion() -> dict:
 class ChatbotService:
     """Servicio de IA. Una instancia por sesión de usuario."""
 
-    def __init__(self, usuario_nombre: str = ""):
-        api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    def __init__(self, usuario_nombre: str = "", api_key: str | None = None,
+                 modelo: str | None = None):
+        api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
         if not api_key:
             raise ConfiguracionChatbotError(
                 "GEMINI_API_KEY no encontrada. Verifica el archivo .env"
@@ -138,6 +139,10 @@ class ChatbotService:
             "gemini-1.5-flash",
             "gemini-flash-latest",
         ]
+        if modelo and modelo.strip() and modelo.strip() not in self.model_candidates:
+            # El modelo elegido en el panel de conexión se prueba primero; la
+            # lista de candidatos se conserva como respaldo si falla.
+            self.model_candidates.insert(0, modelo.strip())
         self.usuario_nombre = usuario_nombre
         self.history: list[dict[str, list[dict[str, str]]]] = []
         self.enable_local_fallback = True
@@ -352,20 +357,25 @@ class ChatbotService:
         return respuesta
 
 
-def crear_servicio(usuario_nombre: str, contexto: str = "") -> ChatbotService:
+def crear_servicio(usuario_nombre: str, contexto: str = "",
+                   api_key: str | None = None, modelo: str | None = None) -> ChatbotService:
     """Punto de entrada único para iniciar la conversación de un usuario.
 
     Args:
         usuario_nombre: nombre del usuario autenticado.
         contexto: contexto inicial que se inyecta como primer mensaje.
+        api_key: clave de API ya resuelta por el backend. Si falta, se usa la
+            del entorno (``GEMINI_API_KEY``), como hasta ahora.
+        modelo: modelo elegido en el panel de conexión; se prueba antes que la
+            lista de candidatos por defecto.
 
     Returns:
         ``ChatbotService`` listo para conversar.
 
     Raises:
-        ConfiguracionChatbotError: falta ``GEMINI_API_KEY``.
+        ConfiguracionChatbotError: no hay clave ni en el parámetro ni en el entorno.
     """
-    servicio = ChatbotService(usuario_nombre)
+    servicio = ChatbotService(usuario_nombre, api_key=api_key, modelo=modelo)
     if contexto:
         servicio.set_context(contexto)
     return servicio

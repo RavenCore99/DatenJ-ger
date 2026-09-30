@@ -54,6 +54,12 @@ class BaseBackendTest(unittest.TestCase):
         self.tmpdir = tempfile.mkdtemp(prefix="datenjager_test_")
         self.db_path = os.path.join(self.tmpdir, "pruebas.db")
 
+        # El almacén de tokens de confianza y el de la conexión de modelos se
+        # apuntan al directorio temporal: ninguna prueba debe escribir en el
+        # directorio real del proyecto (CLAUDE.md §3).
+        self._tokens_previos = os.environ.get("DATENJAGER_TOKENS")
+        os.environ["DATENJAGER_TOKENS"] = self.tmpdir
+
         self.conn, self.cursor = conectar_db(self.db_path)
         self.cursor.execute(
             "INSERT INTO Usuarios (nombre, contrasena, fecha_creacion) VALUES (?, ?, ?)",
@@ -76,6 +82,12 @@ class BaseBackendTest(unittest.TestCase):
             self.conn.close()
         except Exception:
             pass
+
+        if self._tokens_previos is None:
+            os.environ.pop("DATENJAGER_TOKENS", None)
+        else:
+            os.environ["DATENJAGER_TOKENS"] = self._tokens_previos
+
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     # ------------------------------------------------------------------ #

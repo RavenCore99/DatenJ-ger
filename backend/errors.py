@@ -59,3 +59,13 @@ class CuentaBloqueadaError(BackendError):
 
 class SegundoFactorInvalidoError(BackendError):
     """El código 2FA o el código de respaldo no son válidos."""
+
+
+class BaseDeDatosError(BackendError):
+    """La base de datos no se pudo abrir o preparar.
+
+    Es un fallo de arranque, no de operación: sin base no hay sesión, ni
+    documentos, ni auditoría. La distinción importa porque el servicio puede
+    estar vivo y la base caída, y en ese caso la interfaz debe decirlo con
+    esas palabras en lugar de dejar caer cada pantalla por su cuenta.
+    """
