@@ -1,5 +1,6 @@
 // Copyright (c) 2024 DatenJäger. All rights reserved.
 // electron/backend.js - ciclo de vida del servicio Python local
+// Trazabilidad Jira: SCRUM-60 (DatenJäger — Electron).
 
 /**
  * Arranca y detiene `backend/server.py` (SCRUM-21).
