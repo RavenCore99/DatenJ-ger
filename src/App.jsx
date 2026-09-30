@@ -78,7 +78,12 @@ function Marco() {
         <SubCabecera seccion={activa} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-          <Componente onNavegar={setSeccion} />
+          {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
+              contenido entra con un fundido breve. La clave fuerza el remonte
+              para que la animación vuelva a dispararse. */}
+          <div key={seccion} className="aparecer">
+            <Componente onNavegar={setSeccion} />
+          </div>
         </main>
 
         <BarraEstado />

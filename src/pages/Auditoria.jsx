@@ -123,7 +123,7 @@ export default function Auditoria() {
   }
 
   return (
-    <div className="aparecer flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <CabeceraPagina
         titulo="Auditoría"
         descripcion="Trazabilidad de acciones · Ley 1581 de 2012"
@@ -244,8 +244,12 @@ export default function Auditoria() {
               </tr>
             </thead>
             <tbody>
-              {eventos.map((evento) => (
-                <tr key={evento.id} className="border-t border-borde transition-colors hover:bg-fondo-2">
+              {eventos.map((evento, indice) => (
+                <tr
+                  key={evento.id}
+                  style={{ animationDelay: `${Math.min(indice, 12) * 18}ms` }}
+                  className="animar-entrada border-t border-borde transition-colors hover:bg-fondo-2"
+                >
                   <td className="py-2.5 pr-3 font-mono text-cuerpo-sm text-tenue">
                     {fechaCorta(evento.fecha)}
                   </td>

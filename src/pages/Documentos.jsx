@@ -284,12 +284,13 @@ export default function Documentos() {
                 </tr>
               </thead>
               <tbody>
-                {visibles.map((fila) => (
+                {visibles.map((fila, indice) => (
                   <tr
                     key={fila.id}
                     onClick={() => setSeleccion(fila.id === seleccion ? null : fila.id)}
+                    style={{ animationDelay: `${Math.min(indice, 12) * 18}ms` }}
                     className={[
-                      'cursor-pointer border-b border-borde transition-colors last:border-b-0',
+                      'animar-entrada cursor-pointer border-b border-borde transition-colors last:border-b-0',
                       fila.id === seleccion ? 'bg-primario-suave/60' : 'hover:bg-fondo-2',
                     ].join(' ')}
                   >

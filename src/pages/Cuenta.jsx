@@ -45,7 +45,7 @@ export default function Cuenta() {
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
 
   return (
-    <div className="aparecer flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <CabeceraPagina
         titulo="Cuenta y ajustes"
         descripcion="Seguridad de la sesión, doble factor y apariencia"
@@ -117,7 +117,7 @@ export default function Cuenta() {
 /* -------------------------------------------------------------------- */
 
 function Apariencia() {
-  const { tema, alternarTema } = useApp()
+  const { tema, alternarTema, animaciones, alternarAnimaciones } = useApp()
 
   return (
     <div className="flex flex-col gap-4">
@@ -134,6 +134,28 @@ function Apariencia() {
           className="rounded-lg border border-borde px-3 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
         >
           {tema === 'oscuro' ? 'Usar tema claro' : 'Usar tema oscuro'}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-borde pt-4">
+        <div>
+          <p className="text-cuerpo-md">Animaciones y transiciones</p>
+          <p className="text-cuerpo-sm text-tenue">
+            Desactivarlas reduce el movimiento en toda la aplicación.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={alternarAnimaciones}
+          aria-pressed={animaciones}
+          className={[
+            'rounded-lg border px-3 py-2 text-etiqueta-md font-medium transition-colors',
+            animaciones
+              ? 'border-primario/40 bg-primario/5 text-primario'
+              : 'border-borde text-tenue hover:border-primario hover:text-primario',
+          ].join(' ')}
+        >
+          {animaciones ? 'Activadas' : 'Desactivadas'}
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import Panel, { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
+import Panel, { Esqueleto, EstadoError, EstadoVacio, Tarjeta } from '../components/Panel.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
@@ -58,10 +58,18 @@ export default function Inicio({ onNavegar }) {
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar()} />}
         {estado === 'listo' && (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Metrica etiqueta="Documentos" valor={metricas.total_pdfs} />
-            <Metrica etiqueta="Personas" valor={metricas.total_personas} />
-            <Metrica etiqueta="Empresas" valor={metricas.total_empresas} />
-            <Metrica etiqueta="Almacenamiento" valor={metricas.total_size_str} />
+            <div className="animar-entrada">
+              <Tarjeta etiqueta="Documentos" valor={metricas.total_pdfs} acento="primario" />
+            </div>
+            <div className="animar-entrada" style={{ animationDelay: '40ms' }}>
+              <Tarjeta etiqueta="Personas" valor={metricas.total_personas} />
+            </div>
+            <div className="animar-entrada" style={{ animationDelay: '80ms' }}>
+              <Tarjeta etiqueta="Empresas" valor={metricas.total_empresas} />
+            </div>
+            <div className="animar-entrada" style={{ animationDelay: '120ms' }}>
+              <Tarjeta etiqueta="Almacenamiento" valor={metricas.total_size_str} acento="exito" />
+            </div>
           </div>
         )}
       </Panel>
@@ -85,15 +93,6 @@ export default function Inicio({ onNavegar }) {
           ))}
         </div>
       </Panel>
-    </div>
-  )
-}
-
-function Metrica({ etiqueta, valor }) {
-  return (
-    <div className="rounded-panel border border-borde px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wider text-tenue">{etiqueta}</p>
-      <p className="mt-1 font-mono text-xl">{valor ?? '—'}</p>
     </div>
   )
 }

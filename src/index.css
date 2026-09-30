@@ -49,8 +49,24 @@ body {
     animation: aparecer 240ms ease-out both;
   }
 
-  /* Quien pida menos movimiento, no lo recibe (SCRUM-32/87 lo hará también
-   * desde los ajustes de la aplicación). */
+  /* Entrada escalonada de filas y tarjetas (SCRUM-32): sutil, 260ms. El
+   * retardo lo pone cada elemento en línea para escalonar la secuencia. */
+  @keyframes entrar {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animar-entrada {
+    animation: entrar 260ms ease-out both;
+  }
+
+  /* Quien pida menos movimiento, no lo recibe. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -59,6 +75,19 @@ body {
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+
+  /* Ajuste explícito del usuario (SCRUM-32): desde «Cuenta → Apariencia» se
+   * puede desactivar todo el movimiento. Se aplica a la raíz para cubrir
+   * cualquier componente, incluidos los que traigan su propia animación. */
+  html.sin-animacion *,
+  html.sin-animacion *::before,
+  html.sin-animacion *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
   }
 }
 

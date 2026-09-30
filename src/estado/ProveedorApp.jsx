@@ -17,6 +17,7 @@ export function ProveedorApp({ children }) {
   const [version, setVersion] = useState(null)
   const [sesion, setSesion] = useState(null)
   const [tema, setTema] = useState(() => temaInicial())
+  const [animaciones, setAnimaciones] = useState(() => animacionesIniciales())
   const [aviso, setAviso] = useState(null)
 
   const montado = useRef(true)
@@ -88,8 +89,24 @@ export function ProveedorApp({ children }) {
     raiz.dataset.tema = tema
   }, [tema])
 
+  // El movimiento es opcional (SCRUM-32): la clase `sin-animacion` en la raíz
+  // lo desactiva en toda la aplicación, incluidos los componentes que traigan
+  // su propia animación.
+  useEffect(() => {
+    document.documentElement.classList.toggle('sin-animacion', !animaciones)
+    try {
+      localStorage.setItem('datenjager.animaciones', animaciones ? 'activas' : 'reducidas')
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [animaciones])
+
   const alternarTema = useCallback(() => {
     setTema((actual) => (actual === 'oscuro' ? 'claro' : 'oscuro'))
+  }, [])
+
+  const alternarAnimaciones = useCallback(() => {
+    setAnimaciones((actual) => !actual)
   }, [])
 
   const valor = useMemo(
@@ -102,11 +119,13 @@ export function ProveedorApp({ children }) {
       setSesion,
       tema,
       alternarTema,
+      animaciones,
+      alternarAnimaciones,
       aviso,
       limpiarAviso: () => setAviso(null),
       recargarSalud: () => consultarSalud(),
     }),
-    [estadoBackend, version, sesion, tema, aviso, alternarTema, consultarSalud],
+    [estadoBackend, version, sesion, tema, animaciones, aviso, alternarTema, alternarAnimaciones, consultarSalud],
   )
 
   return <ContextoApp.Provider value={valor}>{children}</ContextoApp.Provider>
@@ -129,4 +148,16 @@ function temaInicial() {
     /* almacenamiento no disponible: se usa el tema claro */
   }
   return 'claro'
+}
+
+/**
+ * Las animaciones vienen activas; se recuerda la preferencia del usuario
+ * (SCRUM-32). `prefers-reduced-motion` se respeta aparte, en CSS.
+ */
+function animacionesIniciales() {
+  try {
+    return localStorage.getItem('datenjager.animaciones') !== 'reducidas'
+  } catch {
+    return true
+  }
 }

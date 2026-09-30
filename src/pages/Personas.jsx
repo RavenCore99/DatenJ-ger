@@ -141,7 +141,7 @@ export default function Personas() {
   }
 
   return (
-    <div className="aparecer flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <CabeceraPagina
         titulo="Titulares"
         descripcion={`${resumen.total} persona(s) · ${resumen.documentos} documento(s) asociado(s)`}
@@ -228,12 +228,13 @@ export default function Personas() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila) => (
+              {filas.map((fila, indice) => (
                 <tr
                   key={fila.id}
                   onClick={() => setSeleccion(fila.id === seleccion ? null : fila.id)}
+                  style={{ animationDelay: `${Math.min(indice, 12) * 18}ms` }}
                   className={[
-                    'cursor-pointer border-t border-borde transition-colors',
+                    'animar-entrada cursor-pointer border-t border-borde transition-colors',
                     fila.id === seleccion ? 'bg-primario-suave/60' : 'hover:bg-fondo-2',
                   ].join(' ')}
                 >
