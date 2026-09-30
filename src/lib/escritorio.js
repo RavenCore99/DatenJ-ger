@@ -59,3 +59,21 @@ function aBase64(archivo) {
     lector.readAsDataURL(archivo)
   })
 }
+
+/**
+ * Elige una ruta de destino para un archivo que escribe el backend (SCRUM-61).
+ *
+ * En Electron la resuelve el diálogo nativo. En el navegador de desarrollo no
+ * hay forma de elegir una ruta del disco, así que se devuelve `cancelado` con
+ * el motivo: la pantalla lo explica en lugar de fallar sin decir nada.
+ */
+export async function elegirDestino({ nombre, formato = 'pdf' } = {}) {
+  if (globalThis.datenjager?.elegirDestino) {
+    return globalThis.datenjager.elegirDestino({ nombre, formato })
+  }
+
+  return {
+    cancelado: true,
+    motivo: 'Elegir la carpeta de destino solo está disponible en la aplicación de escritorio.',
+  }
+}

@@ -19,7 +19,7 @@ const path = require('node:path')
 const { app, BrowserWindow, ipcMain, session, shell } = require('electron')
 
 const { ServicioPython } = require('./backend')
-const { elegirDocumento, guardarDocumento } = require('./archivos')
+const { elegirDocumento, guardarDocumento, elegirDestino } = require('./archivos')
 
 // Identidad de la aplicación (SCRUM-65): el nombre que muestran el sistema y la
 // barra de tareas, y el identificador que Windows usa para agrupar las ventanas
@@ -143,6 +143,8 @@ ipcMain.handle('app:configuracion', () => configuracion())
 // Operaciones de disco: la ruta la elige siempre la persona por diálogo nativo.
 ipcMain.handle('archivo:elegir', () => elegirDocumento(ventana))
 ipcMain.handle('archivo:guardar', (_evento, datos) => guardarDocumento(ventana, datos))
+// Solo devuelve la ruta elegida: el reporte lo escribe el servicio de Python.
+ipcMain.handle('archivo:destino', (_evento, datos) => elegirDestino(ventana, datos))
 
 app.whenReady().then(async () => {
   aplicarPoliticaDeSeguridad()
