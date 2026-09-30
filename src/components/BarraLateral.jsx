@@ -1,19 +1,57 @@
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { SECCIONES } from '../App.jsx'
+import logo from '../../assets/logo/logo.png'
 
-/** Barra lateral de navegación entre los paneles del sistema. */
-export default function BarraLateral({ seccion, onSeleccionar }) {
+/**
+ * Barra lateral de navegación (SCRUM-28).
+ *
+ * Ancho del sistema de diseño: `240px`, que se recoge a `64px` cuando el
+ * usuario la pliega. Cada sección ocupa `36px` de alto, como pide el spec.
+ *
+ * Los iconos de acción llegan en `SCRUM-65`; hasta entonces cada entrada lleva
+ * su etiqueta y, plegada, su título como texto alternativo.
+ */
+export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar }) {
   return (
-    <nav className="flex w-60 shrink-0 flex-col border-r border-borde bg-superficie">
-      <div className="flex items-center gap-3 px-5 py-5">
-        <Logo />
-        <div className="leading-tight">
-          <p className="text-sm font-semibold tracking-tight">DatenJäger</p>
-          <p className="text-[11px] text-tenue">Gestión documental</p>
-        </div>
+    <nav
+      aria-label="Secciones del sistema"
+      className={[
+        'flex shrink-0 flex-col border-r border-borde bg-superficie',
+        'transition-[width] duration-200 ease-out',
+        plegada ? 'w-lateral-min' : 'w-lateral',
+      ].join(' ')}
+    >
+      <div className="flex h-cabecera shrink-0 items-center gap-2 border-b border-borde px-3">
+        <img
+          src={logo}
+          alt="DatenJäger"
+          className="h-8 w-8 shrink-0 rounded-full object-contain"
+        />
+
+        {!plegada && (
+          <div className="min-w-0 leading-tight">
+            <p className="truncate font-marca text-cuerpo-md font-semibold tracking-tight">
+              DatenJäger
+            </p>
+            <p className="truncate text-etiqueta-sm text-tenue">Gestión documental</p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onPlegar}
+          aria-expanded={!plegada}
+          aria-label={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
+          title={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
+          className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
+        >
+          <span aria-hidden="true" className="font-mono text-etiqueta-sm">
+            {plegada ? '»' : '«'}
+          </span>
+        </button>
       </div>
 
-      <ul className="flex flex-col gap-1 px-3 py-2">
+      <ul className="flex flex-1 flex-col gap-space-xs overflow-y-auto px-2 py-3">
         {SECCIONES.map(({ clave, titulo, descripcion }) => {
           const activa = clave === seccion
           return (
@@ -22,55 +60,48 @@ export default function BarraLateral({ seccion, onSeleccionar }) {
                 type="button"
                 onClick={() => onSeleccionar(clave)}
                 aria-current={activa ? 'page' : undefined}
+                title={plegada ? titulo : undefined}
                 className={[
-                  'group flex w-full flex-col items-start rounded-lg px-3 py-2 text-left transition-colors',
+                  'flex h-9 w-full items-center rounded-md px-3 text-left transition-colors',
+                  plegada ? 'justify-center' : 'gap-2',
                   activa
-                    ? 'bg-primario/10 text-primario'
-                    : 'text-texto hover:bg-fondo',
+                    ? 'bg-primario-suave font-medium text-primario'
+                    : 'text-texto hover:bg-fondo-2',
                 ].join(' ')}
               >
-                <span className="text-sm font-medium">{titulo}</span>
-                <span className="text-[11px] text-tenue">{descripcion}</span>
+                <span className="truncate text-etiqueta-md">
+                  {plegada ? titulo.slice(0, 1) : titulo}
+                </span>
+                {!plegada && (
+                  <span className="ml-auto truncate text-etiqueta-sm text-tenue">
+                    {descripcion}
+                  </span>
+                )}
               </button>
             </li>
           )
         })}
       </ul>
 
-      <div className="mt-auto border-t border-borde px-5 py-4">
-        <BotonTema />
+      <div className="border-t border-borde px-2 py-3">
+        <BotonTema plegada={plegada} />
       </div>
     </nav>
   )
 }
 
-function BotonTema() {
+function BotonTema({ plegada }) {
   const { tema, alternarTema } = useApp()
+  const etiqueta = tema === 'oscuro' ? 'Tema claro' : 'Tema oscuro'
 
   return (
     <button
       type="button"
       onClick={alternarTema}
-      className="w-full rounded-lg border border-borde px-3 py-2 text-xs font-medium text-tenue transition-colors hover:text-texto"
+      title={etiqueta}
+      className="flex h-9 w-full items-center justify-center rounded-md border border-borde px-3 text-etiqueta-md text-tenue transition-colors hover:border-primario hover:text-primario"
     >
-      {tema === 'oscuro' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+      {plegada ? (tema === 'oscuro' ? '☀' : '☾') : etiqueta}
     </button>
-  )
-}
-
-/**
- * Marca del proyecto: círculo azul con anillo y ave.
- * Provisional — el logo definitivo llega con los assets de la Fase 3.
- */
-function Logo() {
-  return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0D0F1A] ring-2 ring-primario">
-      <svg viewBox="0 0 24 24" className="h-5 w-5 text-white" aria-hidden="true">
-        <path
-          fill="currentColor"
-          d="M4 14c3.2-.4 5.6-1.9 7.4-4.4.5-.7.9-1.5 1.2-2.3 1.6 1 2.5 2.2 2.8 3.6.3 1.5-.1 3-1.2 4.4-1.9 2.4-4.9 3.4-8.4 3l-1.8-4.3Z"
-        />
-      </svg>
-    </span>
   )
 }

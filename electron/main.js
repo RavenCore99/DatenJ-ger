@@ -80,8 +80,11 @@ function crearVentana() {
     minWidth: 1024,
     minHeight: 680,
     show: false,
-    backgroundColor: '#0D0F1A',
+    // Fondo del tema claro del sistema de diseño: evita el destello oscuro
+    // antes de que el renderer pinte (el tema por defecto es el claro).
+    backgroundColor: '#f8f9ff',
     title: 'DatenJäger',
+    icon: path.join(__dirname, '..', 'assets', 'logo', 'logo.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -12,7 +12,7 @@ import Acceso from './pages/Acceso.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
- * actual (ver CLAUDE.md sección 3) y se reconstruye en SCRUM-22 a SCRUM-25.
+ * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
  */
 export const SECCIONES = [
   { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', Componente: Inicio },
@@ -30,10 +30,16 @@ export function App() {
   )
 }
 
-/** Marco visual: barra lateral fija, área de contenido desplazable, pie de estado. */
+/**
+ * Marco de la aplicación (SCRUM-28), con las densidades del sistema de diseño:
+ * barra lateral de `240px` que se recoge a `64px`, sub-cabecera de `48px` con
+ * migas de pan, área de contenido desplazable y franja de telemetría de `32px`
+ * pegada al borde inferior.
+ */
 function Marco() {
   const { tema, autenticado } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
+  const [plegada, setPlegada] = useBarraLateral()
 
   useEffect(() => {
     try {
@@ -51,12 +57,17 @@ function Marco() {
 
   return (
     <div className="flex h-full w-full bg-fondo text-texto">
-      <BarraLateral seccion={seccion} onSeleccionar={setSeccion} />
+      <BarraLateral
+        seccion={seccion}
+        onSeleccionar={setSeccion}
+        plegada={plegada}
+        onPlegar={() => setPlegada((valor) => !valor)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Cabecera titulo={activa.titulo} descripcion={activa.descripcion} />
+        <SubCabecera seccion={activa} />
 
-        <main className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
+        <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           <Componente onNavegar={setSeccion} />
         </main>
 
@@ -66,15 +77,25 @@ function Marco() {
   )
 }
 
-function Cabecera({ titulo, descripcion }) {
+/** Sub-cabecera fija: migas de pan a la izquierda, insignia de cifrado a la derecha. */
+function SubCabecera({ seccion }) {
   return (
-    <header className="flex items-baseline justify-between border-b border-borde px-8 py-4">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight">{titulo}</h1>
-        <p className="text-xs text-tenue">{descripcion}</p>
-      </div>
-      <span className="font-mono text-[11px] uppercase tracking-widest text-tenue">
-        DatenJäger
+    <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
+      <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
+        <span className="font-marca text-tenue">DatenJäger</span>
+        <span aria-hidden="true" className="text-borde-fuerte">
+          /
+        </span>
+        <span className="truncate font-medium">{seccion.titulo}</span>
+        <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
+      </nav>
+
+      <span
+        className="flex shrink-0 items-center gap-1.5 rounded border border-borde bg-fondo px-2 py-1 font-mono text-telemetria text-tenue"
+        title="Los documentos se guardan cifrados con AES-256-GCM"
+      >
+        <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-exito" />
+        AES-256-GCM
       </span>
     </header>
   )
@@ -101,6 +122,27 @@ function useSeccionInicial() {
   }, [seccion])
 
   return [seccion, setSeccion]
+}
+
+/** El ancho de la barra lateral también sobrevive al recargado. */
+function useBarraLateral() {
+  const [plegada, setPlegada] = useState(() => {
+    try {
+      return localStorage.getItem('datenjager.lateral') === 'plegada'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('datenjager.lateral', plegada ? 'plegada' : 'abierta')
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [plegada])
+
+  return [plegada, setPlegada]
 }
 
 export default App
