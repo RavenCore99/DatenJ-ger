@@ -540,15 +540,32 @@ Pantallas que faltan (cerradas 2026-09-30):
 Diseño, datos y cierre:
 
 - [x] `SCRUM-79` versionar el material de diseño y de marca (`ee40d51`, `19a6cde`)
-- [ ] `SCRUM-80` set de iconos del frontend
-- [ ] `SCRUM-81` extraer la estadística y los gráficos al backend
-- [ ] `SCRUM-82` dashboard de gráficos
-- [ ] `SCRUM-83` reportes con la paleta del sistema
+- [x] `SCRUM-80` set de iconos del frontend — resuelto con el set SVG en línea de
+  `Icono.jsx`, que cubre todos los nombres que el sistema pide
+- [ ] `SCRUM-81` extraer la estadística y los gráficos al backend — las métricas y
+  las series ya están en `backend/services/reportes.py`; faltan la regresión, la
+  predicción y los colores de `ui_components.py` (`DashboardWidget`)
+- [ ] `SCRUM-82` dashboard de gráficos — el panel de Estadísticas ya dibuja la
+  distribución y la serie temporal
+- [x] `SCRUM-83` reportes con la paleta del sistema — logo en la portada,
+  exportador `scripts/exportar_inventario.py` y glifos que salían como `?`
+  corregidos (PR #12)
 - [ ] `SCRUM-84` restablecimiento de contraseña
-- [ ] `SCRUM-85` atajos de teclado y búsqueda global
-- [ ] `SCRUM-86` franja de telemetría inferior
+- [ ] `SCRUM-85` atajos de teclado y búsqueda global — activos `Ctrl+B`, `Enter` y
+  `Esc`; faltan `Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr` y `F11`
+- [x] `SCRUM-86` franja de telemetría inferior — `BarraEstado` con el estado real
+  de base de datos, APIs y chatbot
 - [ ] `SCRUM-87` notificaciones del sistema
 - [ ] `SCRUM-88` modales de documento
+
+> **Claves de Jira (2026-09-30).** Los números de este archivo vienen de la
+> numeración que `jira.md` mantuvo en paralelo. Al consultar el tablero por el
+> MCP se comprobó que **Jira no tiene más allá de `SCRUM-66`** y que `SCRUM-57` a
+> `SCRUM-66` son tickets de **área** (Backend, Frontend, UI / UX, Electron,
+> Chatbot, API / Servicios, Búsqueda semántica, Testing / QA, Documentación /
+> Release, Arquitectura / Core). `jira.md` ya usa las áreas como etiqueta y
+> conserva el mapeo de la numeración antigua; aquí se mantienen los números
+> originales para no romper las referencias a los commits ya publicados.
 
 Evaluación (paralela, backend):
 

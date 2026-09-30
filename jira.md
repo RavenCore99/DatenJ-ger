@@ -193,8 +193,7 @@ build(SCRUM-26): genera instalador inicial
 
 > Las **pantallas nuevas** (registro, setup 2FA, chatbot, visor de PDF,
 > reportes, estadísticas, ajustes completos, conexión de modelos) y el
-> **movimiento e identidad visual** están en el Sprint 5 (`SCRUM-57` a
-> `SCRUM-71`), no aquí.
+> **movimiento e identidad visual** están en el Sprint 5, no aquí.
 
 | Jira | Tarea | Etiquetas adicionales sugeridas |
 |---|---|---|
@@ -239,7 +238,7 @@ feat(SCRUM-32): añade estados y transiciones
 
 > **`SCRUM-37` a `SCRUM-39` aparcados (2026-09-30).** Raven decidió que no se
 > implementan modelos locales hasta que el frontend y el backend estén completos
-> al 100 %; por ahora el chatbot funciona **solo por API** (`SCRUM-85`/`SCRUM-86`).
+> al 100 %; por ahora el chatbot funciona **solo por API** (`SCRUM-61`/`SCRUM-62`).
 
 ## Bloque B — APIs y backend
 
@@ -318,29 +317,74 @@ documentos y dejar el proyecto instalable y publicable.
 
 > Estos trabajos **amplían** la Fase 3 y la Fase 4 de `planning.md`; no sustituyen
 > los `SCRUM-27` a `SCRUM-32` (Sprint 3), que siguen siendo el acabado visual de
-> las pantallas que ya funcionan. Los `SCRUM-57` en adelante son tareas nuevas
-> registradas el 2026-09-28 a partir de la revisión de Raven.
+> las pantallas que ya funcionan.
+>
+> **Reconciliación con el tablero (2026-09-30).** Al consultar Jira por el MCP se
+> comprobó que el tablero **no** contiene los tickets que este archivo inventó
+> desde `SCRUM-57`: su key más alto es **`SCRUM-66`**, y `SCRUM-57` a `SCRUM-66`
+> son **tickets de área** (`DatenJäger — Backend`, `— Frontend`, `— UI / UX`,
+> `— Electron`, `— Chatbot`, `— API / Servicios`, `— Búsqueda semántica`,
+> `— Testing / QA`, `— Documentación / Release`, `— Arquitectura / Core`). Hasta
+> `SCRUM-56` el archivo y el tablero coinciden (por ejemplo `SCRUM-55`
+> «Preparar evidencia de pruebas y demostración» y `SCRUM-56` «Cerrar backlog
+> técnico del semestre»).
+>
+> Por eso, **a partir de aquí el trabajo se etiqueta con el ticket de área** que
+> le corresponde, no con una numeración paralela que no existe en Jira. El mapeo
+> histórico deja constancia de qué significaban los números antiguos para que los
+> commits ya publicados sigan siendo trazables.
+
+## Tickets del tablero (áreas)
+
+| Jira | Área en el tablero | Estado |
+|---|---|---|
+| `SCRUM-57` | DatenJäger — Backend | trabajo hecho (alta de usuario, estado de la base, conexión de modelos) |
+| `SCRUM-58` | DatenJäger — Frontend | trabajo hecho (registro, asistente, reportes, estadísticas, modelos, ajustes) |
+| `SCRUM-59` | DatenJäger — UI / UX | trabajo hecho (identidad visual, movimiento, visor, ajustes) |
+| `SCRUM-60` | DatenJäger — Electron | trabajo hecho (arranque en otro puerto, CORS de desarrollo, motivo del fallo) |
+| `SCRUM-61` | DatenJäger — Chatbot | trabajo hecho (panel con barra lateral por botones) |
+| `SCRUM-62` | DatenJäger — API / Servicios | trabajo hecho (rutas de reportes y de conexión de modelos) |
+| `SCRUM-63` | DatenJäger — Búsqueda semántica | sin trabajo: es la Fase 5, en evaluación |
+| `SCRUM-64` | DatenJäger — Testing / QA | trabajo hecho (142 pruebas, sondas de la ventana real) |
+| `SCRUM-65` | DatenJäger — Documentación / Release | trabajo hecho (planning, jira, CLAUDE, docs/issues) |
+| `SCRUM-66` | DatenJäger — Arquitectura / Core | trabajo hecho (capa de comandos, AppState, puente) |
+
+## Mapeo histórico (numeración antigua → área)
+
+| Numeración antigua de este archivo | Área del tablero |
+|---|---|
+| `SCRUM-57` a `SCRUM-62` (pantallas que faltan) | `SCRUM-58` (Frontend) y `SCRUM-57` (Backend) |
+| `SCRUM-63` (ajustes), `SCRUM-71` (complementos) | `SCRUM-59` (UI / UX) |
+| `SCRUM-65` a `SCRUM-70` (identidad y movimiento) | `SCRUM-59` (UI / UX) |
+| `SCRUM-64` (conexión de modelos) y sus rutas | `SCRUM-62` (API / Servicios) y `SCRUM-58` |
+| `SCRUM-72` a `SCRUM-74` (clasificación automática) | sin ticket: es la Fase 6, en evaluación |
+| `SCRUM-75` a `SCRUM-78` (empaquetado) | `SCRUM-65` (Documentación / Release) |
+| `SCRUM-79` a `SCRUM-83` (diseño, datos y reportes) | `SCRUM-59` (UI / UX) y `SCRUM-58` (Frontend) |
+| `SCRUM-84` a `SCRUM-88` (cierre de la Fase 3) | `SCRUM-58` / `SCRUM-59` |
+| `SCRUM-89` (hallazgo de `docs/issues.md`) | `SCRUM-64` (Testing / QA) y `SCRUM-60` (Electron) |
+
+> `SCRUM-89` **no existe en el tablero**: se acuñó en este archivo para el hallazgo
+> de `docs/issues.md`. Si Raven quiere que sea un ticket real, hay que crearlo; el
+> trabajo que representa ya está hecho y verificado.
 
 ## Bloque A — Pantallas que faltan
 
-**Estado: cerrado (2026-09-30) — `SCRUM-57` a `SCRUM-64` hechos y verificados
-(142 pruebas, `vite build` correcto).**
+**Estado: cerrado (2026-09-30) — hecho y verificado: 142 pruebas, `vite build`
+correcto y las nueve secciones conducidas en la ventana real de Electron.**
 
-| Jira | Tarea | Etiquetas adicionales | Estado |
+| Área | Tarea | Etiquetas adicionales | Estado |
 |---|---|---|---|
-| `SCRUM-57` | Implementar registro de operadores (alta de usuario) | `registro`, `auth`, `feat` | hecho |
-| `SCRUM-58` | Construir el alta de 2FA con QR y códigos de respaldo | `ui`, `2fa`, `feat` | hecho |
-| `SCRUM-59` | Construir el panel del chatbot con barra lateral por botones | `chatbot`, `ui`, `feat` | hecho |
-| `SCRUM-60` | Incorporar visor de PDF dentro de la aplicación | `pdf`, `visor`, `feat` | hecho |
-| `SCRUM-61` | Construir el panel de reportes con paleta estructurada | `reportes`, `ui`, `feat` | hecho |
-| `SCRUM-62` | Agregar recopilador de datos y estadísticas | `datos`, `estadisticas`, `feat` | hecho |
-| `SCRUM-63` | Completar el panel de ajustes (paridad con el código Python) | `configuracion`, `ui`, `improvement` | hecho |
-| `SCRUM-64` | Crear el panel de conexión de APIs y modelos | `modelos`, `api`, `feat` | hecho |
-| `SCRUM-89` | Cerrar el hallazgo de `docs/issues.md` (dashboard en blanco, base caída, puerto ocupado, CORS en desarrollo) | `diagnostico`, `frontend`, `bug` | hecho |
+| `SCRUM-57` | Alta de usuario en el backend (`registrar_usuario`) | `registro`, `auth`, `feat` | hecho |
+| `SCRUM-58` | Registro de operadores, panel del asistente, reportes, estadísticas, conexión de modelos y ajustes | `ui`, `feat` | hecho |
+| `SCRUM-59` | Alta de 2FA con QR y códigos de respaldo; visor de PDF dentro de la aplicación | `ui`, `2fa`, `pdf`, `feat` | hecho |
+| `SCRUM-61` | Panel del chatbot con barra lateral por botones | `chatbot`, `ui`, `feat` | hecho |
+| `SCRUM-62` | Rutas de reportes (`por-empresa`, `por-dia`) y de conexión de modelos | `api`, `datos`, `feat` | hecho |
+| `SCRUM-64` | Cerrar el hallazgo de `docs/issues.md` (dashboard en blanco, base caída, puerto ocupado, CORS en desarrollo) | `diagnostico`, `bug` | hecho |
 
-> `SCRUM-89` se registra el 2026-09-30 a partir de `docs/issues.md`: «conexión a
-> base de datos fallida; electron y web caen; no se puede acceder al dashboard
-> mediante login y register». El síntoma tenía **tres** causas superpuestas:
+> El hallazgo se acuñó aquí como `SCRUM-89` (en el tablero corresponde a
+> `SCRUM-64`): «conexión a base de datos fallida; electron y web caen; no se puede
+> acceder al dashboard mediante login y register». El síntoma tenía **cinco**
+> causas superpuestas:
 >
 > 1. el alta de usuario no existía en el frontend (`SCRUM-57`);
 > 2. una base caída se veía como un servicio sano (`GET /api/salud` no la
@@ -368,23 +412,28 @@ documentos y dejar el proyecto instalable y publicable.
 
 ## Bloque B — Identidad visual y movimiento
 
-| Jira | Tarea | Etiquetas adicionales |
+**Área del tablero: `SCRUM-59` (UI / UX).**
+
+| Tarea | Etiquetas adicionales | Estado |
 |---|---|---|
-| `SCRUM-65` | Integrar logo, icono de aplicación y set de iconos de acción | `branding`, `assets`, `ui` |
-| `SCRUM-66` | Animar el cambio entre tema claro y oscuro | `ui`, `tema`, `animacion` |
-| `SCRUM-67` | Añadir animación de entrada y micro-interacciones | `ui`, `animacion`, `feat` |
-| `SCRUM-68` | Indicar con color el estado de base de datos, APIs y chatbot | `ui`, `estados`, `feat` |
-| `SCRUM-69` | Añadir esqueletos de carga en las listas | `ui`, `ui-states`, `feat` |
-| `SCRUM-70` | Permitir desplegar y recoger las barras laterales | `ui`, `layout`, `feat` |
-| `SCRUM-71` | Incorporar los complementos de `assets/assets/` como componentes | `ui`, `componentes`, `feat` |
+| Integrar logo, icono de aplicación y set de iconos de acción | `branding`, `assets`, `ui` | hecho |
+| Animar el cambio entre tema claro y oscuro | `ui`, `tema`, `animacion` | hecho |
+| Añadir animación de entrada y micro-interacciones | `ui`, `animacion`, `feat` | hecho |
+| Indicar con color el estado de base de datos, APIs y chatbot | `ui`, `estados`, `feat` | hecho |
+| Añadir esqueletos de carga en las listas | `ui`, `ui-states`, `feat` | hecho |
+| Permitir desplegar y recoger las barras laterales | `ui`, `layout`, `feat` | hecho |
+| Incorporar los complementos de `assets/assets/` como componentes | `ui`, `componentes`, `feat` | hecho |
 
 ## Bloque C — Clasificación automática de documentos (evaluación)
 
-| Jira | Tarea | Etiquetas adicionales |
-|---|---|---|
-| `SCRUM-72` | Etiquetar el corpus y medir la línea base sin modelo | `ml`, `evaluacion`, `poc` |
-| `SCRUM-73` | Prototipar la clasificación con embeddings | `ml`, `embeddings`, `evaluacion` |
-| `SCRUM-74` | Medir resultados y decidir continuidad | `ml`, `evaluacion`, `decision` |
+**Sin ticket en el tablero: es la Fase 6 y sigue en evaluación.** No se creó
+ningún `SCRUM-72` a `SCRUM-74`.
+
+| Tarea | Etiquetas adicionales |
+|---|---|
+| Etiquetar el corpus y medir la línea base sin modelo | `ml`, `evaluacion`, `poc` |
+| Prototipar la clasificación con embeddings | `ml`, `embeddings`, `evaluacion` |
+| Medir resultados y decidir continuidad | `ml`, `evaluacion`, `decision` |
 
 ## Bloque D — Diseño, datos y cierre de la Fase 3
 
@@ -392,120 +441,134 @@ documentos y dejar el proyecto instalable y publicable.
 > Los mockups son **referencias** (estructura inspirada en Hermes Desktop), el
 > sistema de diseño está en `DESIGN.md` y la lógica de datos vive en Python.
 > **Sin duplicados**: lo que ya está en los bloques A y B no se repite aquí
-> (visor de PDF, chatbot, ajustes y panel de conexión son `SCRUM-60`, `59`,
-> `63` y `64`).
+> (visor de PDF, chatbot, ajustes y panel de conexión ya están en el Bloque A).
 
-| Jira | Tarea | Etiquetas adicionales |
-|---|---|---|
-| `SCRUM-79` | Versionar el material de diseño y de marca | `assets`, `documentacion`, `hito` |
-| `SCRUM-80` | Definir e integrar el set de iconos del frontend | `ui`, `iconos`, `rendimiento` |
-| `SCRUM-81` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` |
-| `SCRUM-82` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` |
-| `SCRUM-83` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` |
-| `SCRUM-84` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` |
-| `SCRUM-85` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` |
-| `SCRUM-86` | Construir la franja de telemetría inferior | `ui`, `telemetria`, `feat` |
-| `SCRUM-87` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` |
-| `SCRUM-88` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` |
+**Área del tablero: `SCRUM-59` (UI / UX), con el backend en `SCRUM-57`.**
+
+| Área | Tarea | Etiquetas adicionales | Estado |
+|---|---|---|---|
+| `SCRUM-59` | Versionar el material de diseño y de marca | `assets`, `documentacion`, `hito` | hecho |
+| `SCRUM-59` | Definir e integrar el set de iconos del frontend | `ui`, `iconos`, `rendimiento` | hecho (set SVG en línea de `Icono.jsx`) |
+| `SCRUM-57` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` | parcial: métricas y series ya en `backend/services/reportes.py`; faltan la regresión, la predicción y los colores |
+| `SCRUM-59` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` | pendiente (el panel de Estadísticas ya dibuja distribución y serie) |
+| `SCRUM-59` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` | hecho (PR #12: logo, tarjetas y exportador) |
+| `SCRUM-57` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` | pendiente |
+| `SCRUM-59` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` | pendiente (activos: `Ctrl+B`, `Enter`, `Esc`) |
+| `SCRUM-59` | Construir la franja de telemetría inferior | `ui`, `telemetria`, `feat` | hecho (`BarraEstado` con estados reales) |
+| `SCRUM-59` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` | pendiente |
+| `SCRUM-59` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` | pendiente |
 
 ### Commits esperados (Bloque D)
 
 ```text
-chore(SCRUM-79): versiona el material de diseño
-ui(SCRUM-80): integra el set de iconos
-refactor(SCRUM-81): extrae la estadística al backend
-feat(SCRUM-82): construye el dashboard
-feat(SCRUM-83): genera los reportes del sistema
-feat(SCRUM-84): habilita el restablecimiento de contraseña
-feat(SCRUM-85): añade atajos de teclado
-feat(SCRUM-86): construye la franja de telemetría
-feat(SCRUM-87): añade las notificaciones del sistema
-feat(SCRUM-88): migra los modales de documento
+chore(SCRUM-59): versiona el material de diseño
+ui(SCRUM-59): integra el set de iconos
+refactor(SCRUM-57): extrae la estadística al backend
+feat(SCRUM-59): construye el dashboard de gráficos
+feat(SCRUM-59): genera los reportes del sistema
+feat(SCRUM-57): habilita el restablecimiento de contraseña
+feat(SCRUM-59): añade atajos de teclado
+ui(SCRUM-59): construye la franja de telemetría
+feat(SCRUM-59): añade las notificaciones del sistema
+feat(SCRUM-59): migra los modales de documento
 ```
 
 ### Notas del Bloque D
 
-* `SCRUM-79` **cerrado** (`ee40d51` incorpora el material, `19a6cde` retira las
-  24 copias antiguas tras comprobar que eran idénticas). No era opcional: los
-  mockups estaban sin versionar mientras las copias anteriores figuraban como
-  borradas.
-* `SCRUM-80`: los mockups usan la fuente de iconos *Material Symbols*; el
+* Versionar el material de diseño y de marca **cerrado** (`ee40d51` incorpora el
+  material, `19a6cde` retira las 24 copias antiguas tras comprobar que eran
+  idénticas). No era opcional: los mockups estaban sin versionar mientras las
+  copias anteriores figuraban como borradas.
+* Set de iconos: los mockups usan la fuente de iconos *Material Symbols*; el
   proyecto tiene 44 PNG estilo lucide y Raven delegó la elección en el criterio
-  de **rendimiento y estética**. El set elegido debe cubrir todos los nombres
-  que el sistema pide — hoy faltan `arrow-right` y `trash`.
-* `SCRUM-81`: hoy la regresión lineal, la predicción y **los colores de los
-  gráficos** están dentro de `ui_components.py` (`DashboardWidget`). Sube al
-  backend para que el frontend dibuje con la paleta del sistema.
-* `SCRUM-83`: el reporte PDF conserva portada, inventario y gráfico por empresa,
-  con la estructura de color y organización del sistema.
-* `SCRUM-84`: el flujo de restablecer contraseña del Python **no puede
-  completarse** para usuarios nuevos (`paneles_datenjager.md` lo documenta); la
-  verificación de códigos de respaldo ya vive en `backend/services/autenticacion.py`,
-  así que se construye sobre esa base.
-* `SCRUM-85`/`SCRUM-86`: los atajos (`Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr`, `F11`)
-  y la franja de telemetría están documentados en `paneles_datenjager.md` §4.7
-  y §4.6, pero no existen en el frontend nuevo.
-* `SCRUM-88`: agregar, detalles y editar documento; el **visor** es `SCRUM-60`.
+  de **rendimiento y estética**. Quedó resuelto con el set SVG en línea de
+  `Icono.jsx`, que ya cubre los nombres que el sistema pide (incluidos
+  `flecha-derecha` y `basura`, que faltaban).
+* Extraer la estadística al backend: hoy la regresión lineal, la predicción y
+  **los colores de los gráficos** están dentro de `ui_components.py`
+  (`DashboardWidget`). Las métricas y las series ya viven en
+  `backend/services/reportes.py`; falta subir el resto para que el frontend
+  dibuje con la paleta del sistema.
+* Reportes con la paleta del sistema: el reporte PDF conserva portada,
+  inventario y gráfico por empresa. El PR #12 añade el logo en la portada y
+  formaliza la exportación (`scripts/exportar_inventario.py`), y corrige los
+  glifos que las fuentes base del PDF no podían dibujar (salían como `?`).
+* Restablecer contraseña: el flujo del Python **no puede completarse** para
+  usuarios nuevos (`paneles_datenjager.md` lo documenta); la verificación de
+  códigos de respaldo ya vive en `backend/services/autenticacion.py`, así que se
+  construye sobre esa base.
+* Atajos y franja de telemetría: los atajos (`Ctrl+F`, `Ctrl+N`, `Ctrl+Q`,
+  `Supr`, `F11`) están documentados en `paneles_datenjager.md` §4.7, pero **no
+  existen** en el frontend nuevo (sí `Ctrl+B`, `Enter` y `Esc`). La franja sí
+  existe y muestra estados reales (`BarraEstado`), contra lo que decía la nota
+  original de §4.6.
+* Modales de documento: agregar, detalles y editar documento; el **visor** ya
+  está hecho en el Bloque A.
 * Recordatorio de alcance: **nada de modelos locales** hasta que el frontend y
   el backend estén completos (decisión de Raven del 2026-09-30).
 
 ## Bloque E — Empaquetado y publicación
 
-| Jira | Tarea | Etiquetas adicionales |
-|---|---|---|
-| `SCRUM-75` | Generar el instalador multiplataforma (Windows y Linux) | `release`, `electron`, `build` |
-| `SCRUM-76` | Publicar el paquete en GitHub Packages | `release`, `paquetes`, `build` |
-| `SCRUM-77` | Documentar instalación y arranque para alguien nuevo | `documentacion`, `release` |
-| `SCRUM-78` | Retirar la interfaz CustomTkinter | `limpieza`, `hito`, `refactor` |
+**Área del tablero: `SCRUM-65` (Documentación / Release).**
+
+| Tarea | Etiquetas adicionales |
+|---|---|
+| Generar el instalador multiplataforma (Windows y Linux) | `release`, `electron`, `build` |
+| Publicar el paquete en GitHub Packages | `release`, `paquetes`, `build` |
+| Documentar instalación y arranque para alguien nuevo | `documentacion`, `release` |
+| Retirar la interfaz CustomTkinter | `limpieza`, `hito`, `refactor` |
 
 ### Commits esperados
 
 ```text
-feat(SCRUM-57): habilita el registro de operadores
-feat(SCRUM-58): construye el alta de 2FA
-feat(SCRUM-59): construye el panel del chatbot
-feat(SCRUM-60): incorpora el visor de PDF
-feat(SCRUM-61): construye el panel de reportes
+feat(SCRUM-57): habilita el registro de operadores en el backend
+feat(SCRUM-58): construye el registro de operadores
+feat(SCRUM-59): construye el alta de 2FA con QR y códigos de respaldo
+feat(SCRUM-61): construye el panel del chatbot
+feat(SCRUM-59): incorpora el visor de PDF
+feat(SCRUM-58): construye el panel de reportes
 feat(SCRUM-62): agrega estadísticas del sistema
-improvement(SCRUM-63): completa el panel de ajustes
-feat(SCRUM-64): crea el panel de conexión de modelos
-bug(SCRUM-89): distingue la base caída del servicio vivo
-fix(SCRUM-89): importa el icono que dejaba el dashboard en blanco
-fix(SCRUM-89): arranca en otro puerto si el 8756 está ocupado
-fix(SCRUM-89): habilita CORS del origen del servidor de Vite en desarrollo
-ui(SCRUM-65): integra el logo y los iconos
-ui(SCRUM-66): anima el cambio de tema
-feat(SCRUM-67): añade la animación de entrada
-feat(SCRUM-68): indica el estado de las conexiones
-feat(SCRUM-69): añade esqueletos de carga
-feat(SCRUM-70): permite desplegar las barras laterales
-feat(SCRUM-71): incorpora los complementos visuales
-feat(SCRUM-72): prepara el corpus de clasificación
-feat(SCRUM-73): prototipo de clasificación
-docs(SCRUM-74): registra la decisión de clasificación
-build(SCRUM-75): genera el instalador multiplataforma
-build(SCRUM-76): publica el paquete en GitHub Packages
-docs(SCRUM-77): documenta la instalación
-refactor(SCRUM-78): retira la interfaz antigua
+improvement(SCRUM-58): completa el panel de ajustes
+feat(SCRUM-62): crea la conexión de modelos
+bug(SCRUM-64): distingue la base caída del servicio vivo
+fix(SCRUM-64): importa el icono que dejaba el dashboard en blanco
+fix(SCRUM-60): arranca en otro puerto si el 8756 está ocupado
+fix(SCRUM-60): habilita CORS del origen del servidor de Vite en desarrollo
+ui(SCRUM-59): integra el logo y los iconos
+ui(SCRUM-59): anima el cambio de tema
+feat(SCRUM-59): añade la animación de entrada
+ui(SCRUM-59): indica el estado de las conexiones
+feat(SCRUM-59): añade esqueletos de carga
+feat(SCRUM-59): permite desplegar las barras laterales
+feat(SCRUM-59): incorpora los complementos visuales
+chore(SCRUM-59): versiona el material de diseño y de marca
+feat(SCRUM-59): formaliza la exportación del inventario con el logo
+feat(clasificacion): prepara el corpus de clasificación
+feat(clasificacion): prototipo de clasificación
+docs(clasificacion): registra la decisión de clasificación
+build(SCRUM-65): genera el instalador multiplataforma
+build(SCRUM-65): publica el paquete en GitHub Packages
+docs(SCRUM-65): documenta la instalación
+refactor(SCRUM-65): retira la interfaz antigua
 ```
 
 ### Notas de alcance
 
-* `SCRUM-57` cerró el último trabajo que devolvía
+* `SCRUM-57` (Backend) cerró el último trabajo que devolvía
   `ComandosDatenJager.operaciones_pendientes()`: el backend validaba credenciales,
   2FA y contraseña, pero el **alta** de una cuenta vivía en `main.py`. Hoy la
   hace `backend/services/autenticacion.py` (`registrar_usuario`).
-* `SCRUM-26` (instalador inicial) y `SCRUM-54`/`SCRUM-75` cubren lo mismo: el 26
-  era el instalador mínimo de la Fase 2 y quedó **en pausa**; el 75 lo retoma
-  cuando el frontend esté cerrado y el 76 añade la publicación.
-* `SCRUM-71` incorpora los complementos de `assets/assets/` como componentes
-  propios con la estética del proyecto, **no** tal cual vienen: botón biométrico,
-  sistema de partículas, conmutador de notificaciones, cajón desplazable y
-  formulario suave.
+* `SCRUM-26` (instalador inicial) y `SCRUM-54` cubren lo mismo que el empaquetado
+  pendiente: el 26 era el instalador mínimo de la Fase 2 y quedó **en pausa**; el
+  trabajo de `SCRUM-65` (Documentación / Release) lo retoma cuando el frontend
+  esté cerrado.
+* Los complementos de `assets/assets/` se incorporan como componentes propios con
+  la estética del proyecto, **no** tal cual vienen: botón biométrico, sistema de
+  partículas, conmutador de notificaciones, cajón desplazable y formulario suave.
 * Los assets que use la aplicación (logo, icono, iconos de acción) deben quedar
   versionados antes de que el empaquetado dependa de ellos.
-* `SCRUM-78` solo se puede cerrar cuando la Fase 3 haya migrado **todas** las
-  pantallas: hasta entonces CustomTkinter se mantiene funcionando.
+* Retirar la interfaz CustomTkinter solo se puede cerrar cuando la Fase 3 haya
+  migrado **todas** las pantallas: hasta entonces se mantiene funcionando.
 
 ---
 
