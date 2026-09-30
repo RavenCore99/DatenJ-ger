@@ -8,6 +8,7 @@
 
 @import './estilos/fuentes.css';
 @import './estilos/tokens.css';
+@import './estilos/complementos.css';
 
 @tailwind base;
 @tailwind components;
@@ -31,6 +32,112 @@ body {
   h2,
   h3 {
     @apply font-marca;
+  }
+
+  /* Entrada suave de las pantallas (SCRUM-29): 240ms, sin bloquear nada. */
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .aparecer {
+    animation: aparecer 240ms ease-out both;
+  }
+
+  /* Entrada escalonada de filas y tarjetas (SCRUM-32): sutil, 260ms. El
+   * retardo lo pone cada elemento en línea para escalonar la secuencia. */
+  @keyframes entrar {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .animar-entrada {
+    animation: entrar 260ms ease-out both;
+  }
+
+  /* Animación de entrada (SCRUM-67): la cortina de arranque se desvanece y el
+   * anillo de la marca late una vez antes de retirarse. */
+  @keyframes entrada-salir {
+    to {
+      opacity: 0;
+      transform: scale(1.02);
+    }
+  }
+
+  .entrada-salida {
+    animation: entrada-salir 340ms ease-in both;
+  }
+
+  @keyframes entrada-anillo {
+    0% {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: scale(1.35);
+    }
+  }
+
+  .entrada-anillo {
+    animation: entrada-anillo 900ms ease-out both;
+  }
+
+  /* Micro-interacción de pulsación (SCRUM-67): los controles se hunden un punto
+   * al pulsarlos. Es global, sutil y no altera el flujo de la página. */
+  button:not(:disabled):active {
+    transform: translateY(0.5px) scale(0.995);
+  }
+
+  /* Cambio de tema suave (SCRUM-66): mientras la clase `cambiando-tema` está
+   * puesta en la raíz, los colores transicionan en vez de saltar. Solo se
+   * activa durante el cambio —una transición global permanente encarecería los
+   * repintados y competiría con las micro-interacciones de cada componente— y
+   * nunca con el movimiento desactivado. */
+  html.cambiando-tema *,
+  html.cambiando-tema *::before,
+  html.cambiando-tema *::after {
+    transition: background-color 260ms ease, border-color 260ms ease, color 260ms ease,
+      fill 260ms ease, stroke 260ms ease, box-shadow 260ms ease;
+  }
+
+  /* Quien pida menos movimiento, no lo recibe. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Ajuste explícito del usuario (SCRUM-32): desde «Cuenta → Apariencia» se
+   * puede desactivar todo el movimiento. Se aplica a la raíz para cubrir
+   * cualquier componente, incluidos los que traigan su propia animación. */
+  html.sin-animacion *,
+  html.sin-animacion *::before,
+  html.sin-animacion *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
   }
 }
 

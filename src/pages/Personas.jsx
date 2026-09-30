@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import Panel, { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
+import Panel, {
+  Aviso,
+  CabeceraPagina,
+  Esqueleto,
+  EstadoError,
+  EstadoVacio,
+  Pill,
+  Tarjeta,
+} from '../components/Panel.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
@@ -10,10 +18,12 @@ const RETARDO_BUSQUEDA_MS = 250
 const CAMPOS_VACIOS = { cedula: '', nombres: '', empresa: '' }
 
 /**
- * Panel de personas (SCRUM-24).
+ * Panel de personas (SCRUM-30): titulares y empresas asociadas.
  *
- * Migra el panel de titulares de CustomTkinter: alta, edición, baja y el
- * conteo de documentos vinculados que el servicio calcula por titular.
+ * Conserva la funcionalidad del panel anterior —alta, edición, baja y el
+ * conteo de documentos vinculados por titular— y adopta la composición de los
+ * mockups: cabecera de página, fila de tarjetas de métrica, formulario de alta
+ * y tabla de titulares con la cédula y el conteo en monoespaciada.
  */
 export default function Personas() {
   const { conectado, autenticado } = useApp()
@@ -47,6 +57,17 @@ export default function Personas() {
     return () => clearTimeout(temporizador)
   }, [busqueda, cargar, conectado, autenticado])
 
+  /** Métricas de la fila de KPI, calculadas sobre el inventario cargado. */
+  const resumen = useMemo(
+    () => ({
+      total: filas.length,
+      conEmpresa: filas.filter((fila) => fila.empresa).length,
+      conDocumentos: filas.filter((fila) => (fila.documentos ?? 0) > 0).length,
+      documentos: filas.reduce((suma, fila) => suma + (fila.documentos ?? 0), 0),
+    }),
+    [filas],
+  )
+
   const seleccionada = useMemo(
     () => filas.find((fila) => fila.id === seleccion) ?? null,
     [filas, seleccion],
@@ -58,11 +79,11 @@ export default function Personas() {
       setAviso(null)
       try {
         const resultado = await operacion()
-        if (exito) setAviso(exito)
+        if (exito) setAviso({ tipo: 'exito', texto: exito })
         await cargar(busqueda)
         return resultado
       } catch (fallo) {
-        setAviso(`Error: ${fallo.message}`)
+        setAviso({ tipo: 'error', texto: fallo.message })
         return null
       } finally {
         setOcupado(null)
@@ -87,12 +108,12 @@ export default function Personas() {
   const eliminar = useCallback(
     async (fila) => {
       const vinculados = fila.documentos ?? 0
-      const aviso =
+      const pregunta =
         vinculados > 0
           ? `"${fila.nombres}" tiene ${vinculados} documento(s) asociado(s). Al eliminarlo quedan sin titular. ¿Continuar?`
           : `¿Eliminar a "${fila.nombres}"?`
 
-      if (!globalThis.confirm(aviso)) return
+      if (!globalThis.confirm(pregunta)) return
 
       const resultado = await ejecutar(
         'eliminar',
@@ -104,23 +125,16 @@ export default function Personas() {
     [ejecutar],
   )
 
-  if (!conectado) {
+  if (!conectado || !autenticado) {
     return (
       <Panel titulo="Personas" descripcion="Titulares y empresas asociadas">
         <EstadoVacio
-          titulo="Sin conexión con el servicio local"
-          mensaje="El registro de titulares se consulta contra el servicio de Python."
-        />
-      </Panel>
-    )
-  }
-
-  if (!autenticado) {
-    return (
-      <Panel titulo="Personas" descripcion="Titulares y empresas asociadas">
-        <EstadoVacio
-          titulo="Sesión no iniciada"
-          mensaje="La pantalla de inicio de sesión todavía no está migrada (SCRUM-22)."
+          titulo={conectado ? 'Sesión no iniciada' : 'Sin conexión con el servicio local'}
+          mensaje={
+            conectado
+              ? 'Vuelve a la pantalla de acceso para identificarte.'
+              : 'El registro de titulares se consulta contra el servicio de Python.'
+          }
         />
       </Panel>
     )
@@ -128,22 +142,33 @@ export default function Personas() {
 
   return (
     <div className="flex flex-col gap-6">
+      <CabeceraPagina
+        titulo="Titulares"
+        descripcion={`${resumen.total} persona(s) · ${resumen.documentos} documento(s) asociado(s)`}
+        acciones={
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(evento) => setBusqueda(evento.target.value)}
+            placeholder="Buscar por cédula, nombre o empresa"
+            aria-label="Buscar titulares"
+            className="w-72 rounded-lg border border-borde bg-superficie px-3 py-2 text-cuerpo-md outline-none transition-colors focus:border-primario"
+          />
+        }
+      />
+
       {aviso && (
-        <div
-          role="status"
-          className={[
-            'flex items-center justify-between gap-4 rounded-lg border px-4 py-2 text-xs',
-            aviso.startsWith('Error')
-              ? 'border-peligro/40 bg-peligro/5 text-peligro'
-              : 'border-exito/40 bg-exito/5',
-          ].join(' ')}
-        >
-          <span>{aviso}</span>
-          <button type="button" onClick={() => setAviso(null)} className="font-mono">
-            cerrar
-          </button>
-        </div>
+        <Aviso tipo={aviso.tipo} onCerrar={() => setAviso(null)}>
+          {aviso.texto}
+        </Aviso>
       )}
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Tarjeta etiqueta="Titulares" valor={resumen.total} acento="primario" />
+        <Tarjeta etiqueta="Con empresa" valor={resumen.conEmpresa} />
+        <Tarjeta etiqueta="Con documentos" valor={resumen.conDocumentos} acento="exito" />
+        <Tarjeta etiqueta="Documentos vinculados" valor={resumen.documentos} />
+      </div>
 
       <Panel titulo="Registrar titular" descripcion="Cédula y nombres son obligatorios">
         <form className="grid grid-cols-2 gap-4 lg:grid-cols-4" onSubmit={crear}>
@@ -157,6 +182,7 @@ export default function Personas() {
               etiqueta={etiqueta}
               valor={alta[campo]}
               obligatorio={campo !== 'empresa'}
+              mono={campo === 'cedula'}
               onCambio={(evento) =>
                 setAlta((actual) => ({ ...actual, [campo]: evento.target.value }))
               }
@@ -167,7 +193,7 @@ export default function Personas() {
             <button
               type="submit"
               disabled={ocupado === 'crear'}
-              className="rounded-lg bg-primario px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-primario px-4 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
             >
               {ocupado === 'crear' ? 'Registrando…' : 'Registrar'}
             </button>
@@ -175,21 +201,8 @@ export default function Personas() {
         </form>
       </Panel>
 
-      <Panel
-        titulo="Titulares"
-        descripcion={`${filas.length} persona(s)`}
-        acciones={
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(evento) => setBusqueda(evento.target.value)}
-            placeholder="Buscar por cédula, nombre o empresa"
-            aria-label="Buscar titulares"
-            className="w-72 rounded-lg border border-borde bg-fondo px-3 py-1.5 text-xs outline-none focus:border-primario"
-          />
-        }
-      >
-        {estado === 'cargando' && <Esqueleto filas={4} />}
+      <Panel titulo="Listado de titulares" descripcion={`${filas.length} persona(s)`}>
+        {estado === 'cargando' && <Esqueleto filas={4} variante="tabla" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar(busqueda)} />}
 
         {estado === 'listo' && filas.length === 0 && (
@@ -204,9 +217,9 @@ export default function Personas() {
         )}
 
         {estado === 'listo' && filas.length > 0 && (
-          <table className="w-full border-collapse text-xs">
+          <table className="w-full border-collapse text-cuerpo-md">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wider text-tenue">
+              <tr className="text-left text-etiqueta-sm uppercase tracking-wider text-tenue">
                 <th className="pb-2 font-medium">Cédula</th>
                 <th className="pb-2 font-medium">Nombres</th>
                 <th className="pb-2 font-medium">Empresa</th>
@@ -215,20 +228,25 @@ export default function Personas() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila) => (
+              {filas.map((fila, indice) => (
                 <tr
                   key={fila.id}
                   onClick={() => setSeleccion(fila.id === seleccion ? null : fila.id)}
+                  style={{ animationDelay: `${Math.min(indice, 12) * 18}ms` }}
                   className={[
-                    'cursor-pointer border-t border-borde',
-                    fila.id === seleccion ? 'bg-primario/5' : 'hover:bg-fondo',
+                    'animar-entrada cursor-pointer border-t border-borde transition-colors',
+                    fila.id === seleccion ? 'bg-primario-suave/60' : 'hover:bg-fondo-2',
                   ].join(' ')}
                 >
-                  <td className="py-2 pr-3 font-mono">{fila.cedula}</td>
-                  <td className="py-2 pr-3 font-medium">{fila.nombres}</td>
-                  <td className="py-2 pr-3 text-tenue">{fila.empresa}</td>
-                  <td className="py-2 pr-3 font-mono">{fila.documentos ?? 0}</td>
-                  <td className="py-2 text-right">
+                  <td className="py-2.5 pr-3 font-mono text-cuerpo-sm">{fila.cedula}</td>
+                  <td className="py-2.5 pr-3 font-medium">{fila.nombres}</td>
+                  <td className="py-2.5 pr-3 text-texto-2">{fila.empresa || '—'}</td>
+                  <td className="py-2.5 pr-3">
+                    <Pill tipo={(fila.documentos ?? 0) > 0 ? 'primario' : 'neutro'}>
+                      {fila.documentos ?? 0}
+                    </Pill>
+                  </td>
+                  <td className="py-2.5 text-right">
                     <button
                       type="button"
                       onClick={(evento) => {
@@ -236,7 +254,7 @@ export default function Personas() {
                         eliminar(fila)
                       }}
                       disabled={ocupado === 'eliminar'}
-                      className="rounded border border-peligro/40 px-2 py-1 text-[11px] text-peligro disabled:opacity-50"
+                      className="rounded border border-peligro/40 px-2 py-1 text-etiqueta-sm text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
                     >
                       Eliminar
                     </button>
@@ -283,7 +301,7 @@ function FormularioPersona({ fila, ocupado, onGuardar }) {
         onGuardar(campos)
       }}
     >
-      <Campo etiqueta="Cédula" valor={fila.cedula} onCambio={() => {}} soloLectura />
+      <Campo etiqueta="Cédula" valor={fila.cedula} onCambio={() => {}} soloLectura mono />
       <Campo
         etiqueta="Nombres"
         valor={campos.nombres}
@@ -300,7 +318,7 @@ function FormularioPersona({ fila, ocupado, onGuardar }) {
         <button
           type="submit"
           disabled={ocupado}
-          className="rounded-lg bg-primario px-4 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-lg bg-primario px-4 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
         >
           {ocupado ? 'Guardando…' : 'Guardar cambios'}
         </button>
@@ -309,10 +327,10 @@ function FormularioPersona({ fila, ocupado, onGuardar }) {
   )
 }
 
-function Campo({ etiqueta, valor, onCambio, obligatorio = false, soloLectura = false }) {
+function Campo({ etiqueta, valor, onCambio, obligatorio = false, soloLectura = false, mono = false }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wider text-tenue">{etiqueta}</span>
+      <span className="text-etiqueta-sm text-texto">{etiqueta}</span>
       <input
         type="text"
         value={valor ?? ''}
@@ -320,8 +338,9 @@ function Campo({ etiqueta, valor, onCambio, obligatorio = false, soloLectura = f
         required={obligatorio}
         readOnly={soloLectura}
         className={[
-          'rounded-lg border border-borde bg-fondo px-3 py-1.5 text-xs outline-none',
-          soloLectura ? 'font-mono text-tenue' : 'focus:border-primario',
+          'rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none transition-colors',
+          mono ? 'font-mono' : '',
+          soloLectura ? 'text-tenue' : 'focus:border-primario',
         ].join(' ')}
       />
     </label>

@@ -21,6 +21,22 @@ const { app, BrowserWindow, ipcMain, session, shell } = require('electron')
 const { ServicioPython } = require('./backend')
 const { elegirDocumento, guardarDocumento } = require('./archivos')
 
+// Identidad de la aplicación (SCRUM-65): el nombre que muestran el sistema y la
+// barra de tareas, y el identificador que Windows usa para agrupar las ventanas
+// (sin él, la barra de tareas ignora el icono del logo).
+app.setName('DatenJäger')
+if (process.platform === 'win32') app.setAppUserModelId('com.datenjager.desktop')
+
+/**
+ * Icono de la ventana y de la barra de tareas (SCRUM-65). Windows prefiere el
+ * `.ico` multi-resolución —el `.png` suelto se ve borroso al escalar—; Linux y
+ * macOS usan el PNG del logo.
+ */
+function iconoDeAplicacion() {
+  const archivo = process.platform === 'win32' ? 'logo.ico' : 'logo.png'
+  return path.join(__dirname, '..', 'assets', 'logo', archivo)
+}
+
 /** Puerto por defecto del backend local (FastAPI + uvicorn, SCRUM-21). */
 const PUERTO_BACKEND = Number(process.env.DATENJAGER_PUERTO ?? 8756)
 
@@ -84,7 +100,7 @@ function crearVentana() {
     // antes de que el renderer pinte (el tema por defecto es el claro).
     backgroundColor: '#f8f9ff',
     title: 'DatenJäger',
-    icon: path.join(__dirname, '..', 'assets', 'logo', 'logo.png'),
+    icon: iconoDeAplicacion(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

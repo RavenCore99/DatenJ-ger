@@ -3,28 +3,31 @@ import { useEffect, useState } from 'react'
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
+import Entrada from './components/Entrada.jsx'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
 import Personas from './pages/Personas.jsx'
 import Auditoria from './pages/Auditoria.jsx'
 import Cuenta from './pages/Cuenta.jsx'
 import Acceso from './pages/Acceso.jsx'
+import Bienvenida from './pages/Bienvenida.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
  * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
  */
 export const SECCIONES = [
-  { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', Componente: Inicio },
-  { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', Componente: Documentos },
-  { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', Componente: Personas },
-  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', Componente: Auditoria },
-  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', Componente: Cuenta },
+  { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', icono: 'inicio', Componente: Inicio },
+  { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', icono: 'documentos', Componente: Documentos },
+  { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', icono: 'personas', Componente: Personas },
+  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', icono: 'auditoria', Componente: Auditoria },
+  { clave: 'cuenta', titulo: 'Cuenta', descripcion: 'Seguridad y apariencia', icono: 'cuenta', Componente: Cuenta },
 ]
 
 export function App() {
   return (
     <ProveedorApp>
+      <Entrada />
       <Marco />
     </ProveedorApp>
   )
@@ -40,6 +43,9 @@ function Marco() {
   const { tema, autenticado } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
   const [plegada, setPlegada] = useBarraLateral()
+  // Portal de entrada: bienvenida → acceso. No se recuerda entre arranques,
+  // porque la pantalla de bienvenida es la presentación de la aplicación.
+  const [portal, setPortal] = useState('bienvenida')
 
   useEffect(() => {
     try {
@@ -49,8 +55,28 @@ function Marco() {
     }
   }, [tema])
 
+  // Atajo para plegar y desplegar la barra lateral (SCRUM-70): Ctrl/⌘ + B,
+  // el mismo gesto que usan los editores para el panel lateral.
+  useEffect(() => {
+    const alPulsar = (evento) => {
+      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'b') {
+        evento.preventDefault()
+        setPlegada((valor) => !valor)
+      }
+    }
+
+    globalThis.addEventListener('keydown', alPulsar)
+    return () => globalThis.removeEventListener('keydown', alPulsar)
+  }, [setPlegada])
+
   // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
-  if (!autenticado) return <Acceso />
+  if (!autenticado) {
+    return portal === 'bienvenida' ? (
+      <Bienvenida onEntrar={() => setPortal('acceso')} />
+    ) : (
+      <Acceso onVolver={() => setPortal('bienvenida')} />
+    )
+  }
 
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
   const { Componente } = activa
@@ -65,10 +91,15 @@ function Marco() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <SubCabecera seccion={activa} />
+        <SubCabecera seccion={activa} plegada={plegada} onPlegar={() => setPlegada((v) => !v)} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-          <Componente onNavegar={setSeccion} />
+          {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
+              contenido entra con un fundido breve. La clave fuerza el remonte
+              para que la animación vuelva a dispararse. */}
+          <div key={seccion} className="aparecer">
+            <Componente onNavegar={setSeccion} />
+          </div>
         </main>
 
         <BarraEstado />
@@ -77,18 +108,32 @@ function Marco() {
   )
 }
 
-/** Sub-cabecera fija: migas de pan a la izquierda, insignia de cifrado a la derecha. */
-function SubCabecera({ seccion }) {
+/** Sub-cabecera fija: control de la barra lateral, migas de pan e insignia de cifrado. */
+function SubCabecera({ seccion, plegada, onPlegar }) {
   return (
     <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
-      <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
-        <span className="font-marca text-tenue">DatenJäger</span>
-        <span aria-hidden="true" className="text-borde-fuerte">
-          /
-        </span>
-        <span className="truncate font-medium">{seccion.titulo}</span>
-        <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
-      </nav>
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onPlegar}
+          aria-expanded={!plegada}
+          aria-keyshortcuts="Control+B"
+          aria-label={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
+          title={`${plegada ? 'Desplegar' : 'Recoger'} la barra lateral (Ctrl+B)`}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
+        >
+          <Icono nombre={plegada ? 'chevron-derecha' : 'chevron-izquierda'} tamano={15} />
+        </button>
+
+        <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
+          <span className="font-marca text-tenue">DatenJäger</span>
+          <span aria-hidden="true" className="text-borde-fuerte">
+            /
+          </span>
+          <span className="truncate font-medium">{seccion.titulo}</span>
+          <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
+        </nav>
+      </div>
 
       <span
         className="flex shrink-0 items-center gap-1.5 rounded border border-borde bg-fondo px-2 py-1 font-mono text-telemetria text-tenue"

@@ -1,15 +1,15 @@
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { SECCIONES } from '../App.jsx'
+import Icono from './Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
 /**
- * Barra lateral de navegación (SCRUM-28).
+ * Barra lateral de navegación (SCRUM-28, iconos en SCRUM-65).
  *
  * Ancho del sistema de diseño: `240px`, que se recoge a `64px` cuando el
- * usuario la pliega. Cada sección ocupa `36px` de alto, como pide el spec.
- *
- * Los iconos de acción llegan en `SCRUM-65`; hasta entonces cada entrada lleva
- * su etiqueta y, plegada, su título como texto alternativo.
+ * usuario la pliega. Cada sección ocupa `36px` de alto, como pide el spec, y
+ * lleva el icono del set del sistema; plegada, el icono es el único distintivo
+ * y el título viaja en el atributo accesible.
  */
 export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar }) {
   return (
@@ -45,14 +45,12 @@ export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar
           title={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
           className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
         >
-          <span aria-hidden="true" className="font-mono text-etiqueta-sm">
-            {plegada ? '»' : '«'}
-          </span>
+          <Icono nombre={plegada ? 'chevron-derecha' : 'chevron-izquierda'} />
         </button>
       </div>
 
       <ul className="flex flex-1 flex-col gap-space-xs overflow-y-auto px-2 py-3">
-        {SECCIONES.map(({ clave, titulo, descripcion }) => {
+        {SECCIONES.map(({ clave, titulo, descripcion, icono }) => {
           const activa = clave === seccion
           return (
             <li key={clave}>
@@ -63,19 +61,20 @@ export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar
                 title={plegada ? titulo : undefined}
                 className={[
                   'flex h-9 w-full items-center rounded-md px-3 text-left transition-colors',
-                  plegada ? 'justify-center' : 'gap-2',
+                  plegada ? 'justify-center' : 'gap-2.5',
                   activa
                     ? 'bg-primario-suave font-medium text-primario'
                     : 'text-texto hover:bg-fondo-2',
                 ].join(' ')}
               >
-                <span className="truncate text-etiqueta-md">
-                  {plegada ? titulo.slice(0, 1) : titulo}
-                </span>
+                <Icono nombre={icono} tamano={18} />
                 {!plegada && (
-                  <span className="ml-auto truncate text-etiqueta-sm text-tenue">
-                    {descripcion}
-                  </span>
+                  <>
+                    <span className="truncate text-etiqueta-md">{titulo}</span>
+                    <span className="ml-auto truncate text-etiqueta-sm text-tenue">
+                      {descripcion}
+                    </span>
+                  </>
                 )}
               </button>
             </li>
@@ -99,9 +98,13 @@ function BotonTema({ plegada }) {
       type="button"
       onClick={alternarTema}
       title={etiqueta}
-      className="flex h-9 w-full items-center justify-center rounded-md border border-borde px-3 text-etiqueta-md text-tenue transition-colors hover:border-primario hover:text-primario"
+      aria-label={etiqueta}
+      className="group flex h-9 w-full items-center justify-center gap-2 rounded-md border border-borde px-3 text-etiqueta-md text-tenue transition-colors hover:border-primario hover:text-primario"
     >
-      {plegada ? (tema === 'oscuro' ? '☀' : '☾') : etiqueta}
+      <span className="transition-transform duration-300 group-hover:rotate-45">
+        <Icono nombre={tema === 'oscuro' ? 'sol' : 'luna'} tamano={16} />
+      </span>
+      {!plegada && etiqueta}
     </button>
   )
 }
