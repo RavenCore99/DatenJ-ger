@@ -1,5 +1,25 @@
 # jira.md — Guía de trabajo Jira y commits
 
+para los PR, los peudes hacer siempore y cuando cumplas con las condiciones y etiquetas que hacen parte de cada archivo. ejemplo:
+
+gh pr create --base main --head v2.1 --title "[SPRINT-2] SCRUM-5 a SCRUM-11: Implementación de funcionalidades del Sprint 1" --body "Desacoplar logica de backend python y levantar frontend con Electron/React/Tailwind conectando al backed.
+
+     ### Tickets incluidos:
+     - SCRUM-12
+     - SCRUM-13
+     - SCRUM-14
+     - SCRUM-15
+     - SCRUM-16
+     - SCRUM-17
+     - SCRUM-18"
+
+
+el titulo del PR debe hacer parte del sprint que se esta trabajando. la descripcion o body debe tener la etiqueta SCRUM-# que referencia a la secicon del codigo y funcionalidad. con una descripcion
+cuando se cierre el pr con la funcionalidad probada. hacer el merge correspondiente
+
+es vital que los pr se mergean desde la rama v2.1 hasta la rama main
+
+
 ## Propósito
 
 Este archivo sirve como referencia para cualquier agente o desarrollador que trabaje sobre **DatenJäger**.
