@@ -466,7 +466,7 @@ Base visual y movimiento:
 
 - [x] `SCRUM-27` tokens visuales del `DESIGN.md` en Tailwind (paleta, tipografía, radios, densidades)
 - [x] `SCRUM-28` layout base: barra lateral `240px`/`64px`, sub-cabecera `48px`, franja inferior `32px`, marco de ventana
-- [ ] `SCRUM-29` login, bienvenida/intro y verificación 2FA
+- [x] `SCRUM-29` login, bienvenida/intro y verificación 2FA (el panel documental de este ticket sigue pendiente)
 - [ ] `SCRUM-30` personas y auditoría
 - [ ] `SCRUM-31` configuración y cuenta
 - [ ] `SCRUM-32` estados canónicos y transiciones

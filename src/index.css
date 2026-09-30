@@ -32,6 +32,34 @@ body {
   h3 {
     @apply font-marca;
   }
+
+  /* Entrada suave de las pantallas (SCRUM-29): 240ms, sin bloquear nada. */
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .aparecer {
+    animation: aparecer 240ms ease-out both;
+  }
+
+  /* Quien pida menos movimiento, no lo recibe (SCRUM-32/87 lo hará también
+   * desde los ajustes de la aplicación). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 /* Barra de desplazamiento discreta, coherente con el panel de contenido. */

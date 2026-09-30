@@ -9,6 +9,7 @@ import Personas from './pages/Personas.jsx'
 import Auditoria from './pages/Auditoria.jsx'
 import Cuenta from './pages/Cuenta.jsx'
 import Acceso from './pages/Acceso.jsx'
+import Bienvenida from './pages/Bienvenida.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
@@ -40,6 +41,9 @@ function Marco() {
   const { tema, autenticado } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
   const [plegada, setPlegada] = useBarraLateral()
+  // Portal de entrada: bienvenida → acceso. No se recuerda entre arranques,
+  // porque la pantalla de bienvenida es la presentación de la aplicación.
+  const [portal, setPortal] = useState('bienvenida')
 
   useEffect(() => {
     try {
@@ -50,7 +54,13 @@ function Marco() {
   }, [tema])
 
   // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
-  if (!autenticado) return <Acceso />
+  if (!autenticado) {
+    return portal === 'bienvenida' ? (
+      <Bienvenida onEntrar={() => setPortal('acceso')} />
+    ) : (
+      <Acceso onVolver={() => setPortal('bienvenida')} />
+    )
+  }
 
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
   const { Componente } = activa
