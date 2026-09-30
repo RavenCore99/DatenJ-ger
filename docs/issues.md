@@ -22,6 +22,19 @@
 >    ventana quedaba **en blanco justo después de entrar**. Era un defecto
 >    previo (ya en `42eeaa8`) e invisible para `vite build`, que compila un
 >    identificador sin definir sin quejarse. Corregido con el import.
+> 4. **Un puerto 8756 ocupado dejaba la aplicación sin servicio.** Bastaba una
+>    instancia anterior que no se cerró bien: el servicio no podía enlazar, la
+>    interfaz decía «sin conexión» y el motivo no se pintaba en ninguna pantalla.
+>    Ahora se prueban 8756, 8757, 8758, 8759 y, si hace falta, el puerto que elija
+>    el sistema; y Bienvenida y Acceso muestran el error real del proceso
+>    principal.
+> 5. **`npm run dev` no conectaba.** En modo desarrollo el renderer se sirve
+>    desde el servidor de Vite, así que su origen deja de ser `file://` y el
+>    navegador bloqueaba las llamadas al servicio por CORS
+>    (*«has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header»*)
+>    pese a que el servicio estaba levantado. Se habilita CORS solo para esos
+>    orígenes y solo en desarrollo (`DATENJAGER_CORS_ORIGENES`), nunca en
+>    producción.
 >
 > **Verificación (2026-09-30).** No bastó `vite build`: se condujo la ventana
 > real de Electron por CDP, sobre una base temporal, y se completó el recorrido
@@ -29,7 +42,8 @@
 > dashboard → cerrar sesión → login con 2FA → dashboard—. En la propia SQLite se
 > comprobó que el hash es PBKDF2-SHA256 y que el secreto TOTP y los códigos de
 > respaldo quedan como `ENCK:` (AES-256-GCM del `EncryptionManager`),
-> descifrables con la clave derivada de la contraseña.
+> descifrables con la clave derivada de la contraseña. El modo desarrollo se
+> comprobó igual, conduciendo el propio servidor de Vite + Electron con `--dev`.
 >
 > Suite: `./venv/bin/python -m unittest discover -s tests -t .` → 142 pruebas OK.
 

@@ -148,18 +148,20 @@ Packages para que funcione tanto en Windows como en Linux.
 ### Cómo comprobar el estado del Sprint 2 sin repetir trabajo
 
 ```bash
-./venv/bin/python -m unittest discover -s tests -t .     # 121 pruebas, sin Tkinter
+./venv/bin/python -m unittest discover -s tests -t .     # 142 pruebas, sin Tkinter (121 al cerrar el Sprint 2)
 npx vite build                                            # el frontend compila
 ./node_modules/.bin/electron . --no-sandbox              # arranca el sistema completo
+npm run dev                                               # modo desarrollo (Vite + Electron), verificado
 ```
 
 La autenticación ya **no** vive en `main.py`: está en
 `backend/services/autenticacion.py` y se expone por el puente (`POST /api/sesion`,
 `/api/sesion/2fa`, `/api/sesion/respaldo`, `GET /api/cuenta` y `/api/cuenta/...`).
 Los tokens de confianza ya **no** están en claro en `config.json`: viven cifrados
-en `tokens_confianza/` (ignorado por git). Lo único pendiente dentro del desacople
-es el **alta de usuario**: `ComandosDatenJager.operaciones_pendientes()` devuelve
-solo `registro`.
+en `tokens_confianza/` (ignorado por git). **No queda nada pendiente en el
+desacople**: el alta de usuario se movió al backend en `SCRUM-57`
+(`POST /api/registro`) y `ComandosDatenJager.operaciones_pendientes()` quedó
+vacío.
 
 ### Commits esperados
 
@@ -334,7 +336,7 @@ documentos y dejar el proyecto instalable y publicable.
 | `SCRUM-62` | Agregar recopilador de datos y estadísticas | `datos`, `estadisticas`, `feat` | hecho |
 | `SCRUM-63` | Completar el panel de ajustes (paridad con el código Python) | `configuracion`, `ui`, `improvement` | hecho |
 | `SCRUM-64` | Crear el panel de conexión de APIs y modelos | `modelos`, `api`, `feat` | hecho |
-| `SCRUM-89` | Distinguir la base caída del servicio vivo (hallazgo de `docs/issues.md`) | `base-datos`, `diagnostico`, `bug` | hecho |
+| `SCRUM-89` | Cerrar el hallazgo de `docs/issues.md` (dashboard en blanco, base caída, puerto ocupado, CORS en desarrollo) | `diagnostico`, `frontend`, `bug` | hecho |
 
 > `SCRUM-89` se registra el 2026-09-30 a partir de `docs/issues.md`: «conexión a
 > base de datos fallida; electron y web caen; no se puede acceder al dashboard
@@ -350,6 +352,16 @@ documentos y dejar el proyecto instalable y publicable.
 >    blanco justo después de entrar**. Era un defecto previo (ya en `42eeaa8`) e
 >    invisible para `vite build`, que compila igual un identificador sin
 >    definir.
+>
+> 4. un **puerto 8756 ocupado** por una instancia anterior dejaba la app sin
+>    servicio (`electron/backend.js` prueba ahora 8756, 8757, 8758, 8759 y por
+>    último el que elija el sistema) y el motivo no se pintaba en ninguna
+>    pantalla: Bienvenida y Acceso muestran ahora el error real;
+> 5. **`npm run dev` no conectaba** porque en desarrollo el renderer se sirve
+>    desde el servidor de Vite y su origen deja de ser `file://`: el navegador
+>    bloqueaba las llamadas al servicio por CORS. Se habilita solo para esos
+>    orígenes y solo en desarrollo (`DATENJAGER_CORS_ORIGENES`), nunca en
+>    producción.
 >
 > No estaba contemplado en este archivo ni en `planning.md`; queda consolidado
 > aquí y en la Fase 3 de `planning.md`.
@@ -458,6 +470,9 @@ feat(SCRUM-62): agrega estadísticas del sistema
 improvement(SCRUM-63): completa el panel de ajustes
 feat(SCRUM-64): crea el panel de conexión de modelos
 bug(SCRUM-89): distingue la base caída del servicio vivo
+fix(SCRUM-89): importa el icono que dejaba el dashboard en blanco
+fix(SCRUM-89): arranca en otro puerto si el 8756 está ocupado
+fix(SCRUM-89): habilita CORS del origen del servidor de Vite en desarrollo
 ui(SCRUM-65): integra el logo y los iconos
 ui(SCRUM-66): anima el cambio de tema
 feat(SCRUM-67): añade la animación de entrada
@@ -476,9 +491,10 @@ refactor(SCRUM-78): retira la interfaz antigua
 
 ### Notas de alcance
 
-* `SCRUM-57` es el único trabajo que hoy devuelve
-  `ComandosDatenJager.operaciones_pendientes()`: el backend valida credenciales,
-  2FA y contraseña, pero el **alta** de una cuenta todavía vive en `main.py`.
+* `SCRUM-57` cerró el último trabajo que devolvía
+  `ComandosDatenJager.operaciones_pendientes()`: el backend validaba credenciales,
+  2FA y contraseña, pero el **alta** de una cuenta vivía en `main.py`. Hoy la
+  hace `backend/services/autenticacion.py` (`registrar_usuario`).
 * `SCRUM-26` (instalador inicial) y `SCRUM-54`/`SCRUM-75` cubren lo mismo: el 26
   era el instalador mínimo de la Fase 2 y quedó **en pausa**; el 75 lo retoma
   cuando el frontend esté cerrado y el 76 añade la publicación.

@@ -224,7 +224,7 @@ Comprobado antes de abrir la Fase 3, para que lo anterior quede al día:
 | 0 | Mecanismo Python↔Electron definido y construido | `backend/server.py` (FastAPI + uvicorn, token por proceso) — verificado punta a punta |
 | 0 | Material de diseño disponible y versionado | 15 mockups + `code.html` + 2 `DESIGN.md` + inventario, en git |
 | 0 | `.claudeignore` vigente | creado |
-| 1 | Pruebas del backend sin Tkinter | `./venv/bin/python -m unittest discover -s tests -t .` → **121 pruebas, OK** |
+| 1 | Pruebas del backend sin Tkinter | `./venv/bin/python -m unittest discover -s tests -t .` → **121 pruebas, OK** (hoy 142; ver el cierre de la Fase 3) |
 | 1 | La capa backend no arrastra interfaz | importar `backend.*` sin `DISPLAY` → *modulos de interfaz cargados: ninguno* |
 | 2 | El frontend compila | `npx vite build` → correcto |
 | 2 | Paneles funcionales | `Acceso`, `Documentos`, `Personas`, `Auditoria`, `Cuenta`, `Inicio` |
@@ -405,7 +405,7 @@ Secciones sugeridas:
 
    | Pantalla | Origen en el sistema actual |
    | --- | --- |
-   | Registro de operadores (alta de usuario) | flujo de registro de `main.py`; es lo único que sigue marcado pendiente en `ComandosDatenJager.operaciones_pendientes()` |
+   | Registro de operadores (alta de usuario) | flujo de registro de `main.py`, ya portado al backend en `SCRUM-57` (`POST /api/registro`) |
    | Setup 2FA con QR y códigos de respaldo | `main.py` (`mostrar_setup_2fa`, `_mostrar_codigos_respaldo`); el backend ya lo expone, falta la pantalla dedicada al alta |
    | Panel del chatbot con barra lateral por botones | `chatbot_ui.py` (hoy bloqueante; el streaming llega en la Fase 4) |
    | Visor de PDF dentro de la aplicación | hoy no existe: los documentos se descifran y se abren por fuera |
@@ -516,6 +516,26 @@ Pantallas que faltan (cerradas 2026-09-30):
 > Los tres están cerrados. La verificación del cierre **no** fue `vite build`,
 > sino conducir la ventana real de Electron (`SCRUM-89`), que es lo que destapó
 > el punto 3.
+>
+> Al mismo cierre se sumaron **dos correcciones más**, encontradas al arrancar la
+> aplicación como la usa Raven:
+>
+> 4. **Un puerto 8756 ocupado dejaba la app sin servicio.** Bastaba una instancia
+>    anterior que no se cerró bien: el servicio no podía enlazar, la interfaz
+>    decía «sin conexión» y el motivo no se pintaba en ninguna pantalla. Ahora
+>    `electron/backend.js` prueba 8756, 8757, 8758, 8759 y por último el puerto
+>    que elija el sistema, y Bienvenida y Acceso muestran el error real del
+>    proceso principal (`cb1dc31`).
+> 5. **`npm run dev` no conectaba.** En modo desarrollo el renderer se sirve desde
+>    el servidor de Vite (`:5273`), así que su origen deja de ser `file://` y el
+>    navegador bloqueaba las llamadas al servicio por CORS —`Access to fetch … has
+>    been blocked by CORS policy`— pese a que el servicio estaba levantado. El
+>    servicio habilita CORS solo para esos orígenes y solo en desarrollo
+>    (`DATENJAGER_CORS_ORIGENES`; en producción no se habilita) (`27c7aa5`).
+>
+> Con esto **la ruta de desarrollo deja de estar sin verificar**: era «no
+> verificada» en la Fase 2 y ahora está comprobada conduciendo el propio
+> `npm run dev`.
 
 Diseño, datos y cierre:
 
@@ -737,6 +757,8 @@ vacío. Lo único que sigue en pausa es el empaquetado (`SCRUM-26`, retomado por
 | Ajustes completos | `src/pages/Cuenta.jsx` (sesión, almacenamiento, atajos, «Acerca de») | hecho |
 | Conexión de modelos | `backend/services/modelos.py`, `src/pages/Modelos.jsx`, `GET|POST /api/modelos` | hecho |
 | Base caída visible | `GET /api/salud` (`base_datos`), `DATENJAGER_ERROR`, `electron/backend.js` | hecho (`SCRUM-89`) |
+| Puerto ocupado | `electron/backend.js` (8756→8759→puerto del sistema) y el motivo visible en Bienvenida/Acceso | hecho (`SCRUM-89`) |
+| Modo desarrollo (`npm run dev`) | `DATENJAGER_CORS_ORIGENES` en `backend/server.py`, definido por `electron/main.js` solo con `--dev` | hecho (`SCRUM-89`) |
 
 **Variables de entorno del servicio:** `DATENJAGER_DB` (base alternativa) y
 `DATENJAGER_TOKENS` (almacén alternativo de tokens). Las pruebas y las sondas
