@@ -495,14 +495,27 @@ Pantallas que faltan (cerradas 2026-09-30):
 
 > **Corrección de alcance registrada (2026-09-30, `SCRUM-89`).** El hallazgo de
 > `docs/issues.md` —«conexión a base de datos fallida; electron y web caen; no
-> se puede acceder al dashboard mediante login ni register»— describía dos
-> problemas superpuestos: (1) el **alta de usuario no existía en el frontend**
-> (era `SCRUM-57`, ya cerrado) y (2) una **base caída se veía como un servicio
-> sano**, porque `GET /api/salud` no comprobaba la base y el arranque moría con
-> una traza de Python que el lanzador resumía en «servicio no disponible». Se
-> corrigió en `SCRUM-89`: la salud informa del estado real de la base, el
-> arranque anuncia `DATENJAGER_ERROR base de datos: …` y Electron muestra ese
-> mensaje. Es `bug(SCRUM-89)` en `jira.md`.
+> se puede acceder al dashboard mediante login ni register»— eran **tres**
+> problemas superpuestos, y el tercero era la causa directa del síntoma:
+>
+> 1. **El alta de usuario no existía en el frontend** (era `SCRUM-57`): el
+>    backend validaba credenciales y gestionaba el 2FA, pero crear una cuenta
+>    seguía siendo exclusivo de `main.py`, así que una instalación nueva no tenía
+>    forma de entrar.
+> 2. **Una base caída se veía como un servicio sano:** `GET /api/salud` no
+>    comprobaba la base y el arranque moría con una traza de Python que el
+>    lanzador resumía en «servicio no disponible», sin decir por qué.
+> 3. **`src/App.jsx` usaba `<Icono>` en la sub-cabecera sin importarlo.** Al
+>    montar el shell autenticado saltaba `ReferenceError: Icono is not defined`
+>    y React desmontaba el árbol entero: la ventana quedaba **en blanco justo
+>    después de entrar**. Era un defecto **previo** (ya estaba en `42eeaa8`) y
+>    pasó inadvertido porque `vite build` compila igual — un identificador sin
+>    definir no es un error de compilación. Es exactamente «puedo loguearme pero
+>    no llego al dashboard».
+>
+> Los tres están cerrados. La verificación del cierre **no** fue `vite build`,
+> sino conducir la ventana real de Electron (`SCRUM-89`), que es lo que destapó
+> el punto 3.
 
 Diseño, datos y cierre:
 

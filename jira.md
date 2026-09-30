@@ -338,11 +338,21 @@ documentos y dejar el proyecto instalable y publicable.
 
 > `SCRUM-89` se registra el 2026-09-30 a partir de `docs/issues.md`: «conexión a
 > base de datos fallida; electron y web caen; no se puede acceder al dashboard
-> mediante login y register». El síntoma mezclaba dos causas — el alta de usuario
-> no existía en el frontend (`SCRUM-57`) y una base caída se veía como un
-> servicio sano (`GET /api/salud` no la comprobaba). No estaba contemplado en
-> este archivo ni en `planning.md`; queda consolidado aquí y en la Fase 3 de
-> `planning.md`.
+> mediante login y register». El síntoma tenía **tres** causas superpuestas:
+>
+> 1. el alta de usuario no existía en el frontend (`SCRUM-57`);
+> 2. una base caída se veía como un servicio sano (`GET /api/salud` no la
+>    comprobaba) — la salud informa ahora del estado real, el arranque anuncia
+>    `DATENJAGER_ERROR base de datos: …` y Electron muestra ese mensaje;
+> 3. **la causa directa del síntoma**: `src/App.jsx` usaba `<Icono>` en la
+>    sub-cabecera sin importarlo, así que el shell autenticado lanzaba
+>    `ReferenceError: Icono is not defined` y React dejaba la ventana **en
+>    blanco justo después de entrar**. Era un defecto previo (ya en `42eeaa8`) e
+>    invisible para `vite build`, que compila igual un identificador sin
+>    definir.
+>
+> No estaba contemplado en este archivo ni en `planning.md`; queda consolidado
+> aquí y en la Fase 3 de `planning.md`.
 
 ## Bloque B — Identidad visual y movimiento
 
