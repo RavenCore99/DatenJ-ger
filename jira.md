@@ -357,6 +357,9 @@ documentos y dejar el proyecto instalable y publicable.
 > Registrado el 2026-09-30 tras revisar `/assets/mockups` completo con Raven.
 > Los mockups son **referencias** (estructura inspirada en Hermes Desktop), el
 > sistema de diseño está en `DESIGN.md` y la lógica de datos vive en Python.
+> **Sin duplicados**: lo que ya está en los bloques A y B no se repite aquí
+> (visor de PDF, chatbot, ajustes y panel de conexión son `SCRUM-60`, `59`,
+> `63` y `64`).
 
 | Jira | Tarea | Etiquetas adicionales |
 |---|---|---|
@@ -365,11 +368,11 @@ documentos y dejar el proyecto instalable y publicable.
 | `SCRUM-81` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` |
 | `SCRUM-82` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` |
 | `SCRUM-83` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` |
-| `SCRUM-84` | Incorporar el visor de PDF interno | `pdf`, `visor`, `feat` |
-| `SCRUM-85` | Construir el panel del chatbot sobre API | `chatbot`, `api`, `feat` |
-| `SCRUM-86` | Construir el panel de conexión de APIs de modelos | `modelos`, `api`, `feat` |
-| `SCRUM-87` | Completar el panel de ajustes | `configuracion`, `ui`, `feat` |
-| `SCRUM-88` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` |
+| `SCRUM-84` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` |
+| `SCRUM-85` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` |
+| `SCRUM-86` | Construir la franja de telemetría inferior | `ui`, `telemetria`, `feat` |
+| `SCRUM-87` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` |
+| `SCRUM-88` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` |
 
 ### Commits esperados (Bloque D)
 
@@ -379,34 +382,38 @@ ui(SCRUM-80): integra el set de iconos
 refactor(SCRUM-81): extrae la estadística al backend
 feat(SCRUM-82): construye el dashboard
 feat(SCRUM-83): genera los reportes del sistema
-feat(SCRUM-84): incorpora el visor de PDF
-feat(SCRUM-85): construye el panel del chatbot
-feat(SCRUM-86): crea el panel de conexión de APIs
-feat(SCRUM-87): completa el panel de ajustes
-feat(SCRUM-88): habilita el restablecimiento de contraseña
+feat(SCRUM-84): habilita el restablecimiento de contraseña
+feat(SCRUM-85): añade atajos de teclado
+feat(SCRUM-86): construye la franja de telemetría
+feat(SCRUM-87): añade las notificaciones del sistema
+feat(SCRUM-88): migra los modales de documento
 ```
 
 ### Notas del Bloque D
 
-* `SCRUM-79` no es opcional: los mockups y el logo están en el árbol de trabajo
-  **sin versionar**, mientras las copias anteriores figuran como borradas. Si se
-  confirma ese borrado sin añadir la carpeta nueva, el material desaparece del
-  historial.
+* `SCRUM-79` **cerrado** (`ee40d51` incorpora el material, `19a6cde` retira las
+  24 copias antiguas tras comprobar que eran idénticas). No era opcional: los
+  mockups estaban sin versionar mientras las copias anteriores figuraban como
+  borradas.
 * `SCRUM-80`: los mockups usan la fuente de iconos *Material Symbols*; el
-  proyecto ya tiene 44 iconos PNG estilo lucide. La decisión de Raven es usar lo
-  que mejor rinda y mejor se vea. **El set elegido debe cubrir todos los nombres
-  que el sistema pide** — hoy faltan `arrow-right` y `trash`.
+  proyecto tiene 44 PNG estilo lucide y Raven delegó la elección en el criterio
+  de **rendimiento y estética**. El set elegido debe cubrir todos los nombres
+  que el sistema pide — hoy faltan `arrow-right` y `trash`.
 * `SCRUM-81`: hoy la regresión lineal, la predicción y **los colores de los
   gráficos** están dentro de `ui_components.py` (`DashboardWidget`). Sube al
   backend para que el frontend dibuje con la paleta del sistema.
-* `SCRUM-87`: las cuatro secciones reales (contraseña, códigos 2FA, confianza,
-  apariencia) más las que tengan sentido — candidatas con lógica real detrás:
-  sesión e inactividad (`session_timeout_minutes`), notificaciones,
-  almacenamiento y bóveda (espacio, ruta, cifrado), conexión de modelos, atajos
-  de teclado y «Acerca de».
-* `SCRUM-85`/`SCRUM-86`: **solo API**. El respaldo local vía Ollama no se
-  implementa hasta que el frontend y el backend estén completos (decisión de
-  Raven del 2026-09-30).
+* `SCRUM-83`: el reporte PDF conserva portada, inventario y gráfico por empresa,
+  con la estructura de color y organización del sistema.
+* `SCRUM-84`: el flujo de restablecer contraseña del Python **no puede
+  completarse** para usuarios nuevos (`paneles_datenjager.md` lo documenta); la
+  verificación de códigos de respaldo ya vive en `backend/services/autenticacion.py`,
+  así que se construye sobre esa base.
+* `SCRUM-85`/`SCRUM-86`: los atajos (`Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr`, `F11`)
+  y la franja de telemetría están documentados en `paneles_datenjager.md` §4.7
+  y §4.6, pero no existen en el frontend nuevo.
+* `SCRUM-88`: agregar, detalles y editar documento; el **visor** es `SCRUM-60`.
+* Recordatorio de alcance: **nada de modelos locales** hasta que el frontend y
+  el backend estén completos (decisión de Raven del 2026-09-30).
 
 ## Bloque E — Empaquetado y publicación
 

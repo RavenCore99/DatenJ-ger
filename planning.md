@@ -71,9 +71,10 @@ Estado: **hecho en lo técnico**, y los **mockups ya están en el repositorio**:
   `assets/logo/logo.png` y `assets/logo/logo.ico`, **44 iconos** en
   `assets/icons/` y cinco complementos de interfaz en `assets/assets/`.
 
-Con esto la Fase 3 deja de estar bloqueada. Antes de que el empaquetado
-dependa de ellos, los assets que use la aplicación deben quedar versionados
-(hoy están en el árbol de trabajo sin commitear: decisión de Raven).
+Con esto la Fase 3 deja de estar bloqueada. **Los assets ya están versionados**
+(`ee40d51` incorporó `assets/mockups/` con las 15 pantallas, su `code.html`, los
+dos `DESIGN.md` y el inventario; `19a6cde` retiró las 24 copias antiguas tras
+comprobar una por una que eran byte a byte idénticas).
 
 - [x] Revisar el contenido de `/assets/mockups` disponible hasta ahora
       (5 pantallas: Configuración/Appearance, Auditoría Ley 1581 en modo
@@ -83,14 +84,19 @@ dependa de ellos, los assets que use la aplicación deben quedar versionados
       **Confirmado con Raven**: estos mockups son **inspiración de
       estilo** (muy influenciados por "Hermes Desktop"), no una
       especificación 1:1 a replicar.
-- [ ] Mockups pendientes de recibir antes de que la Fase 3 llegue a esas
-      pantallas: login, verificación 2FA, registro, setup 2FA (QR) y el
-      dashboard de gráficos (donut por empresa + línea de tendencia,
-      equivalente a `DashboardWidget`). Ninguna de las 5 imágenes actuales
-      los cubre.
-- [ ] Confirmar `.claudeignore` vigente para que el agente no indexe
-      artefactos irrelevantes (venv, builds, node_modules cuando exista
-      frontend).
+- [x] Mockups recibidos y revisados (2026-09-30): **15 pantallas** con su
+      `code.html` real, en `assets/mockups/tema claro/` y `tema oscuro/`.
+      Cubren login, bienvenida/intro, menú de inicio con registro y setup 2FA,
+      registro con QR, suite principal, suite con el chatbot en la barra
+      lateral, auditoría, ajustes y asistente conversacional. **Sigue sin
+      haber referencia visual** para el dashboard de gráficos, el visor de PDF,
+      los modales de documento, personas, reportes y el restablecimiento de
+      contraseña: se construyen con el sistema de diseño (decisión de Raven del
+      2026-09-30).
+- [x] `.claudeignore` creado (2026-09-30): excluye entornos virtuales,
+      dependencias, builds, binarios, la base de datos, el almacén de tokens y
+      los secretos. Los mockups y el material de diseño **sí** quedan legibles
+      (solo se excluyen las imágenes).
 - [x] rama de trabajo en v2.1. consolidar ver el archivo.`jira.md` para realizar los commits en base a etiquetas acordes.
 - [x] **Definir el mecanismo de comunicación Python↔Electron** (IPC nativo,
       API local tipo FastAPI + fetch desde React, `pywebview`, subprocess,
@@ -206,6 +212,23 @@ sobre bases temporales (`DATENJAGER_DB`) y almacenes temporales
 (`DATENJAGER_TOKENS`), nunca sobre los datos del usuario. La Fase 3 toma
 estas pantallas y las lleva al diseño de los mockups; el empaquetado
 (`SCRUM-26`) se retoma entonces.
+
+---
+
+## Verificación de las fases 0 a 2 (2026-09-30)
+
+Comprobado antes de abrir la Fase 3, para que lo anterior quede al día:
+
+| Fase | Comprobación | Resultado |
+| --- | --- | --- |
+| 0 | Mecanismo Python↔Electron definido y construido | `backend/server.py` (FastAPI + uvicorn, token por proceso) — verificado punta a punta |
+| 0 | Material de diseño disponible y versionado | 15 mockups + `code.html` + 2 `DESIGN.md` + inventario, en git |
+| 0 | `.claudeignore` vigente | creado |
+| 1 | Pruebas del backend sin Tkinter | `./venv/bin/python -m unittest discover -s tests -t .` → **121 pruebas, OK** |
+| 1 | La capa backend no arrastra interfaz | importar `backend.*` sin `DISPLAY` → *modulos de interfaz cargados: ninguno* |
+| 2 | El frontend compila | `npx vite build` → correcto |
+| 2 | Paneles funcionales | `Acceso`, `Documentos`, `Personas`, `Auditoria`, `Cuenta`, `Inicio` |
+| 2 | Puente en marcha | arranque ~1 s, `401` sin token, sesión heredada `200` |
 
 ---
 
@@ -409,6 +432,54 @@ visual de los mockups (sin exigir coincidencia pixel a pixel) y cubre
 únicamente las secciones/funcionalidades presentes en el código Python
 actual; estados canónicos y transiciones activos en al menos las
 pantallas principales (login, dashboard, PDFs).
+
+---
+
+### Avance de la Fase 3 (marcar al cerrar cada sección)
+
+Base visual y movimiento:
+
+- [ ] `SCRUM-27` tokens visuales del `DESIGN.md` en Tailwind (paleta, tipografía, radios, densidades)
+- [ ] `SCRUM-28` layout base: barra lateral `240px`/`64px`, sub-cabecera `48px`, franja inferior `32px`, marco de ventana
+- [ ] `SCRUM-29` login, bienvenida/intro y verificación 2FA
+- [ ] `SCRUM-30` personas y auditoría
+- [ ] `SCRUM-31` configuración y cuenta
+- [ ] `SCRUM-32` estados canónicos y transiciones
+- [ ] `SCRUM-65` logo, icono de aplicación y set de iconos
+- [ ] `SCRUM-66` transición suave entre tema claro y oscuro
+- [ ] `SCRUM-67` animación de entrada y micro-interacciones
+- [ ] `SCRUM-68` estados con color (base de datos, APIs, chatbot)
+- [ ] `SCRUM-69` esqueletos de carga
+- [ ] `SCRUM-70` barras laterales desplegables
+- [ ] `SCRUM-71` complementos de `assets/assets/` como componentes propios
+
+Pantallas que faltan:
+
+- [ ] `SCRUM-57` registro de operadores (el único pendiente del backend)
+- [ ] `SCRUM-58` alta de 2FA con QR y códigos de respaldo
+- [ ] `SCRUM-59` panel del chatbot con barra lateral por botones
+- [ ] `SCRUM-60` visor de PDF dentro de la aplicación
+- [ ] `SCRUM-61` panel de reportes
+- [ ] `SCRUM-62` recopilador de datos y estadísticas
+- [ ] `SCRUM-63` panel de ajustes completo
+- [ ] `SCRUM-64` panel de conexión de APIs y modelos
+
+Diseño, datos y cierre:
+
+- [x] `SCRUM-79` versionar el material de diseño y de marca (`ee40d51`, `19a6cde`)
+- [ ] `SCRUM-80` set de iconos del frontend
+- [ ] `SCRUM-81` extraer la estadística y los gráficos al backend
+- [ ] `SCRUM-82` dashboard de gráficos
+- [ ] `SCRUM-83` reportes con la paleta del sistema
+- [ ] `SCRUM-84` restablecimiento de contraseña
+- [ ] `SCRUM-85` atajos de teclado y búsqueda global
+- [ ] `SCRUM-86` franja de telemetría inferior
+- [ ] `SCRUM-87` notificaciones del sistema
+- [ ] `SCRUM-88` modales de documento
+
+Evaluación (paralela, backend):
+
+- [ ] `SCRUM-72` a `SCRUM-74` clasificación automática de documentos
 
 ---
 
