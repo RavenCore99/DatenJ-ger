@@ -321,16 +321,28 @@ documentos y dejar el proyecto instalable y publicable.
 
 ## Bloque A — Pantallas que faltan
 
-| Jira | Tarea | Etiquetas adicionales |
-|---|---|---|
-| `SCRUM-57` | Implementar registro de operadores (alta de usuario) | `registro`, `auth`, `feat` |
-| `SCRUM-58` | Construir el alta de 2FA con QR y códigos de respaldo | `ui`, `2fa`, `feat` |
-| `SCRUM-59` | Construir el panel del chatbot con barra lateral por botones | `chatbot`, `ui`, `feat` |
-| `SCRUM-60` | Incorporar visor de PDF dentro de la aplicación | `pdf`, `visor`, `feat` |
-| `SCRUM-61` | Construir el panel de reportes con paleta estructurada | `reportes`, `ui`, `feat` |
-| `SCRUM-62` | Agregar recopilador de datos y estadísticas | `datos`, `estadisticas`, `feat` |
-| `SCRUM-63` | Completar el panel de ajustes (paridad con el código Python) | `configuracion`, `ui`, `improvement` |
-| `SCRUM-64` | Crear el panel de conexión de APIs y modelos | `modelos`, `api`, `feat` |
+**Estado: cerrado (2026-09-30) — `SCRUM-57` a `SCRUM-64` hechos y verificados
+(142 pruebas, `vite build` correcto).**
+
+| Jira | Tarea | Etiquetas adicionales | Estado |
+|---|---|---|---|
+| `SCRUM-57` | Implementar registro de operadores (alta de usuario) | `registro`, `auth`, `feat` | hecho |
+| `SCRUM-58` | Construir el alta de 2FA con QR y códigos de respaldo | `ui`, `2fa`, `feat` | hecho |
+| `SCRUM-59` | Construir el panel del chatbot con barra lateral por botones | `chatbot`, `ui`, `feat` | hecho |
+| `SCRUM-60` | Incorporar visor de PDF dentro de la aplicación | `pdf`, `visor`, `feat` | hecho |
+| `SCRUM-61` | Construir el panel de reportes con paleta estructurada | `reportes`, `ui`, `feat` | hecho |
+| `SCRUM-62` | Agregar recopilador de datos y estadísticas | `datos`, `estadisticas`, `feat` | hecho |
+| `SCRUM-63` | Completar el panel de ajustes (paridad con el código Python) | `configuracion`, `ui`, `improvement` | hecho |
+| `SCRUM-64` | Crear el panel de conexión de APIs y modelos | `modelos`, `api`, `feat` | hecho |
+| `SCRUM-89` | Distinguir la base caída del servicio vivo (hallazgo de `docs/issues.md`) | `base-datos`, `diagnostico`, `bug` | hecho |
+
+> `SCRUM-89` se registra el 2026-09-30 a partir de `docs/issues.md`: «conexión a
+> base de datos fallida; electron y web caen; no se puede acceder al dashboard
+> mediante login y register». El síntoma mezclaba dos causas — el alta de usuario
+> no existía en el frontend (`SCRUM-57`) y una base caída se veía como un
+> servicio sano (`GET /api/salud` no la comprobaba). No estaba contemplado en
+> este archivo ni en `planning.md`; queda consolidado aquí y en la Fase 3 de
+> `planning.md`.
 
 ## Bloque B — Identidad visual y movimiento
 
@@ -435,6 +447,7 @@ feat(SCRUM-61): construye el panel de reportes
 feat(SCRUM-62): agrega estadísticas del sistema
 improvement(SCRUM-63): completa el panel de ajustes
 feat(SCRUM-64): crea el panel de conexión de modelos
+bug(SCRUM-89): distingue la base caída del servicio vivo
 ui(SCRUM-65): integra el logo y los iconos
 ui(SCRUM-66): anima el cambio de tema
 feat(SCRUM-67): añade la animación de entrada

@@ -244,8 +244,10 @@ Comprobado antes de abrir la Fase 3, para que lo anterior quede al día:
 
 Estado: **en progreso** — Skill: `electron-react-migration` +
 `ui-states-animations`. La sección **Base visual y movimiento** (`SCRUM-27` a
-`SCRUM-32` y `SCRUM-65` a `SCRUM-71`) está cerrada y verificada; quedan abiertas
-las pantallas nuevas y el cierre de la fase.
+`SCRUM-32` y `SCRUM-65` a `SCRUM-71`) está cerrada y verificada, y las
+**pantallas que faltaban** (`SCRUM-57` a `SCRUM-64`) también, con `SCRUM-89`
+como corrección del hallazgo de conexión a base de datos. Queda abierto el
+resto del Bloque D (`SCRUM-80` a `SCRUM-88`) y el empaquetado.
 
 Objetivo: tomar cada pantalla ya funcional de la Fase 2 y llevarla a una
 identidad visual **inspirada** en `/assets/mockups`, con Tailwind.
@@ -476,20 +478,31 @@ Base visual y movimiento:
 - [x] `SCRUM-66` transición suave entre tema claro y oscuro
 - [x] `SCRUM-67` animación de entrada y micro-interacciones
 - [x] `SCRUM-68` estados con color (base de datos, APIs, chatbot)
-- [x] `SCRUM-69` esqueletos de carga
+- [x] `SCRUM-69` skeleton como animacion de carga
 - [x] `SCRUM-70` barras laterales desplegables
 - [x] `SCRUM-71` complementos de `assets/assets/` como componentes propios
 
-Pantallas que faltan:
+Pantallas que faltan (cerradas 2026-09-30):
 
-- [ ] `SCRUM-57` registro de operadores (el único pendiente del backend)
-- [ ] `SCRUM-58` alta de 2FA con QR y códigos de respaldo
-- [ ] `SCRUM-59` panel del chatbot con barra lateral por botones
-- [ ] `SCRUM-60` visor de PDF dentro de la aplicación
-- [ ] `SCRUM-61` panel de reportes
-- [ ] `SCRUM-62` recopilador de datos y estadísticas
-- [ ] `SCRUM-63` panel de ajustes completo
-- [ ] `SCRUM-64` panel de conexión de APIs y modelos
+- [x] `SCRUM-57` registro de operadores (el único pendiente del backend)
+- [x] `SCRUM-58` alta de 2FA con QR y códigos de respaldo
+- [x] `SCRUM-59` panel del chatbot con barra lateral por botones
+- [x] `SCRUM-60` visor de PDF dentro de la aplicación
+- [x] `SCRUM-61` panel de reportes
+- [x] `SCRUM-62` recopilador de datos y estadísticas
+- [x] `SCRUM-63` panel de ajustes completo
+- [x] `SCRUM-64` panel de conexión de APIs y modelos
+
+> **Corrección de alcance registrada (2026-09-30, `SCRUM-89`).** El hallazgo de
+> `docs/issues.md` —«conexión a base de datos fallida; electron y web caen; no
+> se puede acceder al dashboard mediante login ni register»— describía dos
+> problemas superpuestos: (1) el **alta de usuario no existía en el frontend**
+> (era `SCRUM-57`, ya cerrado) y (2) una **base caída se veía como un servicio
+> sano**, porque `GET /api/salud` no comprobaba la base y el arranque moría con
+> una traza de Python que el lanzador resumía en «servicio no disponible». Se
+> corrigió en `SCRUM-89`: la salud informa del estado real de la base, el
+> arranque anuncia `DATENJAGER_ERROR base de datos: …` y Electron muestra ese
+> mensaje. Es `bug(SCRUM-89)` en `jira.md`.
 
 Diseño, datos y cierre:
 
@@ -646,7 +659,7 @@ fase, el proyecto se considera entregable cuando:
 | 0. Preparación | por hacer (mockups pendientes de recibir) | 2026-09-28 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | en progreso (base visual y movimiento hecha; faltan pantallas nuevas) | 2026-09-30 |
+| 3. Frontend conforme a mockups | en progreso (base visual y movimiento hecha; pantallas nuevas `SCRUM-57` a `SCRUM-64` cerradas; faltan `SCRUM-80` a `SCRUM-88`) | 2026-09-30 |
 | 4. Integración de APIs y modelos locales | por hacer | — |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
@@ -692,13 +705,29 @@ Electron (`electron/{main,preload,backend,archivos}.js`) y los cinco paneles
 funcionales: `Acceso` (login y 2FA), `Documentos`, `Personas`, `Auditoria` y
 `Cuenta` (apariencia, 2FA, contraseña, confianza).
 
-**Pendiente de verdad:** el **alta de usuario** (`registro`) — único elemento
-de `ComandosDatenJager.operaciones_pendientes()` — y el empaquetado
-(`SCRUM-26`, en pausa).
+**Pendiente de verdad:** **nada del desacople.** El alta de usuario se movió al
+backend en `SCRUM-57` y `ComandosDatenJager.operaciones_pendientes()` quedó
+vacío. Lo único que sigue en pausa es el empaquetado (`SCRUM-26`, retomado por
+`SCRUM-75`/`SCRUM-76`).
+
+**Pantallas nuevas (Fase 3, Sprint 5).** Cerradas el 2026-09-30 con
+`SCRUM-57` a `SCRUM-64`:
+
+| Pieza | Archivo | Estado |
+| --- | --- | --- |
+| Alta de usuario | `backend/services/autenticacion.py` (`registrar_usuario`), `POST /api/registro` | hecho |
+| Registro y alta de 2FA | `src/pages/Registro.jsx`, `src/components/AltaSegundoFactor.jsx` | hecho |
+| Panel del asistente | `src/pages/Chatbot.jsx` (barra lateral por botones) | hecho |
+| Visor de PDF | `src/components/VisorPdf.jsx` (`<iframe>` + `Blob`, sin dependencias) | hecho |
+| Reportes | `src/pages/Reportes.jsx`, `GET /api/reportes/por-empresa` y `/por-dia` | hecho |
+| Datos y estadísticas | `src/pages/Estadisticas.jsx` | hecho |
+| Ajustes completos | `src/pages/Cuenta.jsx` (sesión, almacenamiento, atajos, «Acerca de») | hecho |
+| Conexión de modelos | `backend/services/modelos.py`, `src/pages/Modelos.jsx`, `GET|POST /api/modelos` | hecho |
+| Base caída visible | `GET /api/salud` (`base_datos`), `DATENJAGER_ERROR`, `electron/backend.js` | hecho (`SCRUM-89`) |
 
 **Variables de entorno del servicio:** `DATENJAGER_DB` (base alternativa) y
 `DATENJAGER_TOKENS` (almacén alternativo de tokens). Las pruebas y las sondas
 las usan siempre para no tocar los datos reales del usuario.
 
 **Cómo verificar sin rehacer:** `./venv/bin/python -m unittest discover -s tests -t .`
-(121 pruebas, sin Tkinter), `npx vite build`, `./node_modules/.bin/electron . --no-sandbox`.
+(142 pruebas, sin Tkinter), `npx vite build`, `./node_modules/.bin/electron . --no-sandbox`.
