@@ -123,6 +123,19 @@ class Registro(BaseModel):
     contrasena: str
 
 
+class Restablecimiento(BaseModel):
+    """Paso 1 del restablecimiento: usuario y código de respaldo (SCRUM-84)."""
+
+    nombre: str
+    codigo: str
+
+
+class ContrasenaRestablecida(BaseModel):
+    """Paso 2 del restablecimiento: la contraseña nueva (SCRUM-84)."""
+
+    contrasena_nueva: str
+
+
 class ConexionModelos(BaseModel):
     """Conexión de modelos: proveedor, modelo, punto de conexión y clave.
 
@@ -373,6 +386,20 @@ def crear_app(
     async def verificar_segundo_factor(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
         """Completa el acceso con el código TOTP."""
         return comandos.verificar_segundo_factor(cuerpo.codigo)
+
+    @app.post("/api/sesion/restablecer", dependencies=protegido)
+    async def solicitar_restablecimiento(cuerpo: Restablecimiento) -> dict[str, Any]:
+        """Verifica un código de respaldo para restablecer la contraseña (SCRUM-84).
+
+        No exige sesión: es el camino de quien ha olvidado la contraseña. El
+        permiso para fijar la contraseña nueva se queda en el proceso de Python.
+        """
+        return comandos.solicitar_restablecimiento(cuerpo.nombre, cuerpo.codigo)
+
+    @app.post("/api/sesion/restablecer/contrasena", dependencies=protegido)
+    async def restablecer_contrasena(cuerpo: ContrasenaRestablecida) -> dict[str, Any]:
+        """Fija la contraseña nueva tras verificar el código de respaldo (SCRUM-84)."""
+        return comandos.restablecer_contrasena(cuerpo.contrasena_nueva)
 
     @app.post("/api/sesion/respaldo", dependencies=protegido)
     async def usar_codigo_de_respaldo(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:

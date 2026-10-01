@@ -26,10 +26,15 @@ aquí: nunca se entrega al cliente.
 from __future__ import annotations
 
 import os
+import time
 
 from typing import Any, Optional
 
-from backend.errors import NoAutenticadoError, SegundoFactorInvalidoError
+from backend.errors import (
+    DatosInvalidosError,
+    NoAutenticadoError,
+    SegundoFactorInvalidoError,
+)
 from backend.services import auditoria as _auditoria
 from backend.services import autenticacion as _autenticacion
 from backend.services import modelos as _modelos
@@ -59,6 +64,10 @@ class ComandosDatenJager:
     def __init__(self, state):
         self.state = state
         self._chat: Optional[ChatbotService] = None
+        self._acceso_pendiente = None
+        #: Restablecimiento a medio completar: (usuario_id, nombre, instante).
+        #: Vive solo en memoria y se consume una vez, como el acceso pendiente.
+        self._restablecimiento_pendiente: Optional[tuple] = None
 
     # ------------------------------------------------------------------ #
     # Internos
@@ -101,6 +110,7 @@ class ComandosDatenJager:
         """Descarta la sesión, el acceso a medio completar y la conversación."""
         self._chat = None
         self._acceso_pendiente = None
+        self._restablecimiento_pendiente = None
         self.state.cerrar_sesion()
 
     def sesion_actual(self) -> dict:
@@ -597,6 +607,59 @@ class ComandosDatenJager:
             raise SegundoFactorInvalidoError(
                 "No hay un acceso pendiente: vuelve a ingresar tus credenciales")
         return pendiente
+
+    # ------------------------------------------------------------------ #
+    # Restablecimiento de contraseña (SCRUM-84)
+    # ------------------------------------------------------------------ #
+
+    #: Minutos que se recuerda un código de respaldo ya verificado antes de
+    #: pedir que se empiece de nuevo. Corto a propósito: la ventana entre
+    #: verificar el código y escribir la contraseña nueva es de segundos.
+    MINUTOS_RESTABLECIMIENTO = 15
+
+    def solicitar_restablecimiento(self, nombre: str, codigo: str) -> dict:
+        """Verifica un código de respaldo y abre el paso de contraseña nueva.
+
+        No exige sesión: es justamente el camino para quien no puede entrar. El
+        código se consume en el acto y el permiso para fijar la contraseña queda
+        **en memoria del proceso**, nunca en el cliente, igual que el acceso a
+        medio completar del 2FA.
+        """
+        resultado = self._ejecutar(
+            _autenticacion.verificar_codigo_de_respaldo, nombre=nombre, codigo=codigo)
+
+        self._restablecimiento_pendiente = (
+            resultado["usuario_id"], resultado["nombre"], time.monotonic())
+
+        return {"estado": "codigo_verificado", "nombre": resultado["nombre"]}
+
+    def restablecer_contrasena(self, contrasena_nueva: str) -> dict:
+        """Fija la contraseña nueva sobre un restablecimiento ya autorizado.
+
+        Raises:
+            DatosInvalidosError: no se verificó ningún código, o la verificación
+                caducó.
+        """
+        pendiente = self._restablecimiento_pendiente
+        if not pendiente:
+            raise DatosInvalidosError(
+                "Primero verifica un código de respaldo para restablecer la contraseña")
+
+        usuario_id, nombre, momento = pendiente
+        if time.monotonic() - momento > self.MINUTOS_RESTABLECIMIENTO * 60:
+            self._restablecimiento_pendiente = None
+            raise DatosInvalidosError(
+                "La verificación caducó: vuelve a empezar con un código de respaldo")
+
+        self._ejecutar(
+            _autenticacion.restablecer_contrasena,
+            usuario_id=usuario_id,
+            nombre=nombre,
+            contrasena_nueva=contrasena_nueva,
+        )
+        self._restablecimiento_pendiente = None
+
+        return {"estado": "contrasena_restablecida", "nombre": nombre}
 
     # ------------------------------------------------------------------ #
     # Gestión de la propia cuenta (SCRUM-25)
