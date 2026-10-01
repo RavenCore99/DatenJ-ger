@@ -48,6 +48,10 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   // Resultado de la prueba real contra el proveedor.
   const [prueba, setPrueba] = useState(null)
   const [probando, setProbando] = useState(false)
+  // Resultado de la prueba de **generación**: que el modelo responda, no solo
+  // que la credencial exista (SCRUM-62).
+  const [respuestaPrueba, setRespuestaPrueba] = useState(null)
+  const [probandoRespuesta, setProbandoRespuesta] = useState(false)
 
   const [proveedor, setProveedor] = useState('')
   const [modelo, setModelo] = useState('')
@@ -126,6 +130,25 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
     }
   }
 
+  /**
+   * Prueba de extremo a extremo (SCRUM-62): pide al modelo una respuesta de
+   * verdad. Es lo que demuestra que el asistente funciona —listar modelos solo
+   * prueba que la credencial existe—.
+   */
+  const probarRespuesta = async () => {
+    setProbandoRespuesta(true)
+    setRespuestaPrueba(null)
+    setError(null)
+
+    try {
+      setRespuestaPrueba(await backend.chat.probar())
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setProbandoRespuesta(false)
+    }
+  }
+
   const quitarClave = async () => {
     setOcupado(true)
     setAviso(null)
@@ -159,6 +182,13 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const proveedores = estado?.proveedores ?? []
   const descrito = proveedores.find(({ clave: valor }) => valor === proveedor)
   const tieneClave = Boolean(estado?.clave_configurada)
+
+  // Modelos que se ofrecen para elegir: los del catálogo del proveedor más los
+  // que la cuenta tiene de verdad, según la última prueba de conexión. Así se
+  // puede elegir un modelo real de la cuenta, no solo los que el sistema supone.
+  const modelosOfrecidos = [
+    ...new Set([...(descrito?.modelos ?? []), ...(prueba?.modelos_disponibles ?? [])]),
+  ]
 
   return (
     <div className="flex flex-col gap-4">
@@ -230,13 +260,13 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
 
               <label className="flex flex-col gap-1">
                 <span className="text-etiqueta-sm text-texto">Modelo</span>
-                {descrito?.modelos?.length ? (
+                {modelosOfrecidos.length ? (
                   <select
                     value={modelo}
                     onChange={(evento) => setModelo(evento.target.value)}
                     className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none focus:border-primario"
                   >
-                    {descrito.modelos.map((nombre) => (
+                    {modelosOfrecidos.map((nombre) => (
                       <option key={nombre} value={nombre}>
                         {nombre}
                       </option>
@@ -321,6 +351,21 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                   <Icono nombre="refrescar" tamano={14} className={probando ? 'animate-spin' : ''} />
                   {probando ? 'Probando…' : 'Probar conexión'}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={probarRespuesta}
+                  disabled={probandoRespuesta || !tieneClave}
+                  title={
+                    tieneClave
+                      ? 'Pide al modelo una respuesta de verdad: es lo que prueba que el asistente funciona'
+                      : 'Guarda una credencial antes de probarla'
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
+                >
+                  <Icono nombre="chispa" tamano={14} className={probandoRespuesta ? 'animate-pulse' : ''} />
+                  {probandoRespuesta ? 'Generando…' : 'Probar respuesta'}
+                </button>
               </div>
 
               {prueba && (
@@ -341,6 +386,36 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                     <p className="text-tenue">
                       {prueba.modelos_disponibles.length} modelo(s) disponibles en la cuenta, entre
                       ellos <span className="font-mono">{prueba.modelos_disponibles[0]}</span>.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {respuestaPrueba && (
+                <div
+                  role="status"
+                  className={[
+                    'flex flex-col gap-1.5 rounded-lg border px-3.5 py-3 text-cuerpo-sm',
+                    respuestaPrueba.ok
+                      ? 'border-exito/40 bg-exito/5 text-exito'
+                      : 'border-peligro/40 bg-peligro/5 text-peligro',
+                  ].join(' ')}
+                >
+                  <p className="font-medium">{respuestaPrueba.mensaje}</p>
+                  {respuestaPrueba.modelo && (
+                    <p className="text-tenue">
+                      Modelo que respondió:{' '}
+                      <span className="font-mono">{respuestaPrueba.modelo}</span>
+                    </p>
+                  )}
+                  {respuestaPrueba.respuesta && (
+                    <p className="rounded-lg border border-borde bg-fondo px-3 py-2 text-texto">
+                      {respuestaPrueba.respuesta}
+                    </p>
+                  )}
+                  {respuestaPrueba.detalle && (
+                    <p className="break-all font-mono text-codigo text-texto-2">
+                      {respuestaPrueba.detalle}
                     </p>
                   )}
                 </div>
@@ -370,9 +445,15 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                 conversación.
               </li>
               <li className="flex items-start gap-2">
+                <Icono nombre="chispa" tamano={14} />
+                «Probar respuesta» va más allá: pide al modelo una respuesta de verdad. Listar
+                modelos prueba que la credencial existe; esto prueba que el asistente genera texto.
+              </li>
+              <li className="flex items-start gap-2">
                 <Icono nombre="escudo" tamano={14} />
-                El streaming de respuestas y el respaldo local (Ollama) son la Fase 4: aquí no se
-                configuran modelos locales.
+                El asistente responde <strong>solo sobre este proyecto</strong> y con las cifras
+                reales del sistema. Nunca recibe datos personales, contenido de documentos ni
+                secretos, así que no puede filtrarlos.
               </li>
             </ul>
           </Panel>
