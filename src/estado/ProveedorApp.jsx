@@ -92,13 +92,19 @@ export function ProveedorApp({ children }) {
           if (montado.current) setBaseDatos(info?.base_datos === 'error' ? 'error' : 'sin_verificar')
           if (montado.current) setModelos(null)
         }
-      } catch {
-        // El servicio respondió: si la sesión no se puede leer, no hay sesión.
-        if (montado.current) {
+      } catch (fallo) {
+        // **Solo se cierra la sesión si el servicio dice que no hay sesión.**
+        // Un 401 es una respuesta: la sesión terminó. Un tropiezo del sondeo
+        // —el servicio ocupado con una prueba larga, un 5xx, un corte— no
+        // significa lo mismo, y darlo por hecho devolvía al usuario a la
+        // pantalla de acceso en mitad de una operación, que es exactamente lo
+        // que se reportó al guardar o probar la conexión de modelos.
+        if (!montado.current) return
+        if (fallo?.sinSesion) {
           setSesion(null)
           setModelos(null)
-          if (info?.base_datos !== 'error') setBaseDatos('sin_verificar')
         }
+        if (info?.base_datos !== 'error') setBaseDatos('sin_verificar')
       }
     } catch (error) {
       if (error?.name === 'AbortError') return

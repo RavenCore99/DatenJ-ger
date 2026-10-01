@@ -14,6 +14,7 @@ import base64
 import json
 import socket
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
@@ -527,6 +528,76 @@ class TestServidor(BaseBackendTest):
 
         self.assertEqual(estado, 401)
         self.assertEqual(cuerpo["detail"]["tipo"], "CredencialesInvalidasError")
+
+
+    def test_una_prueba_larga_no_deja_al_servicio_sin_atender(self):
+        """Una prueba de conexión lenta no debe bloquear el sondeo de sesión.
+
+        El manejador hace una espera **bloqueante** contra el proveedor. Si
+        estuviera declarado `async`, esa espera ocuparía el bucle de eventos y el
+        frontend se quedaría sin respuesta al preguntar por la sesión: el renderer
+        lo interpreta como «no hay sesión» y devuelve al usuario a la pantalla de
+        acceso. Es el reinicio que se reportó al guardar y al probar la conexión
+        de modelos. FastAPI ejecuta los manejadores síncronos en un hilo aparte.
+        """
+        from backend.services import modelos
+
+        # Sin sesión, «probar conexión» responde 401 al instante y la prueba no
+        # mediría nada: hay que entrar antes.
+        self.heredar_sesion()
+
+        # Un «proveedor» que acepta la conexión y no contesta: así la prueba se
+        # queda esperando de verdad, sin depender de internet.
+        lento = socket.socket()
+        lento.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        lento.bind(("127.0.0.1", 0))
+        lento.listen(1)
+        puerto_lento = lento.getsockname()[1]
+
+        modelos.guardar(
+            self.tmpdir,
+            api_key="clave-de-prueba",
+            endpoint=f"http://127.0.0.1:{puerto_lento}",
+        )
+
+        terminado = threading.Event()
+        resultado = {}
+
+        def probar():
+            try:
+                resultado["estado"], _cuerpo = self.pedir("POST", "/api/modelos/probar")
+            except Exception as fallo:
+                # El corte del «proveedor» lento es lo esperado al terminar.
+                resultado["fallo"] = str(fallo)
+            finally:
+                terminado.set()
+
+        hilo = threading.Thread(target=probar, daemon=True)
+        hilo.start()
+        estado, transcurrido = None, None
+
+        try:
+            # Margen para que la petición esté ya en curso y esperando.
+            threading.Event().wait(1.5)
+            inicio = time.monotonic()
+            estado, _cuerpo = self.pedir("GET", "/api/sesion")
+            transcurrido = time.monotonic() - inicio
+        finally:
+            lento.close()
+            terminado.wait(timeout=25)
+            hilo.join(timeout=25)
+
+        # La prueba de conexión llegó a ejecutarse de verdad (no un 401).
+        self.assertEqual(
+            resultado.get("estado"), 200,
+            f"la prueba de conexión no llegó a correr: {resultado}")
+        self.assertEqual(estado, 200)
+        self.assertLess(
+            transcurrido,
+            2.0,
+            f"la sesión tardó {transcurrido:.1f}s en responder: el bucle de eventos "
+            "está bloqueado por la prueba de conexión",
+        )
 
 
 class TestServidorSinToken(BaseBackendTest):

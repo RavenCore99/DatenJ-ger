@@ -133,6 +133,6 @@ const LEYENDA = {
   ok: 'disponible',
   error: 'no disponible',
   verificando: 'verificando',
-  sin_verificar: 'sin verificar',
+  sin_verificar: 'guardada, sin probar',
   sin_configurar: 'sin configurar',
 }

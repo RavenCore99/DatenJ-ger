@@ -469,11 +469,18 @@ def crear_app(
         return comandos.guardar_conexion_de_modelos(**cuerpo.model_dump())
 
     @app.post("/api/modelos/probar", dependencies=protegido)
-    async def probar_conexion_de_modelos() -> dict[str, Any]:
+    def probar_conexion_de_modelos() -> dict[str, Any]:
         """Prueba real de la credencial contra el proveedor configurado.
 
         El resultado se anota en el almacén: es lo que permite que la franja de
         telemetría refleje la prueba y no solo la existencia de una clave.
+
+        **Es `def`, no `async def`, a propósito.** La prueba hace una petición de
+        red que puede tardar decenas de segundos. Declarándola `async`, su espera
+        —que es bloqueante— ocuparía el bucle de eventos y dejaría al servicio sin
+        atender nada más mientras tanto, incluido el sondeo de sesión que hace el
+        frontend. FastAPI ejecuta los manejadores síncronos en un hilo aparte, así
+        que la espera no bloquea al resto.
         """
         return comandos.probar_conexion_de_modelos()
 
@@ -692,17 +699,23 @@ def crear_app(
         return {"mensajes": list(chat.history)}
 
     @app.post("/api/chat/mensajes", dependencies=protegido)
-    async def enviar_mensaje(cuerpo: MensajeChat) -> dict[str, str]:
+    def enviar_mensaje(cuerpo: MensajeChat) -> dict[str, str]:
+        # Síncrono a propósito: espera la respuesta del modelo, que puede tardar.
+        # En el bucle de eventos, esa espera dejaría al servicio sin atender el
+        # sondeo de sesión y la franja de telemetría (ver «probar conexión»).
         return {"respuesta": comandos.enviar_mensaje(cuerpo.mensaje)}
 
     @app.post("/api/chat/mensajes/stream", dependencies=protegido)
-    async def enviar_mensaje_stream(cuerpo: MensajeChat) -> StreamingResponse:
+    def enviar_mensaje_stream(cuerpo: MensajeChat) -> StreamingResponse:
         """Entrega la respuesta del asistente **por fragmentos** (RF-16).
 
         Es un flujo SSE: cada ``data:`` trae un fragmento; el último marco lleva
         ``fin``. Un fallo viaja como un marco de error, no como una respuesta a
         medias, para que la interfaz pueda decirlo y no dejar la conversación
         colgada.
+
+        Síncrono: el generador lee del proveedor bloqueando, y Starlette lo itera
+        en un hilo aparte en vez de ocupar el bucle de eventos.
         """
         return StreamingResponse(
             _flujo_del_asistente(comandos, cuerpo.mensaje),
@@ -711,11 +724,13 @@ def crear_app(
         )
 
     @app.post("/api/chat/probar", dependencies=protegido)
-    async def probar_respuesta_del_asistente() -> dict[str, Any]:
+    def probar_respuesta_del_asistente() -> dict[str, Any]:
         """Pide al modelo una respuesta de verdad, para probar la conexión.
 
         Distinto de ``/api/modelos/probar``, que comprueba la credencial: aquí
         se genera texto, que es lo que prueba que el asistente funciona.
+        Síncrono por el mismo motivo: la generación tarda y no debe ocupar el
+        bucle de eventos.
         """
         return comandos.probar_respuesta_del_asistente()
 

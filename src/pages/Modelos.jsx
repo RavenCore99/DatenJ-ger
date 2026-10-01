@@ -625,7 +625,9 @@ const TIPO_PILL = {
 const ETIQUETA_SALUD = {
   ok: 'Verificada',
   error: 'La última prueba falló',
-  sin_verificar: 'Sin verificar',
+  // Deja claro que la clave **sí** se guardó: «sin verificar» a secas se leía
+  // como «no se cargó», que es justo lo contrario de lo que ha pasado.
+  sin_verificar: 'Credencial guardada · sin probar',
   sin_configurar: 'Sin credencial',
 }
 
