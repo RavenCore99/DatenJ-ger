@@ -1,5 +1,6 @@
 # jira.md — Guía de trabajo Jira y commits
 
+simrpe se trabajara desde la rama v2.1n nunca crear o usar otras ramas. los pr se trabajan desde v2.1 y se hace el merge a main
 para los PR, los peudes hacer siempore y cuando cumplas con las condiciones y etiquetas que hacen parte de cada archivo. ejemplo:
 
 gh pr create --base main --head v2.1 --title "[SPRINT-2] SCRUM-5 a SCRUM-11: Implementación de funcionalidades del Sprint 1" --body "Desacoplar logica de backend python y levantar frontend con Electron/React/Tailwind conectando al backed.
