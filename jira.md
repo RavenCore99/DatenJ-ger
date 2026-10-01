@@ -489,14 +489,14 @@ ningún `SCRUM-72` a `SCRUM-74`.
 |---|---|---|---|
 | `SCRUM-59` | Versionar el material de diseño y de marca | `assets`, `documentacion`, `hito` | hecho |
 | `SCRUM-59` | Definir e integrar el set de iconos del frontend | `ui`, `iconos`, `rendimiento` | hecho (set SVG en línea de `Icono.jsx`) |
-| `SCRUM-57` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` | parcial: métricas y series ya en `backend/services/reportes.py`; faltan la regresión, la predicción y los colores |
-| `SCRUM-59` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` | pendiente (el panel de Estadísticas ya dibuja distribución y serie) |
+| `SCRUM-57` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` | hecho (`3598f95`: `reportes.tendencia()` con regresión, predicción y R², más `PALETA_GRAFICOS` por rol semántico y `GET /api/reportes/tendencia`) |
+| `SCRUM-59` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` | hecho (`cf6d7a3`: `Graficos.jsx` con medidor, anillo y tendencia en SVG) |
 | `SCRUM-59` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` | hecho (PR #12: logo, tarjetas y exportador) |
-| `SCRUM-57` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` | pendiente |
-| `SCRUM-59` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` | pendiente (activos: `Ctrl+B`, `Enter`, `Esc`) |
+| `SCRUM-57` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` | hecho (`b035737`: códigos de respaldo en hash de un solo sentido, dos pasos sin sesión y reinicio del segundo factor) |
+| `SCRUM-59` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` | hecho (`dc0511a`: `Ctrl+B`, `Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr`, `F11`, `Enter`, `Esc`) |
 | `SCRUM-59` | Construir la franja de telemetría inferior | `ui`, `telemetria`, `feat` | hecho (`BarraEstado` con estados reales) |
-| `SCRUM-59` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` | pendiente |
-| `SCRUM-59` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` | pendiente |
+| `SCRUM-59` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` | hecho (`bbe44a8`: pila de avisos en el proveedor, silenciables desde Ajustes) |
+| `SCRUM-59` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` | hecho (`bbe44a8`: `ModalDocumento.jsx` con detalles y edición) |
 
 ### Commits esperados (Bloque D)
 
