@@ -30,6 +30,8 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Optional
 
@@ -67,8 +69,106 @@ MODELO_POR_DEFECTO = PROVEEDORES[0]["modelos"][0]
 #: Variable de entorno que ya usa `chatbot.py` para la clave de Gemini.
 VARIABLE_ENTORNO = "GEMINI_API_KEY"
 
+#: Archivo de entorno del proyecto, que el panel mantiene al día.
+NOMBRE_ENV = ".env"
+
 #: Campos que no son secretos y se guardan en claro.
 CAMPOS_PUBLICOS = ("proveedor", "modelo", "endpoint")
+
+
+# --------------------------------------------------------------------------- #
+# Archivo de entorno
+# --------------------------------------------------------------------------- #
+
+
+def _ruta_env(raiz: str | os.PathLike) -> Path:
+    return Path(raiz) / NOMBRE_ENV
+
+
+def _leer_env(raiz: str | os.PathLike) -> Optional[str]:
+    """Valor de la variable en el `.env`.
+
+    Distingue tres casos, y la diferencia importa:
+
+    * el archivo **no existe** → `None`, y se consulta el entorno del proceso;
+    * el archivo existe y **define** la variable → su valor;
+    * el archivo existe y **no la define** → `""`, que significa «no hay clave».
+      No se cae al entorno del proceso a propósito: tras «Quitar la
+      credencial», un proceso que cargó la clave al arrancar la seguiría viendo
+      en `os.environ`, y quitar no quitaría nada hasta reiniciar.
+    """
+    ruta = _ruta_env(raiz)
+    if not ruta.exists():
+        return None
+
+    try:
+        lineas = ruta.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+
+    for linea in lineas:
+        desnuda = linea.strip()
+        if desnuda.startswith(f"{VARIABLE_ENTORNO}="):
+            return desnuda.split("=", 1)[1].strip()
+    return ""
+
+
+def _clave_del_entorno(raiz: str | os.PathLike) -> str:
+    """Clave vigente en el entorno, dando prioridad al `.env` sobre el proceso.
+
+    `os.getenv` devuelve lo que el proceso cargó **al arrancar** —`config.py`
+    lee el `.env` una sola vez—, así que una clave escrita desde el panel no
+    surtiría efecto hasta reiniciar. Para que la activación sin reinicio sea
+    real, manda el archivo; el entorno del proceso solo se consulta cuando el
+    proyecto no tiene `.env` (pruebas, o una variable exportada a mano).
+    """
+    del_archivo = _leer_env(raiz)
+    if del_archivo is not None:
+        return del_archivo
+    return os.getenv(VARIABLE_ENTORNO, "").strip()
+
+
+def _actualizar_env(raiz: str | os.PathLike, valor: Optional[str]) -> None:
+    """Escribe —o retira— la clave en el `.env` del proyecto.
+
+    El asistente resuelve la credencial desde el entorno, así que guardarla solo
+    en el almacén cifrado no bastaría: hay que dejarla también aquí, que es de
+    donde la lee. Se conserva el resto del archivo (comentarios y otras
+    variables) y se escribe con permisos `0600`, porque es un secreto en claro.
+
+    `valor=None` retira la línea: es lo que hace «Quitar la credencial». Si no
+    se retirara, el entorno seguiría teniendo la clave anterior y el panel
+    diría que hay credencial después de haberla quitado.
+    """
+    ruta = _ruta_env(raiz)
+    try:
+        lineas = ruta.read_text(encoding="utf-8").splitlines() if ruta.exists() else []
+    except OSError:
+        lineas = []
+
+    nueva = f"{VARIABLE_ENTORNO}={valor}" if valor else None
+    salida: list[str] = []
+    puesto = False
+
+    for linea in lineas:
+        if linea.strip().startswith(f"{VARIABLE_ENTORNO}="):
+            if nueva and not puesto:
+                salida.append(nueva)
+                puesto = True
+            # Con `nueva=None` la línea simplemente se descarta.
+            continue
+        salida.append(linea)
+
+    if nueva and not puesto:
+        salida.append(nueva)
+
+    descriptor = os.open(ruta, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    # `O_CREAT` solo aplica el modo cuando **crea** el archivo: si ya existía
+    # (el `.env` del proyecto suele existir), conservaría sus permisos y la
+    # clave quedaría legible por otros usuarios. Se fuerzan aquí.
+    os.fchmod(descriptor, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
+        archivo.write("\n".join(salida).rstrip("\n") + "\n")
 
 
 # --------------------------------------------------------------------------- #
@@ -119,6 +219,9 @@ def _escribir(raiz: str | os.PathLike, datos: dict[str, Any]) -> None:
     """Guarda el almacén con permisos 0600."""
     ruta = _ruta_config(raiz)
     descriptor = os.open(ruta, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    # Igual que en el `.env`: si el archivo ya existía con permisos más amplios,
+    # `O_CREAT` no los corrige.
+    os.fchmod(descriptor, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
         json.dump(datos, archivo, indent=2, ensure_ascii=False)
 
@@ -135,7 +238,7 @@ def clave(raiz: str | os.PathLike) -> Optional[str]:
     se guarde desde el panel pasa a ser la fuente cuando el entorno no define
     nada.
     """
-    del_entorno = os.getenv(VARIABLE_ENTORNO, "").strip()
+    del_entorno = _clave_del_entorno(raiz)
     if del_entorno:
         return del_entorno
 
@@ -158,7 +261,7 @@ def estado(raiz: str | os.PathLike) -> dict[str, Any]:
     Nunca devuelve la clave: solo si está configurada y de dónde sale.
     """
     datos = _leer(raiz)
-    del_entorno = bool(os.getenv(VARIABLE_ENTORNO, "").strip())
+    del_entorno = bool(_clave_del_entorno(raiz))
 
     if del_entorno:
         origen = "entorno"
@@ -228,8 +331,80 @@ def guardar(
     if api_key is not None and api_key.strip():
         datos["api_key"] = EncryptionManager.encrypt_str_with_key(
             api_key.strip(), _clave_del_almacen(raiz))
+        # El asistente lee la credencial del entorno, así que se deja también en
+        # el `.env`: guardarla solo en el almacén no la activaría.
+        _actualizar_env(raiz, api_key.strip())
     elif quitar_clave:
         datos.pop("api_key", None)
+        # Se retira del `.env` también; si no, el entorno seguiría sirviendo la
+        # clave anterior y «quitar» no quitaría nada.
+        _actualizar_env(raiz, None)
 
     _escribir(raiz, datos)
     return estado(raiz)
+
+
+# --------------------------------------------------------------------------- #
+# Prueba real de la credencial
+# --------------------------------------------------------------------------- #
+
+
+def probar(raiz: str | os.PathLike, *, tiempo_limite: float = 15.0) -> dict[str, Any]:
+    """Comprueba contra el proveedor que la credencial guardada sirve.
+
+    No adivina ni simula: hace una petición real al endpoint del proveedor y
+    devuelve lo que responda. Es lo que el panel ofrece antes de ponerse a usar
+    el modelo, para no descubrir una clave inválida a mitad de una conversación.
+
+    Returns:
+        Dict con ``ok``, ``mensaje`` y, cuando el proveedor contesta con un
+        error, el ``detalle`` que haya dado.
+    """
+    actual = estado(raiz)
+    clave_actual = clave(raiz)
+
+    if not clave_actual:
+        return {"ok": False, "mensaje": "No hay credencial configurada que probar."}
+
+    if actual["proveedor"] != "gemini":
+        return {
+            "ok": False,
+            "mensaje": "Solo el proveedor de Google Gemini tiene prueba implementada.",
+        }
+
+    endpoint = (actual["endpoint"] or PROVEEDORES[0]["endpoint"]).rstrip("/")
+    peticion = urllib.request.Request(
+        f"{endpoint}/models", headers={"x-goog-api-key": clave_actual})
+
+    try:
+        with urllib.request.urlopen(peticion, timeout=tiempo_limite) as respuesta:
+            cuerpo = json.loads(respuesta.read() or b"{}")
+    except urllib.error.HTTPError as error:
+        detalle = ""
+        try:
+            detalle = json.loads(error.read() or b"{}").get("error", {}).get("message", "")
+        except Exception:
+            detalle = ""
+        return {
+            "ok": False,
+            "mensaje": f"El proveedor rechazó la credencial ({error.code}).",
+            "detalle": detalle or str(error),
+        }
+    except Exception as error:
+        return {
+            "ok": False,
+            "mensaje": "No se pudo contactar el proveedor.",
+            "detalle": str(error),
+        }
+
+    disponibles = [
+        modelo.get("name", "").split("/")[-1]
+        for modelo in cuerpo.get("models", [])
+        if modelo.get("name")
+    ]
+
+    return {
+        "ok": True,
+        "mensaje": "La credencial responde y el proveedor acepta el modelo configurado.",
+        "modelos_disponibles": disponibles[:20],
+    }

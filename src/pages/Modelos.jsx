@@ -26,6 +26,14 @@ import { backend } from '../lib/api.js'
  * informa de *si* hay credencial y de dónde sale. Al volver a entrar, el campo
  * llega vacío: no hay forma de releerla desde aquí.
  *
+ * **También se deja en el `.env` del proyecto** (permisos 0600): el asistente
+ * resuelve la credencial desde el entorno, así que guardarla solo en el almacén
+ * no la activaría. «Quitar la credencial» la retira de los dos sitios.
+ *
+ * **Prueba real.** El botón «Probar conexión» pide al backend una petición de
+ * verdad contra el proveedor: no adivina si la clave sirve, la usa y cuenta lo
+ * que responda.
+ *
  * La adopción es **sin reiniciar**: el servicio resuelve la credencial cada vez
  * que se inicia una conversación, así que basta con abrir una nueva en el panel
  * del asistente.
@@ -37,6 +45,9 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
   const [ocupado, setOcupado] = useState(false)
+  // Resultado de la prueba real contra el proveedor.
+  const [prueba, setPrueba] = useState(null)
+  const [probando, setProbando] = useState(false)
 
   const [proveedor, setProveedor] = useState('')
   const [modelo, setModelo] = useState('')
@@ -93,6 +104,25 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       setError(fallo.message)
     } finally {
       setOcupado(false)
+    }
+  }
+
+  /**
+   * Prueba la credencial contra el proveedor antes de usarla. La petición la
+   * hace el backend —el renderer nunca ve la clave— y devuelve lo que el
+   * proveedor responda de verdad.
+   */
+  const probarConexion = async () => {
+    setProbando(true)
+    setPrueba(null)
+    setError(null)
+
+    try {
+      setPrueba(await backend.modelos.probar())
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setProbando(false)
     }
   }
 
@@ -276,22 +306,68 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                     Quitar la credencial
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={probarConexion}
+                  disabled={probando || !tieneClave}
+                  title={
+                    tieneClave
+                      ? 'Hace una petición real al proveedor con la credencial guardada'
+                      : 'Guarda una credencial antes de probarla'
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario disabled:opacity-50"
+                >
+                  <Icono nombre="refrescar" tamano={14} className={probando ? 'animate-spin' : ''} />
+                  {probando ? 'Probando…' : 'Probar conexión'}
+                </button>
               </div>
+
+              {prueba && (
+                <div
+                  role="status"
+                  className={[
+                    'flex flex-col gap-1 rounded-lg border px-3.5 py-3 text-cuerpo-sm',
+                    prueba.ok
+                      ? 'border-exito/40 bg-exito/5 text-exito'
+                      : 'border-peligro/40 bg-peligro/5 text-peligro',
+                  ].join(' ')}
+                >
+                  <p className="font-medium">{prueba.mensaje}</p>
+                  {prueba.detalle && (
+                    <p className="break-all font-mono text-codigo text-texto-2">{prueba.detalle}</p>
+                  )}
+                  {prueba.modelos_disponibles?.length > 0 && (
+                    <p className="text-tenue">
+                      {prueba.modelos_disponibles.length} modelo(s) disponibles en la cuenta, entre
+                      ellos <span className="font-mono">{prueba.modelos_disponibles[0]}</span>.
+                    </p>
+                  )}
+                </div>
+              )}
             </form>
           </Panel>
 
           <Panel titulo="Cómo se aplica" descripcion="Activación sin reiniciar">
             <ul className="flex flex-col gap-2 text-cuerpo-sm text-texto-2">
               <li className="flex items-start gap-2">
-                <Icono nombre="refrescar" tamano={14} />
-                El servicio lee la credencial cada vez que se inicia una conversación, así que un
-                cambio se aplica al abrir una nueva en el panel del asistente.
+                <Icono nombre="guardar" tamano={14} />
+                Al guardar, la credencial se cifra en el almacén local y se deja también en el{' '}
+                <span className="font-mono">.env</span> del proyecto (permisos{' '}
+                <span className="font-mono">0600</span>), que es de donde la lee el asistente. Se
+                aplica al abrir una conversación nueva, sin reiniciar.
               </li>
               <li className="flex items-start gap-2">
-                <Icono nombre="llave" tamano={14} />
-                El proveedor del entorno (<span className="font-mono">GEMINI_API_KEY</span>) tiene
-                prioridad si existe: en ese caso el panel lo indica y la credencial guardada queda
-                como respaldo.
+                <Icono nombre="basura" tamano={14} />
+                «Quitar la credencial» la retira de los dos sitios. Si solo se quitara del almacén,
+                el <span className="font-mono">.env</span> seguiría sirviendo la clave anterior y el
+                panel diría que hay credencial.
+              </li>
+              <li className="flex items-start gap-2">
+                <Icono nombre="refrescar" tamano={14} />
+                «Probar conexión» hace una petición real al proveedor con la credencial guardada,
+                antes de ponerse a usarla: evita descubrir una clave inválida a mitad de una
+                conversación.
               </li>
               <li className="flex items-start gap-2">
                 <Icono nombre="escudo" tamano={14} />

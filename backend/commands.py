@@ -641,6 +641,11 @@ class ComandosDatenJager:
         self._exigir_sesion()
         return _modelos.guardar(self._raiz, **campos)
 
+    def probar_conexion_de_modelos(self) -> dict:
+        """Prueba la credencial guardada contra el proveedor, de verdad."""
+        self._exigir_sesion()
+        return _modelos.probar(self._raiz)
+
     # ------------------------------------------------------------------ #
     # Catálogo
     # ------------------------------------------------------------------ #

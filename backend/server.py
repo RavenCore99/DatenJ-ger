@@ -413,6 +413,11 @@ def crear_app(
         """Guarda la conexión de modelos; el chatbot la adopta al reiniciar el chat."""
         return comandos.guardar_conexion_de_modelos(**cuerpo.model_dump())
 
+    @app.post("/api/modelos/probar", dependencies=protegido)
+    async def probar_conexion_de_modelos() -> dict[str, Any]:
+        """Prueba real de la credencial contra el proveedor configurado."""
+        return comandos.probar_conexion_de_modelos()
+
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:
         """Adopta una sesión ya autenticada por el proceso de escritorio."""
