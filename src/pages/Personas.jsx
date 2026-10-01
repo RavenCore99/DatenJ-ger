@@ -36,13 +36,22 @@ export default function Personas() {
   const [ocupado, setOcupado] = useState(null)
   const [seleccion, setSeleccion] = useState(null)
   const [alta, setAlta] = useState(CAMPOS_VACIOS)
+  // Catálogo de empresas (calidad de vida): alimenta el selector del formulario
+  // y el panel de personal por empresa. La gestión deja de ser texto libre.
+  const [catalogo, setCatalogo] = useState([])
+  const [empresaFiltro, setEmpresaFiltro] = useState(null)
 
   const cargar = useCallback(async (texto) => {
     setEstado('cargando')
     setError(null)
 
     try {
-      setFilas(await backend.personas.listar(texto))
+      const [personas, empresas] = await Promise.all([
+        backend.personas.listar(texto),
+        backend.empresas.listar(),
+      ])
+      setFilas(personas)
+      setCatalogo(empresas)
       setEstado('listo')
     } catch (fallo) {
       setError(fallo.message)
@@ -71,6 +80,17 @@ export default function Personas() {
   const seleccionada = useMemo(
     () => filas.find((fila) => fila.id === seleccion) ?? null,
     [filas, seleccion],
+  )
+
+  /** Personas que se listan: todas, o las de la empresa elegida en el panel. */
+  const visibles = useMemo(
+    () => (empresaFiltro ? filas.filter((fila) => fila.empresa_id === empresaFiltro) : filas),
+    [filas, empresaFiltro],
+  )
+
+  const empresaElegida = useMemo(
+    () => catalogo.find((empresa) => empresa.id === empresaFiltro) ?? null,
+    [catalogo, empresaFiltro],
   )
 
   const ejecutar = useCallback(
@@ -165,10 +185,44 @@ export default function Personas() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Tarjeta etiqueta="Titulares" valor={resumen.total} acento="primario" />
-        <Tarjeta etiqueta="Con empresa" valor={resumen.conEmpresa} />
+        <Tarjeta etiqueta="Empresas" valor={catalogo.length} />
         <Tarjeta etiqueta="Con documentos" valor={resumen.conDocumentos} acento="exito" />
         <Tarjeta etiqueta="Documentos vinculados" valor={resumen.documentos} />
       </div>
+
+      {/* Personal por empresa (calidad de vida): el catálogo deja de ser texto
+          libre, así que aquí se ve el reparto real y se filtra con un clic. */}
+      {catalogo.length > 0 && (
+        <Panel
+          titulo="Personal por empresa"
+          descripcion="Titulares y documentos agrupados por su empresa"
+        >
+          <ul className="flex flex-col divide-y divide-borde">
+            {catalogo.map((empresa) => {
+              const activa = empresa.id === empresaFiltro
+              return (
+                <li key={empresa.id}>
+                  <button
+                    type="button"
+                    onClick={() => setEmpresaFiltro(activa ? null : empresa.id)}
+                    aria-pressed={activa}
+                    className={[
+                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors',
+                      activa ? 'bg-primario-suave text-primario' : 'hover:bg-fondo-2',
+                    ].join(' ')}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-medium">{empresa.nombre}</span>
+                    <Pill tipo="primario">{empresa.personas}</Pill>
+                    <span className="shrink-0 font-mono text-telemetria text-tenue">
+                      {empresa.documentos} doc.
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </Panel>
+      )}
 
       <Panel titulo="Registrar titular" descripcion="Cédula y nombres son obligatorios">
         <form className="grid grid-cols-2 gap-4 lg:grid-cols-4" onSubmit={crear}>
@@ -183,6 +237,7 @@ export default function Personas() {
               valor={alta[campo]}
               obligatorio={campo !== 'empresa'}
               mono={campo === 'cedula'}
+              lista={campo === 'empresa' ? 'catalogo-empresas' : undefined}
               onCambio={(evento) =>
                 setAlta((actual) => ({ ...actual, [campo]: evento.target.value }))
               }
@@ -201,22 +256,44 @@ export default function Personas() {
         </form>
       </Panel>
 
-      <Panel titulo="Listado de titulares" descripcion={`${filas.length} persona(s)`}>
+      <Panel
+        titulo="Listado de titulares"
+        descripcion={
+          empresaElegida
+            ? `${visibles.length} de ${filas.length} persona(s) · ${empresaElegida.nombre}`
+            : `${filas.length} persona(s)`
+        }
+      >
+        {empresaElegida && (
+          <p className="mb-3 flex items-center gap-2 text-cuerpo-sm text-tenue">
+            Filtrando por empresa
+            <button
+              type="button"
+              onClick={() => setEmpresaFiltro(null)}
+              className="text-primario transition-colors hover:underline"
+            >
+              Quitar filtro
+            </button>
+          </p>
+        )}
+
         {estado === 'cargando' && <Esqueleto filas={4} variante="tabla" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar(busqueda)} />}
 
-        {estado === 'listo' && filas.length === 0 && (
+        {estado === 'listo' && visibles.length === 0 && (
           <EstadoVacio
             titulo={busqueda ? 'Sin resultados' : 'Sin titulares'}
             mensaje={
-              busqueda
-                ? `Ninguna persona coincide con "${busqueda}".`
-                : 'Registra el primer titular para poder asociarle documentos.'
+              empresaElegida
+                ? `Nadie está asociado a "${empresaElegida.nombre}" todavía.`
+                : busqueda
+                  ? `Ninguna persona coincide con "${busqueda}".`
+                  : 'Registra el primer titular para poder asociarle documentos.'
             }
           />
         )}
 
-        {estado === 'listo' && filas.length > 0 && (
+        {estado === 'listo' && visibles.length > 0 && (
           <table className="w-full border-collapse text-cuerpo-md">
             <thead>
               <tr className="text-left text-etiqueta-sm uppercase tracking-wider text-tenue">
@@ -228,7 +305,7 @@ export default function Personas() {
               </tr>
             </thead>
             <tbody>
-              {filas.map((fila, indice) => (
+              {visibles.map((fila, indice) => (
                 <tr
                   key={fila.id}
                   onClick={() => setSeleccion(fila.id === seleccion ? null : fila.id)}
@@ -282,6 +359,10 @@ export default function Personas() {
           />
         </Panel>
       )}
+
+      {/* Una sola lista de sugerencias para los dos formularios: repetirla
+          dentro de cada uno dejaría dos elementos con el mismo id. */}
+      <ListaDeEmpresas catalogo={catalogo} />
     </div>
   )
 }
@@ -311,6 +392,7 @@ function FormularioPersona({ fila, ocupado, onGuardar }) {
       <Campo
         etiqueta="Empresa"
         valor={campos.empresa}
+        lista="catalogo-empresas"
         onCambio={(evento) => setCampos((actual) => ({ ...actual, empresa: evento.target.value }))}
       />
 
@@ -327,7 +409,26 @@ function FormularioPersona({ fila, ocupado, onGuardar }) {
   )
 }
 
-function Campo({ etiqueta, valor, onCambio, obligatorio = false, soloLectura = false, mono = false }) {
+/** Lista de sugerencias del catálogo, compartida por los dos formularios. */
+function ListaDeEmpresas({ catalogo }) {
+  return (
+    <datalist id="catalogo-empresas">
+      {catalogo.map((empresa) => (
+        <option key={empresa.id} value={empresa.nombre} />
+      ))}
+    </datalist>
+  )
+}
+
+function Campo({
+  etiqueta,
+  valor,
+  onCambio,
+  obligatorio = false,
+  soloLectura = false,
+  mono = false,
+  lista,
+}) {
   return (
     <label className="flex flex-col gap-1">
       <span className="text-etiqueta-sm text-texto">{etiqueta}</span>
@@ -337,6 +438,7 @@ function Campo({ etiqueta, valor, onCambio, obligatorio = false, soloLectura = f
         onChange={onCambio}
         required={obligatorio}
         readOnly={soloLectura}
+        list={lista}
         className={[
           'rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none transition-colors',
           mono ? 'font-mono' : '',
