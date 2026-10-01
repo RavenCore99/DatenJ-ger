@@ -5,25 +5,23 @@ import Panel, {
   Esqueleto,
   EstadoError,
   EstadoVacio,
-  Tarjeta,
 } from '../components/Panel.jsx'
+import { Donut, LineaTendencia, Medidor } from '../components/Graficos.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
 /**
- * Recopilador de datos y estadísticas (SCRUM-62).
+ * Dashboard de datos y estadísticas (SCRUM-82).
  *
- * La **lógica** de las métricas vive en Python (`backend/services/reportes.py`:
- * conteos, distribución por empresa y serie temporal) y en el frontend solo se
- * dibuja, con la paleta del sistema —el reparto acordado para esta fase—. Los
- * gráficos se componen con `div`s y los tokens de color en lugar de traer una
- * librería de charts: son barras, y Tailwind ya sabe hacerlas.
+ * La **lógica** vive en Python (`backend/services/reportes.py`): métricas,
+ * distribución por empresa y la serie temporal con regresión, predicción y R²
+ * (`GET /api/reportes/tendencia`). Aquí solo se dibuja, con la paleta del
+ * sistema y sin librería de charts: medidores, anillo y línea de tendencia son
+ * SVG propio (`src/components/Graficos.jsx`).
  *
- * Todo lo que se muestra sale de una consulta real. Si el archivo está vacío,
- * se dice que está vacío en vez de dibujar ejes sin datos.
+ * Todo lo que se muestra sale de una consulta real. Si el archivo está vacío se
+ * dice que está vacío, en vez de dibujar ejes sin datos.
  */
-const COLORES_BARRA = ['bg-primario', 'bg-acento', 'bg-exito', 'bg-alerta', 'bg-peligro']
-
 export default function Estadisticas({ onNavegar }) {
   const { conectado, autenticado } = useApp()
 
@@ -35,13 +33,13 @@ export default function Estadisticas({ onNavegar }) {
     setEstado('cargando')
     setError(null)
     try {
-      const [estadisticas, porEmpresa, porDia, eventos] = await Promise.all([
+      const [estadisticas, porEmpresa, tendencia, eventos] = await Promise.all([
         backend.reportes.estadisticas(),
         backend.reportes.porEmpresa(),
-        backend.reportes.porDia(),
+        backend.reportes.tendencia(),
         backend.auditoria.contar(),
       ])
-      setDatos({ estadisticas, porEmpresa, porDia, eventos: eventos?.total ?? 0 })
+      setDatos({ estadisticas, porEmpresa, tendencia, eventos: eventos?.total ?? 0 })
       setEstado('listo')
     } catch (fallo) {
       setError(fallo.message)
@@ -69,8 +67,19 @@ export default function Estadisticas({ onNavegar }) {
 
   const metricas = datos?.estadisticas ?? {}
   const porEmpresa = datos?.porEmpresa ?? []
-  const porDia = datos?.porDia ?? []
+  const tendencia = datos?.tendencia ?? null
+  const eventos = datos?.eventos ?? 0
   const vacio = (metricas.total_pdfs ?? 0) === 0 && estado === 'listo'
+
+  const medidores = [
+    { etiqueta: 'Documentos', valor: metricas.total_pdfs ?? 0, rol: 'primario' },
+    { etiqueta: 'Titulares', valor: metricas.total_personas ?? 0, rol: 'acento' },
+    { etiqueta: 'Empresas', valor: metricas.total_empresas ?? 0, rol: 'exito' },
+    { etiqueta: 'Eventos', valor: eventos, rol: 'alerta' },
+  ]
+  // Los medidores comparten escala para poder compararse entre sí; el valor
+  // real va dentro del arco, así que la escala relativa no oculta la cifra.
+  const maximoMedidores = Math.max(...medidores.map(({ valor }) => valor), 1)
 
   return (
     <div className="flex flex-col gap-4">
@@ -94,12 +103,22 @@ export default function Estadisticas({ onNavegar }) {
 
       {estado === 'listo' && (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <Tarjeta etiqueta="Documentos" valor={metricas.total_pdfs ?? 0} acento="primario" />
-            <Tarjeta etiqueta="Titulares" valor={metricas.total_personas ?? 0} />
-            <Tarjeta etiqueta="Empresas" valor={metricas.total_empresas ?? 0} />
-            <Tarjeta etiqueta="Eventos auditados" valor={datos.eventos} acento="acento" />
-          </div>
+          <Panel
+            titulo="Resumen"
+            descripcion="Escala relativa entre las métricas del archivo"
+          >
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {medidores.map((medidor) => (
+                <Medidor
+                  key={medidor.etiqueta}
+                  etiqueta={medidor.etiqueta}
+                  valor={medidor.valor}
+                  maximo={maximoMedidores}
+                  rol={medidor.rol}
+                />
+              ))}
+            </div>
+          </Panel>
 
           {vacio ? (
             <Panel titulo="Distribución" descripcion="Sin datos todavía">
@@ -123,21 +142,17 @@ export default function Estadisticas({ onNavegar }) {
                 titulo="Documentos por empresa"
                 descripcion={`${porEmpresa.length} empresa(s) con expedientes`}
               >
-                <BarrasHorizontales
-                  elementos={porEmpresa.map((fila) => ({
-                    etiqueta: fila.empresa,
-                    valor: fila.total,
-                  }))}
-                />
+                <Donut elementos={porEmpresa.map((fila) => ({
+                  etiqueta: fila.empresa,
+                  valor: fila.total,
+                }))} />
               </Panel>
 
               <Panel
-                titulo="Documentos por día"
-                descripcion={`${porDia.length} día(s) con altas registradas`}
+                titulo="Actividad temporal"
+                descripcion="Subidas por día con regresión lineal"
               >
-                <BarrasVerticales
-                  elementos={porDia.map((fila) => ({ etiqueta: fila.dia, valor: fila.total }))}
-                />
+                <LineaTendencia tendencia={tendencia} />
               </Panel>
             </div>
           )}
@@ -145,12 +160,8 @@ export default function Estadisticas({ onNavegar }) {
           <Panel titulo="Volumen" descripcion="Ocupación del archivo cifrado">
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Dato etiqueta="Tamaño total" valor={metricas.total_size_str ?? '0 B'} mono />
-              <Dato
-                etiqueta="Media por documento"
-                valor={mediaPorDocumento(metricas)}
-                mono
-              />
-              <Dato etiqueta="Eventos en auditoría" valor={String(datos.eventos)} mono />
+              <Dato etiqueta="Media por documento" valor={mediaPorDocumento(metricas)} mono />
+              <Dato etiqueta="Eventos en auditoría" valor={String(eventos)} mono />
             </dl>
             <p className="mt-3 border-t border-borde pt-3 text-cuerpo-sm text-tenue">
               Los tamaños son los del documento cifrado en reposo. La media se calcula aquí a
@@ -170,56 +181,6 @@ function Dato({ etiqueta, valor, mono }) {
     <div className="flex flex-col gap-0.5">
       <dt className="text-etiqueta-sm uppercase tracking-wider text-tenue">{etiqueta}</dt>
       <dd className={`text-titulo-sm ${mono ? 'font-mono' : ''}`}>{valor}</dd>
-    </div>
-  )
-}
-
-/** Barras horizontales: una por empresa, con el nombre a la izquierda. */
-function BarrasHorizontales({ elementos }) {
-  const maximo = Math.max(...elementos.map(({ valor }) => valor), 1)
-
-  return (
-    <ul className="flex flex-col gap-2.5">
-      {elementos.map(({ etiqueta, valor }, indice) => (
-        <li key={etiqueta} className="animar-entrada flex items-center gap-3">
-          <span className="w-32 shrink-0 truncate text-cuerpo-sm text-texto-2" title={etiqueta}>
-            {etiqueta}
-          </span>
-          <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-fondo-2">
-            <span
-              className={`block h-full rounded-full ${COLORES_BARRA[indice % COLORES_BARRA.length]}`}
-              style={{ width: `${Math.max((valor / maximo) * 100, 2)}%` }}
-            />
-          </span>
-          <span className="w-10 shrink-0 text-right font-mono text-cuerpo-sm">{valor}</span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-/** Barras verticales: la serie temporal, con la fecha en el pie. */
-function BarrasVerticales({ elementos }) {
-  const maximo = Math.max(...elementos.map(({ valor }) => valor), 1)
-
-  return (
-    <div className="flex h-48 items-end gap-1.5 overflow-x-auto">
-      {elementos.map(({ etiqueta, valor }, indice) => (
-        <div
-          key={etiqueta}
-          className="animar-entrada flex h-full min-w-[2.2rem] flex-1 flex-col items-center justify-end gap-1"
-          title={`${etiqueta}: ${valor}`}
-        >
-          <span className="font-mono text-telemetria text-tenue">{valor}</span>
-          <span
-            className={`w-full rounded-t ${COLORES_BARRA[indice % COLORES_BARRA.length]}`}
-            style={{ height: `${Math.max((valor / maximo) * 100, 4)}%` }}
-          />
-          <span className="rotate-0 whitespace-nowrap font-mono text-[10px] text-tenue">
-            {etiqueta?.slice(5) ?? ''}
-          </span>
-        </div>
-      ))}
     </div>
   )
 }
