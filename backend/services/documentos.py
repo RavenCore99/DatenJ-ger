@@ -26,6 +26,7 @@ from backend.errors import (
     NoAutenticadoError,
 )
 from backend.services import auditoria
+from backend.services import empresas
 
 # Acciones registradas en la tabla Auditoria por este servicio.
 ACCION_AGREGAR = "Agregar PDF (Encriptado AES-256-GCM)"
@@ -164,21 +165,28 @@ def contar_documentos(conn, cursor, usuario_id: Optional[int]) -> int:
 # Escritura
 # --------------------------------------------------------------------------- #
 
-def _resolver_persona(cursor, cedula: str, nombres: str, empresa: Optional[str]) -> int:
-    """Crea o actualiza el titular asociado al documento y devuelve su id."""
+def _resolver_persona(conn, cursor, cedula: str, nombres: str, empresa: Optional[str]) -> int:
+    """Crea o actualiza el titular asociado al documento y devuelve su id.
+
+    La empresa se resuelve contra el catálogo (`empresas.resolver_empresa`), de
+    modo que un titular creado desde el alta de un documento también entra en el
+    catálogo y no siembra duplicados.
+    """
+    empresa_id = empresas.resolver_empresa(conn, cursor, empresa)
+
     cursor.execute("SELECT id FROM Personas WHERE cedula = ?", (cedula,))
     fila = cursor.fetchone()
     if fila:
         persona_id = fila[0]
         cursor.execute(
-            "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
-            (nombres, empresa, persona_id),
+            "UPDATE Personas SET nombres = ?, empresa = ?, empresa_id = ? WHERE id = ?",
+            (nombres, empresa, empresa_id, persona_id),
         )
         return persona_id
 
     cursor.execute(
-        "INSERT INTO Personas (cedula, nombres, empresa) VALUES (?, ?, ?)",
-        (cedula, nombres, empresa),
+        "INSERT INTO Personas (cedula, nombres, empresa, empresa_id) VALUES (?, ?, ?, ?)",
+        (cedula, nombres, empresa, empresa_id),
     )
     return cursor.lastrowid
 
@@ -228,7 +236,8 @@ def crear_documento(
     try:
         persona_id = None
         if cedula and nombres:
-            persona_id = _resolver_persona(cursor, str(cedula), str(nombres), empresa or None)
+            persona_id = _resolver_persona(
+                conn, cursor, str(cedula), str(nombres), empresa or None)
 
         cursor.execute(
             "INSERT INTO PDFs (nombre, descripcion, datos, datos_encriptados, "
@@ -359,7 +368,8 @@ def actualizar_documento(
                     (nombres, empresa or None, vinculada[0]),
                 )
             else:
-                persona_id = _resolver_persona(cursor, cedula_nueva, nombres, empresa or None)
+                persona_id = _resolver_persona(
+                    conn, cursor, cedula_nueva, nombres, empresa or None)
                 cursor.execute(
                     "UPDATE PDFs SET persona_id = ? WHERE id = ? AND usuario_id = ?",
                     (persona_id, documento_id, usuario_id),

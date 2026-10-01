@@ -216,6 +216,22 @@ export const backend = {
     eliminar: (id) => solicitar(`/api/personas/${id}`, { metodo: 'DELETE' }),
   },
 
+  empresas: {
+    listar: (busqueda = '') =>
+      solicitar(`/api/empresas${busqueda ? `?buscar=${encodeURIComponent(busqueda)}` : ''}`),
+    contar: () => solicitar('/api/empresas/conteo'),
+    obtener: (id) => solicitar(`/api/empresas/${id}`),
+    crear: (nombre) => solicitar('/api/empresas', { metodo: 'POST', cuerpo: { nombre } }),
+    renombrar: (id, nombre) =>
+      solicitar(`/api/empresas/${id}`, { metodo: 'PATCH', cuerpo: { nombre } }),
+    fusionar: (origenId, destinoId) =>
+      solicitar(`/api/empresas/${origenId}/fusionar`, {
+        metodo: 'POST',
+        cuerpo: { destino_id: destinoId },
+      }),
+    eliminar: (id) => solicitar(`/api/empresas/${id}`, { metodo: 'DELETE' }),
+  },
+
   auditoria: {
     listar: (filtros = {}) => {
       const parametros = new URLSearchParams(

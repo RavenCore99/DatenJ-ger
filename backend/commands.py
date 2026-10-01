@@ -35,6 +35,7 @@ from backend.services import autenticacion as _autenticacion
 from backend.services import modelos as _modelos
 from backend import tokens as _tokens
 from backend.services import documentos as _documentos
+from backend.services import empresas as _empresas
 from backend.services import personas as _personas
 from backend.services import reportes as _reportes
 from chatbot import ChatbotService, crear_servicio
@@ -299,6 +300,58 @@ class ComandosDatenJager:
         usuario_id = self._exigir_sesion()
         return self._ejecutar(
             _personas.eliminar_persona, persona_id=persona_id, usuario_id=usuario_id
+        )
+
+    # ------------------------------------------------------------------ #
+    # Empresas
+    # ------------------------------------------------------------------ #
+
+    def listar_empresas(self, filtro: str = "") -> list[dict]:
+        """Catálogo de empresas con su número de personas y documentos."""
+        self._exigir_sesion()
+        return self._ejecutar(_empresas.listar_empresas, filtro=filtro)
+
+    def obtener_empresa(self, empresa_id: int) -> dict:
+        """Devuelve una empresa por id."""
+        self._exigir_sesion()
+        return self._ejecutar(_empresas.obtener_empresa, empresa_id=empresa_id)
+
+    def contar_empresas(self) -> int:
+        """Cuenta las empresas del catálogo."""
+        self._exigir_sesion()
+        return self._ejecutar(_empresas.contar_empresas)
+
+    def crear_empresa(self, nombre: str) -> dict:
+        """Da de alta una empresa en el catálogo."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(
+            _empresas.crear_empresa, nombre=nombre, usuario_id=usuario_id)
+
+    def renombrar_empresa(self, empresa_id: int, nombre: str) -> dict:
+        """Cambia el nombre de una empresa; alcanza a todo su personal."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(
+            _empresas.renombrar_empresa,
+            empresa_id=empresa_id,
+            nombre=nombre,
+            usuario_id=usuario_id,
+        )
+
+    def fusionar_empresas(self, origen_id: int, destino_id: int) -> dict:
+        """Une dos fichas del catálogo y mueve el personal al destino."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(
+            _empresas.fusionar_empresas,
+            origen_id=origen_id,
+            destino_id=destino_id,
+            usuario_id=usuario_id,
+        )
+
+    def eliminar_empresa(self, empresa_id: int) -> dict:
+        """Elimina una empresa del catálogo; su personal queda sin empresa."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(
+            _empresas.eliminar_empresa, empresa_id=empresa_id, usuario_id=usuario_id
         )
 
     # ------------------------------------------------------------------ #

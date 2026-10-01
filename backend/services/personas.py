@@ -22,6 +22,7 @@ from backend.errors import (
     NoEncontradoError,
 )
 from backend.services import auditoria
+from backend.services import empresas
 
 ACCION_AGREGAR = "Agregar persona (Panel Personas)"
 ACCION_EDITAR = "Editar persona (Panel Personas)"
@@ -42,6 +43,7 @@ def _fila_a_dict(fila: Sequence[Any]) -> dict:
         "nombres": fila[2],
         "empresa": fila[3],
         "documentos": fila[4],
+        "empresa_id": fila[5],
     }
 
 
@@ -67,7 +69,8 @@ def listar_personas(conn, cursor, filtro: str = "") -> list[dict]:
     consulta = (
         "SELECT pe.id, pe.cedula, pe.nombres, "
         "       COALESCE(pe.empresa, ?), "
-        "       COUNT(p.id) AS total_docs "
+        "       COUNT(p.id) AS total_docs, "
+        "       pe.empresa_id "
         "FROM Personas pe "
         "LEFT JOIN PDFs p ON p.persona_id = pe.id "
         "WHERE 1=1 "
@@ -97,7 +100,7 @@ def obtener_persona(conn, cursor, persona_id: int) -> dict:
     """
     cursor.execute(
         "SELECT pe.id, pe.cedula, pe.nombres, COALESCE(pe.empresa, ?), "
-        "       COUNT(p.id) "
+        "       COUNT(p.id), pe.empresa_id "
         "FROM Personas pe "
         "LEFT JOIN PDFs p ON p.persona_id = pe.id "
         "WHERE pe.id = ? "
@@ -148,9 +151,13 @@ def crear_persona(
         if cursor.fetchone():
             raise ConflictoError(f"Ya existe una persona con cédula {cedula}")
 
+        # La empresa entra por el catálogo: si ya existe con otra grafía, se
+        # resuelve a esa ficha en vez de crear una nueva.
+        empresa_id = empresas.resolver_empresa(conn, cursor, empresa)
+
         cursor.execute(
-            "INSERT INTO Personas (cedula, nombres, empresa) VALUES (?, ?, ?)",
-            (cedula, nombres, empresa),
+            "INSERT INTO Personas (cedula, nombres, empresa, empresa_id) VALUES (?, ?, ?, ?)",
+            (cedula, nombres, empresa, empresa_id),
         )
         persona_id = cursor.lastrowid
         conn.commit()
@@ -161,7 +168,13 @@ def crear_persona(
         raise
 
     _registrar_auditoria(cursor, conn, ACCION_AGREGAR, usuario_id)
-    return {"id": persona_id, "cedula": cedula, "nombres": nombres, "empresa": empresa}
+    return {
+        "id": persona_id,
+        "cedula": cedula,
+        "nombres": nombres,
+        "empresa": empresa,
+        "empresa_id": empresa_id,
+    }
 
 
 def actualizar_persona(
@@ -191,9 +204,10 @@ def actualizar_persona(
     obtener_persona(conn, cursor, persona_id)
 
     try:
+        empresa_id = empresas.resolver_empresa(conn, cursor, empresa)
         cursor.execute(
-            "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
-            (nombres, empresa, persona_id),
+            "UPDATE Personas SET nombres = ?, empresa = ?, empresa_id = ? WHERE id = ?",
+            (nombres, empresa, empresa_id, persona_id),
         )
         conn.commit()
     except Exception:
