@@ -190,6 +190,22 @@ class PersonaPatch(BaseModel):
     empresa: Optional[str] = None
 
 
+class EmpresaNueva(BaseModel):
+    """Alta de empresa en el catálogo."""
+
+    nombre: str
+
+
+class EmpresaPatch(BaseModel):
+    nombre: str
+
+
+class FusionDeEmpresas(BaseModel):
+    """Fusión de dos fichas: el personal del origen pasa al destino."""
+
+    destino_id: int
+
+
 class Destino(BaseModel):
     destino: str
 
@@ -507,6 +523,38 @@ def crear_app(
     @app.delete("/api/personas/{persona_id}", dependencies=protegido)
     async def eliminar_persona(persona_id: int) -> dict[str, Any]:
         return comandos.eliminar_persona(persona_id)
+
+    # ---------------------------------------------------------------- #
+    # Empresas
+    # ---------------------------------------------------------------- #
+
+    @app.get("/api/empresas", dependencies=protegido)
+    async def listar_empresas(buscar: str = "") -> list[dict[str, Any]]:
+        return comandos.listar_empresas(buscar)
+
+    @app.get("/api/empresas/conteo", dependencies=protegido)
+    async def contar_empresas() -> dict[str, int]:
+        return {"total": comandos.contar_empresas()}
+
+    @app.get("/api/empresas/{empresa_id}", dependencies=protegido)
+    async def obtener_empresa(empresa_id: int) -> dict[str, Any]:
+        return comandos.obtener_empresa(empresa_id)
+
+    @app.post("/api/empresas", status_code=201, dependencies=protegido)
+    async def crear_empresa(cuerpo: EmpresaNueva) -> dict[str, Any]:
+        return comandos.crear_empresa(cuerpo.nombre)
+
+    @app.patch("/api/empresas/{empresa_id}", dependencies=protegido)
+    async def renombrar_empresa(empresa_id: int, cuerpo: EmpresaPatch) -> dict[str, Any]:
+        return comandos.renombrar_empresa(empresa_id, cuerpo.nombre)
+
+    @app.post("/api/empresas/{origen_id}/fusionar", dependencies=protegido)
+    async def fusionar_empresas(origen_id: int, cuerpo: FusionDeEmpresas) -> dict[str, Any]:
+        return comandos.fusionar_empresas(origen_id, cuerpo.destino_id)
+
+    @app.delete("/api/empresas/{empresa_id}", dependencies=protegido)
+    async def eliminar_empresa(empresa_id: int) -> dict[str, Any]:
+        return comandos.eliminar_empresa(empresa_id)
 
     # ---------------------------------------------------------------- #
     # Auditoría
