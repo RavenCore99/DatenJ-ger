@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
 import Entrada from './components/Entrada.jsx'
 import Icono from './components/Icono.jsx'
+import { pulso } from './lib/movimiento.js'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
 import Personas from './pages/Personas.jsx'
@@ -124,7 +125,7 @@ function Marco() {
         onPlegar={() => setPlegada((valor) => !valor)}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
         <SubCabecera seccion={activa} onAbrirAjustes={() => setSeccion('cuenta')} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
@@ -135,6 +136,23 @@ function Marco() {
             <Componente onNavegar={setSeccion} />
           </div>
         </main>
+
+        {/* Asistente flotante: se oculta en Ajustes, donde estorbaría sobre los
+            formularios de seguridad. */}
+        {seccion !== 'cuenta' && (
+          <BotonAsistente
+            enElAsistente={seccion === 'chatbot'}
+            onAbrir={() => {
+              if (seccion === 'chatbot') {
+                // Ya estamos aquí: el botón lleva el foco al compositor en vez
+                // de navegar a donde ya se está.
+                document.querySelector('main textarea')?.focus()
+                return
+              }
+              setSeccion('chatbot')
+            }}
+          />
+        )}
 
         <BarraEstado />
       </div>
@@ -181,6 +199,34 @@ function AccesoRapido({ icono, titulo, onPulsar }) {
       className="flex h-8 w-8 items-center justify-center rounded-md border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
     >
       <Icono nombre={icono} tamano={16} />
+    </button>
+  )
+}
+
+/**
+ * Asistente flotante (calidad de vida): el chat queda a un clic desde cualquier
+ * sección, sin depender de la barra lateral ni de tenerla desplegada.
+ *
+ * Se oculta en Ajustes, donde el botón flotaría sobre formularios de seguridad
+ * y estorbaría. Dentro del propio asistente no navega —ya se está ahí—, sino
+ * que lleva el foco al compositor, para que el botón nunca sea un no-op.
+ */
+function BotonAsistente({ onAbrir, enElAsistente }) {
+  const boton = useRef(null)
+
+  return (
+    <button
+      ref={boton}
+      type="button"
+      onClick={() => {
+        pulso(boton.current)
+        onAbrir()
+      }}
+      title={enElAsistente ? 'Escribir en el asistente' : 'Abrir el asistente'}
+      aria-label={enElAsistente ? 'Escribir en el asistente' : 'Abrir el asistente'}
+      className="absolute bottom-12 right-6 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-primario text-sobre-primario shadow-flotante transition-colors hover:bg-primario-enfasis"
+    >
+      <Icono nombre="chatbot" tamano={20} />
     </button>
   )
 }
