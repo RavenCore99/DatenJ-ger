@@ -28,6 +28,18 @@ export function ProveedorApp({ children }) {
   // telemetría la muestra. Sin sesión no se puede consultar, así que su estado
   // honesto es «sin configurar».
   const [modelos, setModelos] = useState(null)
+  // Notificaciones del sistema (SCRUM-87): los avisos transitorios y la
+  // preferencia de mostrarlos viven aquí para que cualquier pantalla —incluido
+  // el portal de acceso, que no está dentro del shell— pueda emitir uno.
+  const [notificaciones, setNotificaciones] = useState(() => notificacionesIniciales())
+  const [avisos, setAvisos] = useState([])
+  const contadorAvisos = useRef(0)
+  // Peticiones de los atajos globales a la pantalla activa (SCRUM-85): el
+  // manejador de teclado vive en el marco, pero «nuevo documento» o «eliminar
+  // el seleccionado» solo tienen sentido dentro de su pantalla. La marca
+  // distingue dos pulsaciones de la misma tecla.
+  const [peticion, setPeticion] = useState(null)
+  const contadorPeticiones = useRef(0)
 
   const montado = useRef(true)
 
@@ -165,6 +177,43 @@ export function ProveedorApp({ children }) {
     setAnimaciones((actual) => !actual)
   }, [])
 
+  /**
+   * Emite un aviso transitorio. Se conservan los cuatro últimos: una ráfaga de
+   * notificaciones no debe tapar la pantalla ni crecer sin límite.
+   */
+  const notificar = useCallback((texto, tipo = 'exito') => {
+    if (!texto) return
+    contadorAvisos.current += 1
+    const id = contadorAvisos.current
+    setAvisos((actual) => [...actual, { id, texto, tipo }].slice(-4))
+  }, [])
+
+  const descartarAviso = useCallback((id) => {
+    setAvisos((actual) => actual.filter((aviso) => aviso.id !== id))
+  }, [])
+
+  const alternarNotificaciones = useCallback(() => {
+    setNotificaciones((actual) => !actual)
+  }, [])
+
+  /** Pide a la pantalla activa que haga algo que solo ella sabe hacer. */
+  const pedir = useCallback((accion) => {
+    contadorPeticiones.current += 1
+    setPeticion({ accion, marca: contadorPeticiones.current })
+  }, [])
+
+  // La preferencia de notificaciones se recuerda entre arranques, como el tema.
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        'datenjager.notificaciones',
+        notificaciones ? 'activas' : 'silenciadas',
+      )
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }, [notificaciones])
+
   const valor = useMemo(
     () => ({
       estadoBackend,
@@ -189,8 +238,17 @@ export function ProveedorApp({ children }) {
       aviso,
       limpiarAviso: () => setAviso(null),
       recargarSalud: () => consultarSalud(),
+      // Notificaciones del sistema (SCRUM-87).
+      notificaciones,
+      alternarNotificaciones,
+      avisos,
+      notificar,
+      descartarAviso,
+      // Atajos globales (SCRUM-85).
+      peticion,
+      pedir,
     }),
-    [estadoBackend, version, sesion, tema, animaciones, baseDatos, modelos, aviso, alternarTema, alternarAnimaciones, consultarSalud],
+    [estadoBackend, version, sesion, tema, animaciones, baseDatos, modelos, aviso, alternarTema, alternarAnimaciones, consultarSalud, notificaciones, avisos, notificar, descartarAviso, alternarNotificaciones, peticion, pedir],
   )
 
   return <ContextoApp.Provider value={valor}>{children}</ContextoApp.Provider>
@@ -222,6 +280,15 @@ function temaInicial() {
 function animacionesIniciales() {
   try {
     return localStorage.getItem('datenjager.animaciones') !== 'reducidas'
+  } catch {
+    return true
+  }
+}
+
+/** Las notificaciones vienen activas; se recuerda la preferencia (SCRUM-87). */
+function notificacionesIniciales() {
+  try {
+    return localStorage.getItem('datenjager.notificaciones') !== 'silenciadas'
   } catch {
     return true
   }

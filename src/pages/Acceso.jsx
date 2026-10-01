@@ -33,6 +33,11 @@ export default function Acceso({ onVolver }) {
   const [conRespaldo, setConRespaldo] = useState(false)
   const [error, setError] = useState(null)
   const [ocupado, setOcupado] = useState(false)
+  // Restablecimiento (SCRUM-84): la contraseña nueva y su confirmación, más el
+  // acuse de recibo que se muestra al volver al acceso.
+  const [nueva, setNueva] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  const [restablecido, setRestablecido] = useState(false)
 
   const entrar = async (evento) => {
     evento.preventDefault()
@@ -72,6 +77,54 @@ export default function Acceso({ onVolver }) {
         setContrasena('')
         recargarSalud()
       }
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  /**
+   * Paso 1 del restablecimiento: verifica un código de respaldo. Es lo único
+   * que puede autenticar a quien olvidó la contraseña, porque el secreto del
+   * autenticador está cifrado con una clave derivada de esa misma contraseña.
+   */
+  const solicitarRestablecimiento = async (evento) => {
+    evento.preventDefault()
+    setOcupado(true)
+    setError(null)
+
+    try {
+      const respuesta = await backend.sesion.solicitarRestablecimiento(nombre, codigo)
+      setCodigo('')
+      setNombre(respuesta?.nombre ?? nombre)
+      setPaso('restablecer_contrasena')
+    } catch (fallo) {
+      setError(fallo.message)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  /** Paso 2: fija la contraseña nueva. El backend reinicia el segundo factor. */
+  const fijarContrasena = async (evento) => {
+    evento.preventDefault()
+
+    if (nueva !== confirmar) {
+      setError('Las dos contraseñas no coinciden')
+      return
+    }
+
+    setOcupado(true)
+    setError(null)
+
+    try {
+      await backend.sesion.fijarContrasenaRestablecida(nueva)
+      setNueva('')
+      setConfirmar('')
+      setContrasena('')
+      setPaso('credenciales')
+      setRestablecido(true)
     } catch (fallo) {
       setError(fallo.message)
     } finally {
@@ -121,7 +174,14 @@ export default function Acceso({ onVolver }) {
 
               {error && <Aviso tipo="peligro">{error}</Aviso>}
 
-              {paso === 'credenciales' ? (
+              {restablecido && paso === 'credenciales' && (
+                <Aviso tipo="exito">
+                  Contraseña restablecida. El segundo factor se reinició: al entrar,
+                  vuelve a configurarlo desde Ajustes con un autenticador nuevo.
+                </Aviso>
+              )}
+
+              {paso === 'credenciales' && (
                 <form className="flex flex-col gap-4" onSubmit={entrar}>
                   <Campo
                     etiqueta="Usuario"
@@ -158,12 +218,25 @@ export default function Acceso({ onVolver }) {
                     textoOcupado="Verificando credenciales…"
                   />
 
-                  <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
-                    ¿Olvidaste la contraseña? El restablecimiento con códigos de respaldo
-                    llega en la sección de cuenta.
-                  </p>
+                  <div className="flex items-center justify-between gap-3 border-t border-borde pt-3 text-etiqueta-sm">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaso('restablecer')
+                        setCodigo('')
+                        setError(null)
+                        setRestablecido(false)
+                      }}
+                      className="text-primario transition-colors hover:underline"
+                    >
+                      ¿Olvidaste la contraseña?
+                    </button>
+                    <span className="text-tenue">Se recupera con un código de respaldo</span>
+                  </div>
                 </form>
-              ) : (
+              )}
+
+              {paso === 'segundo_factor' && (
                 <form className="flex flex-col gap-4" onSubmit={verificar}>
                   <p className="text-cuerpo-sm text-tenue">
                     {conRespaldo
@@ -220,6 +293,93 @@ export default function Acceso({ onVolver }) {
                 </form>
               )}
 
+              {paso === 'restablecer' && (
+                <form className="flex flex-col gap-4" onSubmit={solicitarRestablecimiento}>
+                  <p className="text-cuerpo-sm text-tenue">
+                    Escribe tu usuario y uno de los códigos de respaldo que el sistema te
+                    entregó al configurar el segundo factor. El código se consume.
+                  </p>
+
+                  <Campo
+                    etiqueta="Usuario"
+                    valor={nombre}
+                    autoFocus
+                    autoComplete="username"
+                    onCambio={setNombre}
+                  />
+
+                  <Campo
+                    etiqueta="Código de respaldo"
+                    valor={codigo}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    mono
+                    centrado
+                    ayuda="Cada código sirve una sola vez"
+                    onCambio={(valor) => setCodigo(valor.replace(/\s/g, ''))}
+                  />
+
+                  <Boton
+                    ocupado={ocupado}
+                    inhabilitado={!nombre || codigo.length < 6 || !conectado}
+                    texto="Verificar código"
+                    textoOcupado="Comprobando…"
+                  />
+
+                  <div className="flex items-center justify-end border-t border-borde pt-3 text-etiqueta-sm">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaso('credenciales')
+                        setCodigo('')
+                        setError(null)
+                      }}
+                      className="text-tenue transition-colors hover:text-texto"
+                    >
+                      Volver al acceso
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {paso === 'restablecer_contrasena' && (
+                <form className="flex flex-col gap-4" onSubmit={fijarContrasena}>
+                  <p className="text-cuerpo-sm text-tenue">
+                    Identidad verificada para <span className="font-mono">{nombre}</span>. Elige la
+                    contraseña nueva; al guardarla, el segundo factor se reinicia y tendrás que
+                    volver a configurarlo con tu autenticador.
+                  </p>
+
+                  <Campo
+                    etiqueta="Contraseña nueva"
+                    tipo="password"
+                    valor={nueva}
+                    autoFocus
+                    autoComplete="new-password"
+                    mono
+                    ayuda="Mínimo 8 caracteres, con mayúsculas, números y símbolos"
+                    onCambio={setNueva}
+                  />
+
+                  <Campo
+                    etiqueta="Repite la contraseña nueva"
+                    tipo="password"
+                    valor={confirmar}
+                    autoComplete="new-password"
+                    mono
+                    onCambio={setConfirmar}
+                  />
+
+                  <Boton
+                    ocupado={ocupado}
+                    inhabilitado={!nueva || !confirmar || !conectado}
+                    texto="Guardar contraseña"
+                    textoOcupado="Guardando…"
+                  />
+                </form>
+              )}
+
               <div className="flex items-center justify-center border-t border-borde pt-3">
                 <TerminosUso />
               </div>
@@ -234,6 +394,13 @@ export default function Acceso({ onVolver }) {
 /* ------------------------------------------------------------------ */
 
 function Cabecera({ paso }) {
+  const titulos = {
+    credenciales: 'Iniciar sesión en DatenJäger',
+    segundo_factor: 'Verificación en dos pasos',
+    restablecer: 'Restablecer la contraseña',
+    restablecer_contrasena: 'Elige la contraseña nueva',
+  }
+
   return (
     <header className="flex flex-col items-center gap-3 text-center">
       <div className="relative">
@@ -252,7 +419,7 @@ function Cabecera({ paso }) {
 
       <div>
         <h1 className="font-marca text-titulo-md tracking-tight text-primario">
-          {paso === 'credenciales' ? 'Iniciar sesión en DatenJäger' : 'Verificación en dos pasos'}
+          {titulos[paso] ?? titulos.credenciales}
         </h1>
         <p className="text-cuerpo-sm text-tenue">
           Sector minero de la Villa de San Diego de Ubaté
@@ -292,6 +459,7 @@ function Aviso({ tipo, children }) {
   const clases = {
     peligro: 'border-peligro/40 bg-peligro/5 text-peligro',
     alerta: 'border-alerta/40 bg-alerta/5 text-alerta',
+    exito: 'border-exito/40 bg-exito/5 text-exito',
   }[tipo]
 
   return (

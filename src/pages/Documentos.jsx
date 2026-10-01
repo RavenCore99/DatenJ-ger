@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
 import AltaDocumento from '../components/AltaDocumento.jsx'
+import { ModalDetalle, ModalEditar } from '../components/ModalDocumento.jsx'
 import Icono from '../components/Icono.jsx'
 import VisorPdf from '../components/VisorPdf.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
@@ -28,14 +29,13 @@ const RETARDO_BUSQUEDA_MS = 250
  * lugar, la columna de integridad muestra el cifrado real de cada expediente.
  */
 export default function Documentos() {
-  const { conectado, autenticado } = useApp()
+  const { conectado, autenticado, notificar, peticion } = useApp()
 
   const [busqueda, setBusqueda] = useState('')
   const [empresa, setEmpresa] = useState('')
   const [estado, setEstado] = useState('cargando')
   const [filas, setFilas] = useState([])
   const [error, setError] = useState(null)
-  const [aviso, setAviso] = useState(null)
   const [ocupado, setOcupado] = useState(null)
   const [seleccion, setSeleccion] = useState(null)
   // Documento abierto en el visor interno (SCRUM-60).
@@ -44,6 +44,11 @@ export default function Documentos() {
   // guardar, no después entrando al detalle del expediente.
   const [alta, setAlta] = useState(false)
   const [errorAlta, setErrorAlta] = useState(null)
+  // Modales de documento (SCRUM-88): detalles y edición, como en la aplicación
+  // anterior, que los abría en su propia ventana.
+  const [detalle, setDetalle] = useState(null)
+  const [editar, setEditar] = useState(null)
+  const [errorEditar, setErrorEditar] = useState(null)
 
   const cargar = useCallback(async (texto) => {
     setEstado('cargando')
@@ -86,21 +91,20 @@ export default function Documentos() {
   const ejecutar = useCallback(
     async (clave, operacion, exito) => {
       setOcupado(clave)
-      setAviso(null)
       try {
         const resultado = await operacion()
         if (resultado?.cancelado) return null
-        if (exito) setAviso(exito)
+        if (exito) notificar(exito)
         await cargar(busqueda)
         return resultado
       } catch (fallo) {
-        setAviso(`Error: ${fallo.message}`)
+        notificar(fallo.message, 'peligro')
         return null
       } finally {
         setOcupado(null)
       }
     },
-    [busqueda, cargar],
+    [busqueda, cargar, notificar],
   )
 
   const abrirAlta = useCallback(() => {
@@ -117,13 +121,12 @@ export default function Documentos() {
   const guardarAlta = useCallback(
     async (datos) => {
       setOcupado('agregar')
-      setAviso(null)
       setErrorAlta(null)
 
       try {
         const nuevo = await backend.documentos.crear(datos)
         setAlta(false)
-        setAviso(`Documento "${nuevo.nombre}" cifrado y guardado`)
+        notificar(`Documento "${nuevo.nombre}" cifrado y guardado`)
         await cargar(busqueda)
         if (nuevo?.id) setSeleccion(nuevo.id)
       } catch (fallo) {
@@ -132,7 +135,7 @@ export default function Documentos() {
         setOcupado(null)
       }
     },
-    [busqueda, cargar],
+    [busqueda, cargar, notificar],
   )
 
   const descargar = useCallback(
@@ -157,7 +160,7 @@ export default function Documentos() {
       const confirmado = globalThis.confirm(
         `¿Eliminar "${fila.nombre}"? Esta acción no se puede deshacer.`,
       )
-      if (!confirmado) return
+      if (!confirmado) return false
 
       const resultado = await ejecutar(
         'eliminar',
@@ -165,9 +168,58 @@ export default function Documentos() {
         `Documento "${fila.nombre}" eliminado`,
       )
       if (resultado) setSeleccion(null)
+      return Boolean(resultado)
     },
     [ejecutar],
   )
+
+  /**
+   * Guarda la edición desde el modal. A diferencia de las operaciones de la
+   * tabla, el fallo se muestra **dentro** del modal: si se cerrara, se perdería
+   * lo escrito.
+   */
+  const guardarEdicion = useCallback(
+    async (cambios) => {
+      if (!editar) return
+      setOcupado('guardar')
+      setErrorEditar(null)
+
+      try {
+        await backend.documentos.actualizar(editar.id, cambios)
+        setEditar(null)
+        notificar('Documento actualizado')
+        await cargar(busqueda)
+      } catch (fallo) {
+        setErrorEditar(fallo.message)
+      } finally {
+        setOcupado(null)
+      }
+    },
+    [editar, busqueda, cargar, notificar],
+  )
+
+  /**
+   * Atajos globales que actúan sobre esta pantalla (SCRUM-85): `Ctrl / ⌘ + N`
+   * abre el alta y `Supr` elimina la fila elegida. El manejador de teclado vive
+   * en el marco; aquí solo se atiende la petición. La marca evita repetir la
+   * acción cuando el efecto se re-evalúa por otro motivo.
+   */
+  const ultimaPeticion = useRef(0)
+
+  useEffect(() => {
+    if (!peticion || peticion.marca === ultimaPeticion.current) return
+    ultimaPeticion.current = peticion.marca
+
+    if (peticion.accion === 'nuevo-documento') {
+      abrirAlta()
+      return
+    }
+
+    if (peticion.accion === 'eliminar-seleccionado') {
+      const fila = visibles.find((candidata) => candidata.id === seleccion) ?? null
+      if (fila) eliminar(fila)
+    }
+  }, [peticion, visibles, seleccion, abrirAlta, eliminar])
 
   if (!conectado) {
     return (
@@ -210,7 +262,8 @@ export default function Documentos() {
         </button>
       </header>
 
-      {aviso && <Aviso texto={aviso} onCerrar={() => setAviso(null)} />}
+      {/* Los avisos de resultado los pinta `Notificaciones` (SCRUM-87): la pantalla
+          solo los emite, no dibuja el aviso. */}
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -346,6 +399,17 @@ export default function Documentos() {
                           type="button"
                           onClick={(evento) => {
                             evento.stopPropagation()
+                            setDetalle(fila)
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario"
+                        >
+                          <Icono nombre="info" tamano={13} />
+                          Detalles
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(evento) => {
+                            evento.stopPropagation()
                             setVisor(fila)
                           }}
                           className="inline-flex items-center gap-1.5 rounded border border-borde px-2 py-1 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario"
@@ -436,18 +500,17 @@ export default function Documentos() {
             </div>
 
             <div className="border-t border-borde px-4 py-4">
-              <FormularioDocumento
-                key={seleccionada.id}
-                fila={seleccionada}
-                ocupado={ocupado === 'guardar'}
-                onGuardar={(cambios) =>
-                  ejecutar(
-                    'guardar',
-                    () => backend.documentos.actualizar(seleccionada.id, cambios),
-                    'Documento actualizado',
-                  )
-                }
-              />
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorEditar(null)
+                  setEditar(seleccionada)
+                }}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-borde px-3 py-1.5 text-etiqueta-sm transition-colors hover:border-primario hover:text-primario"
+              >
+                <Icono nombre="lapiz" tamano={13} />
+                Editar metadatos
+              </button>
             </div>
           </aside>
         )}
@@ -467,6 +530,40 @@ export default function Documentos() {
           onCerrar={() => setAlta(false)}
         />
       )}
+
+      {/* Modales de documento (SCRUM-88): detalles y edición, con la misma
+          forma de abrir algo sobre la pantalla que el alta y el visor. */}
+      {detalle && (
+        <ModalDetalle
+          documento={detalle}
+          ocupado={ocupado}
+          onVer={() => {
+            setVisor(detalle)
+            setDetalle(null)
+          }}
+          onEditar={() => {
+            setErrorEditar(null)
+            setEditar(detalle)
+            setDetalle(null)
+          }}
+          onExportar={() => descargar(detalle)}
+          onEliminar={async () => {
+            if (await eliminar(detalle)) setDetalle(null)
+          }}
+          onCerrar={() => setDetalle(null)}
+        />
+      )}
+
+      {editar && (
+        <ModalEditar
+          documento={editar}
+          empresas={empresas}
+          ocupado={ocupado === 'guardar'}
+          error={errorEditar}
+          onGuardar={guardarEdicion}
+          onCerrar={() => setEditar(null)}
+        />
+      )}
     </div>
   )
 }
@@ -481,79 +578,5 @@ function Dato({ etiqueta, valor, mono }) {
         {valor}
       </dd>
     </div>
-  )
-}
-
-function Aviso({ texto, onCerrar }) {
-  const esError = texto.startsWith('Error')
-
-  return (
-    <div
-      role="status"
-      className={[
-        'flex items-center justify-between gap-4 rounded-lg border px-4 py-2 text-cuerpo-sm',
-        esError ? 'border-peligro/40 bg-peligro/5 text-peligro' : 'border-exito/40 bg-exito/5 text-exito',
-      ].join(' ')}
-    >
-      <span>{texto}</span>
-      <button type="button" onClick={onCerrar} className="font-mono text-etiqueta-sm">
-        cerrar
-      </button>
-    </div>
-  )
-}
-
-/** Edición de nombre, descripción y titular de un documento. */
-function FormularioDocumento({ fila, ocupado, onGuardar }) {
-  const [campos, setCampos] = useState({
-    nombre: fila.nombre ?? '',
-    descripcion: fila.descripcion ?? '',
-    cedula: fila.cedula ?? '',
-    nombres: fila.nombres ?? '',
-    empresa: fila.empresa ?? '',
-  })
-
-  const cambiar = (campo) => (evento) =>
-    setCampos((actual) => ({ ...actual, [campo]: evento.target.value }))
-
-  return (
-    <form
-      className="flex flex-col gap-3"
-      onSubmit={(evento) => {
-        evento.preventDefault()
-        onGuardar(campos)
-      }}
-    >
-      <p className="text-etiqueta-sm uppercase tracking-wider text-tenue">Editar metadatos</p>
-
-      <Campo etiqueta="Nombre" valor={campos.nombre} onCambio={cambiar('nombre')} obligatorio />
-      <Campo etiqueta="Descripción" valor={campos.descripcion} onCambio={cambiar('descripcion')} />
-      <Campo etiqueta="Cédula" valor={campos.cedula} onCambio={cambiar('cedula')} />
-      <Campo etiqueta="Nombres del titular" valor={campos.nombres} onCambio={cambiar('nombres')} />
-      <Campo etiqueta="Empresa" valor={campos.empresa} onCambio={cambiar('empresa')} />
-
-      <button
-        type="submit"
-        disabled={ocupado}
-        className="mt-1 rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
-      >
-        {ocupado ? 'Guardando…' : 'Guardar cambios'}
-      </button>
-    </form>
-  )
-}
-
-function Campo({ etiqueta, valor, onCambio, obligatorio = false }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-etiqueta-sm text-texto">{etiqueta}</span>
-      <input
-        type="text"
-        value={valor}
-        onChange={onCambio}
-        required={obligatorio}
-        className="rounded-lg border border-borde bg-fondo px-3 py-1.5 text-cuerpo-md outline-none transition-colors focus:border-primario"
-      />
-    </label>
   )
 }

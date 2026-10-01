@@ -123,6 +123,19 @@ class Registro(BaseModel):
     contrasena: str
 
 
+class Restablecimiento(BaseModel):
+    """Paso 1 del restablecimiento: usuario y código de respaldo (SCRUM-84)."""
+
+    nombre: str
+    codigo: str
+
+
+class ContrasenaRestablecida(BaseModel):
+    """Paso 2 del restablecimiento: la contraseña nueva (SCRUM-84)."""
+
+    contrasena_nueva: str
+
+
 class ConexionModelos(BaseModel):
     """Conexión de modelos: proveedor, modelo, punto de conexión y clave.
 
@@ -374,6 +387,20 @@ def crear_app(
         """Completa el acceso con el código TOTP."""
         return comandos.verificar_segundo_factor(cuerpo.codigo)
 
+    @app.post("/api/sesion/restablecer", dependencies=protegido)
+    async def solicitar_restablecimiento(cuerpo: Restablecimiento) -> dict[str, Any]:
+        """Verifica un código de respaldo para restablecer la contraseña (SCRUM-84).
+
+        No exige sesión: es el camino de quien ha olvidado la contraseña. El
+        permiso para fijar la contraseña nueva se queda en el proceso de Python.
+        """
+        return comandos.solicitar_restablecimiento(cuerpo.nombre, cuerpo.codigo)
+
+    @app.post("/api/sesion/restablecer/contrasena", dependencies=protegido)
+    async def restablecer_contrasena(cuerpo: ContrasenaRestablecida) -> dict[str, Any]:
+        """Fija la contraseña nueva tras verificar el código de respaldo (SCRUM-84)."""
+        return comandos.restablecer_contrasena(cuerpo.contrasena_nueva)
+
     @app.post("/api/sesion/respaldo", dependencies=protegido)
     async def usar_codigo_de_respaldo(cuerpo: CodigoDeSeguridad) -> dict[str, Any]:
         """Completa el acceso con un código de respaldo de un solo uso."""
@@ -613,6 +640,16 @@ def crear_app(
             {"dia": dia, "total": total}
             for dia, total in comandos.documentos_por_dia()
         ]
+
+    @app.get("/api/reportes/tendencia", dependencies=protegido)
+    async def tendencia_documentos() -> dict[str, Any]:
+        """Serie temporal con regresión, predicción, R² y la paleta de gráficos.
+
+        El cálculo vive en Python (``backend/services/reportes.py``) y el
+        frontend solo dibuja; la paleta viaja como **roles semánticos** para que
+        el renderer la resuelva contra sus tokens (SCRUM-57).
+        """
+        return comandos.tendencia_documentos()
 
     @app.post("/api/reportes/exportar", dependencies=protegido)
     async def exportar_reporte(cuerpo: Exportacion) -> dict[str, str]:

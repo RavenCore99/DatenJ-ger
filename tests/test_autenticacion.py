@@ -19,6 +19,7 @@ from tests.soporte import BaseBackendTest, PDF_MINIMO
 from backend.errors import (
     CredencialesInvalidasError,
     CuentaBloqueadaError,
+    DatosInvalidosError,
     SegundoFactorInvalidoError,
     UsuarioInexistenteError,
 )
@@ -294,6 +295,146 @@ class TestEstadoDeCuenta(BaseAuthTest):
     def test_cuenta_inexistente(self):
         with self.assertRaises(UsuarioInexistenteError):
             autenticacion.estado_de_cuenta(self.conn, self.cursor, usuario_id=404)
+
+
+class TestRestablecimientoDeContrasena(BaseAuthTest):
+    """Restablecer la contraseña sin conocerla, con un código de respaldo (SCRUM-84).
+
+    El caso que motivó el cambio: el secreto TOTP y los códigos de respaldo
+    estaban cifrados con la clave derivada de la contraseña, así que el flujo
+    antiguo no podía verificarlos y el restablecimiento era imposible para quien
+    la había olvidado.
+    """
+
+    def _activar_con_codigos_hash(self, codigos=("111111", "222222")):
+        """Deja la cuenta con 2FA activo y los códigos en el formato de hash."""
+        clave = self.entrar()["clave_sesion"]
+        self.cursor.execute(
+            "UPDATE Usuarios SET totp_enabled = 1, totp_secret = ?, backup_codes = ? WHERE id = ?",
+            (
+                EncryptionManager.encrypt_str_with_key("JBSWY3DPEHPK3PXP", clave),
+                autenticacion._codigos_como_hash(list(codigos)),
+                self.usuario_id,
+            ),
+        )
+        self.conn.commit()
+        return clave
+
+    def _guardado(self):
+        self.cursor.execute("SELECT backup_codes FROM Usuarios WHERE id = ?", (self.usuario_id,))
+        return self.cursor.fetchone()[0]
+
+    # ------------------------------------------------------------------ #
+
+    def test_los_codigos_nuevos_se_guardan_como_hash(self):
+        secreto = "JBSWY3DPEHPK3PXP"
+        codigos = autenticacion.activar_segundo_factor(
+            self.conn, self.cursor, usuario_id=self.usuario_id,
+            clave_sesion=self.entrar()["clave_sesion"],
+            secreto=secreto, codigo=pyotp.TOTP(secreto).now(),
+        )
+
+        guardado = self._guardado()
+        self.assertTrue(guardado.startswith(autenticacion.PREFIJO_CODIGOS_HASH))
+        for codigo in codigos:
+            self.assertNotIn(codigo, guardado, "el código no debe quedar en claro")
+
+    def test_los_codigos_antiguos_migran_en_el_siguiente_acceso(self):
+        self.activar_segundo_factor(respaldo="111111,222222")
+        self.assertFalse(self._guardado().startswith(autenticacion.PREFIJO_CODIGOS_HASH))
+
+        self.entrar()
+
+        self.assertTrue(self._guardado().startswith(autenticacion.PREFIJO_CODIGOS_HASH))
+        self.assertIn(autenticacion.ACCION_RESPALDO_MIGRADO, self.eventos())
+        # Migrar no invalida nada: los mismos códigos siguen sirviendo.
+        self.assertTrue(autenticacion.usar_codigo_de_respaldo(
+            self.conn, self.cursor, usuario_id=self.usuario_id,
+            clave_sesion=self.entrar()["clave_sesion"], codigo="111111"))
+
+    def test_restablecimiento_completo(self):
+        self._activar_con_codigos_hash()
+
+        resultado = autenticacion.verificar_codigo_de_respaldo(
+            self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+        self.assertEqual(resultado["usuario_id"], self.usuario_id)
+
+        autenticacion.restablecer_contrasena(
+            self.conn, self.cursor, usuario_id=self.usuario_id,
+            nombre=self.usuario_nombre, contrasena_nueva="Nueva-2026!")
+
+        # El segundo factor se reinició: hay que volver a inscribirlo.
+        estado = autenticacion.estado_de_cuenta(
+            self.conn, self.cursor, usuario_id=self.usuario_id)
+        self.assertFalse(estado["segundo_factor_habilitado"])
+        self.assertFalse(estado["codigos_de_respaldo_configurados"])
+
+        # Se entra con la nueva y sin segundo factor; la anterior ya no vale.
+        self.assertEqual(self.entrar("Nueva-2026!")["estado"], autenticacion.ESTADO_COMPLETADO)
+        with self.assertRaises(CredencialesInvalidasError):
+            self.entrar(CONTRASENA)
+
+        self.assertIn(autenticacion.ACCION_RESTABLECIMIENTO_OK, self.eventos())
+
+    def test_el_codigo_usado_no_vuelve_a_servir(self):
+        self._activar_con_codigos_hash()
+
+        autenticacion.verificar_codigo_de_respaldo(
+            self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+
+        with self.assertRaises(CredencialesInvalidasError):
+            autenticacion.verificar_codigo_de_respaldo(
+                self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+
+        # El otro código sigue disponible.
+        self.assertEqual(
+            autenticacion.verificar_codigo_de_respaldo(
+                self.conn, self.cursor, nombre=self.usuario_nombre, codigo="222222")["nombre"],
+            self.usuario_nombre,
+        )
+
+    def test_el_error_no_revela_si_la_cuenta_existe(self):
+        self._activar_con_codigos_hash()
+
+        for nombre, codigo in ((self.usuario_nombre, "000000"), ("no-existe", "111111")):
+            with self.subTest(nombre=nombre):
+                with self.assertRaises(CredencialesInvalidasError):
+                    autenticacion.verificar_codigo_de_respaldo(
+                        self.conn, self.cursor, nombre=nombre, codigo=codigo)
+
+        self.assertIn(autenticacion.ACCION_RESTABLECIMIENTO_FALLIDO, self.eventos())
+
+    def test_los_intentos_fallidos_bloquean_la_cuenta(self):
+        self._activar_con_codigos_hash()
+
+        for _intento in range(5):
+            with self.assertRaises(CredencialesInvalidasError):
+                autenticacion.verificar_codigo_de_respaldo(
+                    self.conn, self.cursor, nombre=self.usuario_nombre, codigo="000000")
+
+        # Ni siquiera el código correcto pasa mientras la cuenta esté bloqueada.
+        with self.assertRaises(CuentaBloqueadaError):
+            autenticacion.verificar_codigo_de_respaldo(
+                self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+
+    def test_el_formato_antiguo_avisa_en_vez_de_fallar_en_silencio(self):
+        self.activar_segundo_factor(respaldo="111111,222222")
+
+        with self.assertRaises(DatosInvalidosError):
+            autenticacion.verificar_codigo_de_respaldo(
+                self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+
+    def test_contrasena_nueva_debil_o_corta_se_rechaza(self):
+        self._activar_con_codigos_hash()
+        autenticacion.verificar_codigo_de_respaldo(
+            self.conn, self.cursor, nombre=self.usuario_nombre, codigo="111111")
+
+        for nueva in ("corta", "solominusculas"):
+            with self.subTest(contrasena=nueva):
+                with self.assertRaises(DatosInvalidosError):
+                    autenticacion.restablecer_contrasena(
+                        self.conn, self.cursor, usuario_id=self.usuario_id,
+                        nombre=self.usuario_nombre, contrasena_nueva=nueva)
 
 
 class TestNoRegresionDeCifrado(BaseAuthTest):

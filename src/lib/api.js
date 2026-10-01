@@ -165,6 +165,15 @@ export const backend = {
       solicitar('/api/registro', { metodo: 'POST', cuerpo: { nombre, contrasena } }),
     verificarCodigo: (codigo) =>
       solicitar('/api/sesion/2fa', { metodo: 'POST', cuerpo: { codigo } }),
+    // Restablecimiento de contraseña (SCRUM-84): primero se verifica un código
+    // de respaldo, después se fija la contraseña nueva. Ningún paso exige sesión.
+    solicitarRestablecimiento: (nombre, codigo) =>
+      solicitar('/api/sesion/restablecer', { metodo: 'POST', cuerpo: { nombre, codigo } }),
+    fijarContrasenaRestablecida: (contrasenaNueva) =>
+      solicitar('/api/sesion/restablecer/contrasena', {
+        metodo: 'POST',
+        cuerpo: { contrasena_nueva: contrasenaNueva },
+      }),
     usarCodigoDeRespaldo: (codigo) =>
       solicitar('/api/sesion/respaldo', { metodo: 'POST', cuerpo: { codigo } }),
     salir: () => solicitar('/api/sesion', { metodo: 'DELETE' }),
@@ -250,6 +259,8 @@ export const backend = {
     // Distribución y serie temporal para el panel de datos y estadísticas.
     porEmpresa: () => solicitar('/api/reportes/por-empresa'),
     porDia: () => solicitar('/api/reportes/por-dia'),
+    // Serie con regresión, predicción, R² y la paleta de gráficos (SCRUM-81).
+    tendencia: () => solicitar('/api/reportes/tendencia'),
     exportar: (destino, formato) =>
       solicitar('/api/reportes/exportar', { metodo: 'POST', cuerpo: { destino, formato } }),
   },

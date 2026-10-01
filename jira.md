@@ -370,6 +370,43 @@ documentos y dejar el proyecto instalable y publicable.
 > de `docs/issues.md`. Si Raven quiere que sea un ticket real, hay que crearlo; el
 > trabajo que representa ya está hecho y verificado.
 
+## Calidad de vida y diseño (2026-10-01)
+
+Sección nueva, pedida por Raven sobre la aplicación ya funcional y antes de abrir
+la Fase 4. Se etiqueta con las **áreas del tablero**, no con números inventados:
+
+| Área del tablero | Trabajo |
+|---|---|
+| `SCRUM-57` (Backend) | catálogo de empresas (`Empresas` + `personas.empresa_id`), normalización y migración del texto libre; corrección del alta/edición de titular en documentos |
+| `SCRUM-58` (Frontend) | panel de Personas agrupado por empresa; formulario de alta de documento con sus metadatos |
+| `SCRUM-59` (UI / UX) | animaciones del portal, fondo de marca compartido, «Términos y uso», Ajustes al pie con auditoría y modelos, asistente flotante, tuerca de acceso rápido, logo como control de la barra, franja de telemetría con estado en texto |
+| `SCRUM-61` (Chatbot) | acceso flotante al asistente desde cualquier sección |
+| `SCRUM-62` (API / Servicios) | rutas de empresas; credencial de la API escrita en el `.env` y prueba real de conexión |
+| `SCRUM-64` (Testing / QA) | 178 pruebas, con cobertura nueva de empresas, normalización, migración y modelos |
+| `SCRUM-65` (Documentación / Release) | `planning.md`, este archivo y `CLAUDE.md` al día |
+
+**Commits esperados de la sección** (los ya publicados siguen siendo trazables por
+la tabla de mapeo de arriba):
+
+```text
+feat(SCRUM-62): escribe la credencial de la API en el .env y anade la prueba real de conexion
+test(SCRUM-64): cubre el .env, la clave vigente y la prueba de conexion
+ui(SCRUM-59): escribe el estado real en la franja de telemetria
+fix(SCRUM-57): vincula la persona correcta al editar el titular de un documento
+feat(SCRUM-57): catalogo de empresas para no duplicar y asociar el personal
+feat(SCRUM-58): agrupa el personal por empresa y sugiere el catalogo al registrar
+```
+
+### Orden acordado para lo que queda (2026-10-01)
+
+1. `SCRUM-81` estadística al backend · `SCRUM-82` dashboard de gráficos
+2. `SCRUM-84` **restablecer contraseña** (el más vital; autorizado en `CLAUDE.md`,
+   con `senior-security` antes de tocar el flujo)
+3. `SCRUM-87` notificaciones · `SCRUM-88` modales de documento
+4. `SCRUM-85` atajos de teclado y búsqueda global (el último, el más simple)
+5. Fase 4 **solo API**: streaming, errores de red, decisión de motor y asistente
+   anclado al proyecto
+
 ## Bloque A — Pantallas que faltan
 
 **Estado: cerrado (2026-09-30) — hecho y verificado: 142 pruebas, `vite build`
@@ -452,14 +489,14 @@ ningún `SCRUM-72` a `SCRUM-74`.
 |---|---|---|---|
 | `SCRUM-59` | Versionar el material de diseño y de marca | `assets`, `documentacion`, `hito` | hecho |
 | `SCRUM-59` | Definir e integrar el set de iconos del frontend | `ui`, `iconos`, `rendimiento` | hecho (set SVG en línea de `Icono.jsx`) |
-| `SCRUM-57` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` | parcial: métricas y series ya en `backend/services/reportes.py`; faltan la regresión, la predicción y los colores |
-| `SCRUM-59` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` | pendiente (el panel de Estadísticas ya dibuja distribución y serie) |
+| `SCRUM-57` | Extraer la estadística y los gráficos al backend | `backend`, `estadistica`, `refactor` | hecho (`3598f95`: `reportes.tendencia()` con regresión, predicción y R², más `PALETA_GRAFICOS` por rol semántico y `GET /api/reportes/tendencia`) |
+| `SCRUM-59` | Construir el dashboard de gráficos | `ui`, `dashboard`, `feat` | hecho (`cf6d7a3`: `Graficos.jsx` con medidor, anillo y tendencia en SVG) |
 | `SCRUM-59` | Generar los reportes con la paleta del sistema | `reportes`, `pdf`, `feat` | hecho (PR #12: logo, tarjetas y exportador) |
-| `SCRUM-57` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` | pendiente |
-| `SCRUM-59` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` | pendiente (activos: `Ctrl+B`, `Enter`, `Esc`) |
+| `SCRUM-57` | Implementar el restablecimiento de contraseña | `auth`, `backend`, `feat` | hecho (`b035737`: códigos de respaldo en hash de un solo sentido, dos pasos sin sesión y reinicio del segundo factor) |
+| `SCRUM-59` | Implementar atajos de teclado y búsqueda global | `ui`, `atajos`, `feat` | hecho (`dc0511a`: `Ctrl+B`, `Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr`, `F11`, `Enter`, `Esc`) |
 | `SCRUM-59` | Construir la franja de telemetría inferior | `ui`, `telemetria`, `feat` | hecho (`BarraEstado` con estados reales) |
-| `SCRUM-59` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` | pendiente |
-| `SCRUM-59` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` | pendiente |
+| `SCRUM-59` | Implementar las notificaciones del sistema | `ui`, `notificaciones`, `feat` | hecho (`bbe44a8`: pila de avisos en el proveedor, silenciables desde Ajustes) |
+| `SCRUM-59` | Migrar los modales de documento al diseño nuevo | `ui`, `documentos`, `feat` | hecho (`bbe44a8`: `ModalDocumento.jsx` con detalles y edición) |
 
 ### Commits esperados (Bloque D)
 

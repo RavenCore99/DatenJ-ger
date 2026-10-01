@@ -542,21 +542,25 @@ Diseño, datos y cierre:
 - [x] `SCRUM-79` versionar el material de diseño y de marca (`ee40d51`, `19a6cde`)
 - [x] `SCRUM-80` set de iconos del frontend — resuelto con el set SVG en línea de
   `Icono.jsx`, que cubre todos los nombres que el sistema pide
-- [ ] `SCRUM-81` extraer la estadística y los gráficos al backend — las métricas y
-  las series ya están en `backend/services/reportes.py`; faltan la regresión, la
-  predicción y los colores de `ui_components.py` (`DashboardWidget`)
-- [ ] `SCRUM-82` dashboard de gráficos — el panel de Estadísticas ya dibuja la
-  distribución y la serie temporal
+- [x] `SCRUM-81` extraer la estadística y los gráficos al backend — `reportes.tendencia()`
+  (regresión, predicción y R²) y `reportes.PALETA_GRAFICOS` (colores por rol semántico);
+  `GET /api/reportes/tendencia`. `DashboardWidget` ya no calcula: solo dibuja
+- [x] `SCRUM-82` dashboard de gráficos — `src/components/Graficos.jsx` (medidor, anillo y
+  línea de tendencia en SVG, sin dependencias) sobre los datos del backend
 - [x] `SCRUM-83` reportes con la paleta del sistema — logo en la portada,
   exportador `scripts/exportar_inventario.py` y glifos que salían como `?`
   corregidos (PR #12)
-- [ ] `SCRUM-84` restablecimiento de contraseña
-- [ ] `SCRUM-85` atajos de teclado y búsqueda global — activos `Ctrl+B`, `Enter` y
-  `Esc`; faltan `Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr` y `F11`
+- [x] `SCRUM-84` restablecimiento de contraseña — códigos de respaldo en hash de un solo
+  sentido (verificables sin la contraseña), dos pasos sin sesión y reinicio del segundo
+  factor al restablecer
+- [x] `SCRUM-85` atajos de teclado y búsqueda global — tabla única en `src/lib/atajos.js`;
+  activos `Ctrl+B`, `Ctrl+F`, `Ctrl+N`, `Ctrl+Q`, `Supr`, `F11`, `Enter` y `Esc`
 - [x] `SCRUM-86` franja de telemetría inferior — `BarraEstado` con el estado real
   de base de datos, APIs y chatbot
-- [ ] `SCRUM-87` notificaciones del sistema
-- [ ] `SCRUM-88` modales de documento
+- [x] `SCRUM-87` notificaciones del sistema — pila de avisos en el proveedor de la
+  aplicación, silenciables desde Ajustes
+- [x] `SCRUM-88` modales de documento — detalles y edición como capas modales
+  (`src/components/ModalDocumento.jsx`), con el alta y el visor
 
 > **Claves de Jira (2026-09-30).** Los números de este archivo vienen de la
 > numeración que `jira.md` mantuvo en paralelo. Al consultar el tablero por el
@@ -566,6 +570,58 @@ Diseño, datos y cierre:
 > Release, Arquitectura / Core). `jira.md` ya usa las áreas como etiqueta y
 > conserva el mapeo de la numeración antigua; aquí se mantienen los números
 > originales para no romper las referencias a los commits ya publicados.
+
+### Calidad de vida y diseño (2026-10-01) — cerrada
+
+Revisión de Raven sobre la aplicación ya funcional, antes de abrir la Fase 4. No
+estaba en la hoja de ruta; se incorpora como sección propia.
+
+- [x] **Intro con más vida**: `src/lib/movimiento.js` envuelve anime.js y respeta
+  la preferencia de movimiento —`sin-animacion` solo apagaba las animaciones CSS,
+  no las de JS—; entrada escalonada y latido al pulsar
+- [x] **Fondo de marca persistente**: partículas y nombre subieron de `Bienvenida`
+  a `MarcoAcceso`, así que acompañan a bienvenida, acceso y registro
+- [x] **Login limpio**: retirado el panel «Bóveda local» y sustituida la nota
+  legal incrustada por un enlace **«Términos y uso»** con subpanel animado
+- [x] **Ajustes al pie**, debajo del conmutador de tema, con **Auditoría** y
+  **Conexión de modelos** como secciones propias; **tuerca** de acceso rápido en
+  la sub-cabecera; **el logo pliega** la barra lateral
+- [x] **Alta de documento con sus metadatos en el mismo acto** (formulario de
+  registro: se elige el PDF y se rellenan nombre, descripción, titular y empresa)
+- [x] **Catálogo de empresas**: tabla `Empresas` + `Personas.empresa_id`, con
+  normalización que une las variantes de escritura, migración idempotente del
+  texto libre, y servicio con alta, renombrado en cascada, **fusión de fichas** y
+  baja sin borrar personas
+- [x] **Panel de Personas por empresa** con filtro y catálogo como sugerencias
+- [x] **Asistente flotante** en todas las secciones menos Ajustes
+- [x] **Modelos**: la credencial se escribe también en el `.env` (0600) y hay
+  **prueba real de conexión** contra el proveedor
+- [x] **Franja de telemetría**: escribe el estado real (`BD disponible`,
+  `APIs credencial lista`), no solo lo colorea
+- [x] **Hueco de CRUD corregido**: al editar el titular de un documento, la
+  persona vinculada se resolvía por subconsulta, así que sin titular no se
+  guardaba nada y al cambiar la cédula se renombraba a la persona equivocada
+
+**Verificación**: 178 pruebas (`unittest discover`) y sondas de la ventana real
+(22/22, 23/23, 14/14, 19/19 y 9/9).
+
+### Lo que queda de la Fase 3 y la Fase 4 (orden acordado 2026-10-01)
+
+Hecho en el PR #16 (`v2.1 → main`), verificado con la suite (194 pruebas) y
+conduciendo la ventana real de Electron:
+
+1. [x] `SCRUM-81` extraer la estadística y los gráficos al backend — `3598f95`
+2. [x] `SCRUM-82` dashboard de gráficos — `cf6d7a3`
+3. [x] `SCRUM-84` **restablecer contraseña** — `b035737`; `senior-security` aplicada
+   antes de tocar el flujo
+4. [x] `SCRUM-87` notificaciones del sistema · `SCRUM-88` modales de documento —
+   `bbe44a8` (un solo commit: ambos son el área `SCRUM-59` y ambos tocan
+   `Documentos.jsx`)
+5. [x] `SCRUM-85` atajos de teclado y búsqueda global — `dc0511a`
+6. [ ] **Fase 4, solo API** (modelos locales omitidos por decisión de Raven):
+   streaming del chatbot, errores de red, decisión de motor de persistencia y
+   **asistente anclado al proyecto**, que solo responda con la información del
+   propio sistema
 
 Evaluación (paralela, backend):
 
@@ -716,8 +772,8 @@ fase, el proyecto se considera entregable cuando:
 | 0. Preparación | hecho (mockups recibidos y versionados en `SCRUM-79`) | 2026-10-01 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | casi cerrada (base visual y movimiento hechas; pantallas nuevas `SCRUM-57` a `SCRUM-64` cerradas; de `SCRUM-80` a `SCRUM-88` hechos el set de iconos, los reportes con logo y la franja de telemetría; más el lote de calidad de vida del 2026-10-01) | 2026-10-01 |
-| 4. Integración de APIs y modelos locales | por hacer — **reencuadre propuesto: solo API**. El panel de conexión ya está hecho (`SCRUM-64`); quedan el streaming, el manejo de errores de red y la decisión de motor de persistencia. Los modelos locales siguen en espera | 2026-10-01 |
+| 3. Frontend conforme a mockups | **cerrada salvo el empaquetado** — además de lo anterior (base visual, movimiento, pantallas nuevas, iconos, reportes con logo, telemetría, catálogo de empresas y calidad de vida), el PR #16 cierra `SCRUM-81`, `82`, `84`, `85`, `87` y `88`. Solo queda el empaquetado de la Fase 7 | 2026-10-01 |
+| 4. Integración de APIs y modelos locales | **reencuadrado: solo API** (decidido por Raven el 2026-10-01; los modelos locales quedan omitidos por ahora). El panel de conexión ya está hecho (`SCRUM-64`, con `.env` y prueba real); quedan el streaming, el manejo de errores de red, la decisión de motor de persistencia y el **asistente anclado al proyecto** | 2026-10-01 |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
 | 7. Empaquetado y publicación en GitHub Packages | por hacer (la app debe quedar como instalador listo para usarse) | 2026-09-30 |

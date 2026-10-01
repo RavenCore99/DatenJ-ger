@@ -77,3 +77,23 @@ export async function elegirDestino({ nombre, formato = 'pdf' } = {}) {
     motivo: 'Elegir la carpeta de destino solo está disponible en la aplicación de escritorio.',
   }
 }
+
+/**
+ * Alterna la pantalla completa de la ventana (SCRUM-85, atajo `F11`).
+ *
+ * En el navegador de desarrollo se usa la API del propio navegador, que existe
+ * y hace lo mismo; así el atajo no queda muerto fuera de Electron.
+ */
+export async function alternarPantallaCompleta() {
+  if (globalThis.datenjager?.alternarPantallaCompleta) {
+    return globalThis.datenjager.alternarPantallaCompleta()
+  }
+
+  if (document.fullscreenElement) {
+    await document.exitFullscreen()
+    return false
+  }
+
+  await document.documentElement.requestFullscreen()
+  return true
+}

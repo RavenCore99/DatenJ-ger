@@ -82,6 +82,20 @@ ACCION_2FA_OMITIDO = "Login con token de confianza (2FA omitido)"
 ACCION_RESPALDO_OK = "Login con código de respaldo"
 ACCION_RESPALDO_FALLIDO = "Código de respaldo inválido"
 ACCION_REGISTRO = "Usuario registrado"
+ACCION_RESPALDO_MIGRADO = "Códigos de respaldo migrados a hash de un solo sentido"
+ACCION_RESTABLECIMIENTO_SOLICITADO = "Restablecimiento: código de respaldo verificado"
+ACCION_RESTABLECIMIENTO_FALLIDO = "Restablecimiento fallido: usuario o código no válidos"
+ACCION_RESTABLECIMIENTO_OK = "Contraseña restablecida; segundo factor reiniciado"
+
+#: Prefijo del formato **nuevo** de los códigos de respaldo: hashes de un solo
+#: sentido (`pbkdf2:sal:hash`, uno por código, separados por comas).
+#:
+#: El formato anterior cifraba la lista con la clave de sesión —derivada de la
+#: contraseña—, de modo que **no se podía comprobar sin la contraseña** y el
+#: restablecimiento era imposible justo para quien la había olvidado. Con el
+#: hash, comprobar un código no exige descifrar nada, y la lista deja de ser
+#: reversible: leer la base ya no entrega los códigos en claro.
+PREFIJO_CODIGOS_HASH = "HASH1:"
 
 #: Longitud mínima del nombre de usuario y de la contraseña al dar de alta.
 LONGITUD_MINIMA_NOMBRE = 3
@@ -142,6 +156,82 @@ def _migrar_material_2fa(
         conn.commit()
 
     return migrado
+
+
+def _codigos_como_hash(codigos) -> str:
+    """Serializa la lista de códigos como hashes de un solo sentido."""
+    return PREFIJO_CODIGOS_HASH + ",".join(hash_contrasena(codigo) for codigo in codigos)
+
+
+def _serializar_hashes(hashes) -> str:
+    """Recompone el valor de ``backup_codes`` a partir de hashes ya calculados."""
+    hashes = [guardado for guardado in hashes if guardado]
+    if not hashes:
+        # Lista agotada: se guarda vacío para que la cuenta sepa que no le quedan
+        # códigos, en vez de dejar un prefijo sin contenido que parecería válido.
+        return ""
+    return PREFIJO_CODIGOS_HASH + ",".join(hashes)
+
+
+def _consumir_codigo(guardado: str, codigo: str, clave_sesion) -> Optional[str]:
+    """Devuelve el nuevo valor de ``backup_codes`` tras usar ``codigo``.
+
+    ``None`` si el código no es válido. Admite los dos formatos:
+
+    * ``HASH1:`` — se compara contra cada hash; no hace falta descifrar nada,
+      así que funciona **sin sesión** (lo que habilita el restablecimiento);
+    * el antiguo, cifrado con la clave de sesión, que exige ``clave_sesion``.
+    """
+    if guardado.startswith(PREFIJO_CODIGOS_HASH):
+        hashes = [h for h in guardado[len(PREFIJO_CODIGOS_HASH):].split(",") if h]
+        for indice, guardado_hash in enumerate(hashes):
+            if verify_contrasena(codigo, guardado_hash)[0]:
+                del hashes[indice]
+                return _serializar_hashes(hashes)
+        return None
+
+    if not clave_sesion:
+        return None
+
+    crudo = EncryptionManager.decrypt_str_with_key(guardado, clave_sesion)
+    disponibles = [guardado_codigo for guardado_codigo in crudo.split(",") if guardado_codigo]
+    if codigo not in disponibles:
+        return None
+
+    disponibles.remove(codigo)
+    if not disponibles:
+        return ""
+    return EncryptionManager.encrypt_str_with_key(",".join(disponibles), clave_sesion)
+
+
+def _migrar_codigos_de_respaldo(conn, cursor, usuario_id: int, clave_sesion: bytes) -> bool:
+    """Pasa los códigos de respaldo del cifrado reversible al hash (una vez).
+
+    Se ejecuta en un acceso válido, que es cuando la clave de sesión permite
+    descifrar la lista. Idempotente: si ya está en hash, no hace nada.
+    """
+    cursor.execute("SELECT backup_codes FROM Usuarios WHERE id = ?", (usuario_id,))
+    fila = cursor.fetchone()
+    if not fila or not fila[0] or fila[0].startswith(PREFIJO_CODIGOS_HASH):
+        return False
+
+    try:
+        crudo = EncryptionManager.decrypt_str_with_key(fila[0], clave_sesion)
+    except Exception:
+        # Material ilegible (clave distinta): no se toca y se deja constancia.
+        return False
+
+    codigos = [guardado for guardado in crudo.split(",") if guardado]
+    if not codigos:
+        return False
+
+    cursor.execute(
+        "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
+        (_codigos_como_hash(codigos), usuario_id),
+    )
+    conn.commit()
+    _auditar(conn, cursor, ACCION_RESPALDO_MIGRADO, usuario_id)
+    return True
 
 
 def registrar_usuario(
@@ -269,6 +359,9 @@ def autenticar(
 
     if totp_habilitado:
         _migrar_material_2fa(conn, cursor, usuario_id, contrasena, clave_sesion)
+        # Y los códigos de respaldo pasan a hash de un solo sentido: sin esto,
+        # el restablecimiento seguiría sin poder comprobarlos sin contraseña.
+        _migrar_codigos_de_respaldo(conn, cursor, usuario_id, clave_sesion)
 
     _auditar(conn, cursor, ACCION_LOGIN_OK, usuario_id)
 
@@ -338,7 +431,11 @@ def verificar_segundo_factor(
 def usar_codigo_de_respaldo(
     conn, cursor, *, usuario_id: int, clave_sesion: bytes, codigo: str
 ) -> bool:
-    """Consume un código de respaldo. Cada código sirve una sola vez."""
+    """Consume un código de respaldo. Cada código sirve una sola vez.
+
+    Admite el formato de hash (el actual) y el antiguo cifrado con la clave de
+    sesión, para que una cuenta sin migrar siga pudiendo entrar.
+    """
     codigo = (codigo or "").strip()
     if not codigo:
         raise SegundoFactorInvalidoError("Ingresa un código de respaldo")
@@ -348,24 +445,144 @@ def usar_codigo_de_respaldo(
     if not fila or not fila[0]:
         raise SegundoFactorInvalidoError("La cuenta no tiene códigos de respaldo")
 
-    crudo = EncryptionManager.decrypt_str_with_key(fila[0], clave_sesion)
-    disponibles = [codigo_guardado for codigo_guardado in crudo.split(",") if codigo_guardado]
-
-    if codigo not in disponibles:
+    nuevo = _consumir_codigo(fila[0], codigo, clave_sesion)
+    if nuevo is None:
         _auditar(conn, cursor, ACCION_RESPALDO_FALLIDO, usuario_id)
         return False
 
-    disponibles.remove(codigo)
-    nuevo_cifrado = EncryptionManager.encrypt_str_with_key(
-        ",".join(disponibles), clave_sesion
-    )
     cursor.execute(
-        "UPDATE Usuarios SET backup_codes = ? WHERE id = ?", (nuevo_cifrado, usuario_id)
+        "UPDATE Usuarios SET backup_codes = ? WHERE id = ?", (nuevo, usuario_id)
     )
     conn.commit()
 
     _auditar(conn, cursor, ACCION_RESPALDO_OK, usuario_id)
     return True
+
+
+def verificar_codigo_de_respaldo(
+    conn, cursor, *, nombre: str, codigo: str
+) -> dict[str, Any]:
+    """Comprueba un código de respaldo **sin sesión**, para restablecer (SCRUM-84).
+
+    Es el único paso del restablecimiento que puede autenticar al usuario: el
+    secreto TOTP está cifrado con la clave de sesión —derivada de la contraseña
+    olvidada— y no se puede descifrar, pero un código de respaldo en formato de
+    hash sí se puede comparar. El código se **consume**: no se puede reutilizar
+    ni para entrar ni para volver a restablecer.
+
+    Controles aplicados (checklist de `senior-security`):
+
+    * bloqueo por intentos fallidos y recuento de cada fallo, para que los 10^6
+      valores posibles de un código de seis dígitos no se puedan recorrer en
+      línea;
+    * mensaje único para «usuario inexistente» y «código incorrecto», de modo
+      que el endpoint no sirva para enumerar cuentas;
+    * auditoría de cada intento, con el usuario cuando se conoce.
+
+    Returns:
+        ``{"usuario_id", "nombre"}``.
+
+    Raises:
+        DatosInvalidosError: falta el usuario o el código, o la cuenta todavía
+            guarda los códigos en el formato reversible.
+        CuentaBloqueadaError: demasiados intentos fallidos.
+        CredencialesInvalidasError: el usuario o el código no son válidos.
+    """
+    nombre = (nombre or "").strip()
+    codigo = (codigo or "").strip()
+    if not nombre or not codigo:
+        raise DatosInvalidosError("Ingresa tu usuario y un código de respaldo")
+
+    bloqueada, segundos = check_account_locked(cursor, nombre)
+    if bloqueada:
+        _auditar(conn, cursor, ACCION_BLOQUEO, None)
+        minutos = segundos // 60 + 1
+        raise CuentaBloqueadaError(
+            f"Demasiados intentos fallidos. Intenta de nuevo en {minutos} minuto(s).",
+            segundos_restantes=segundos,
+        )
+
+    cursor.execute("SELECT id, backup_codes FROM Usuarios WHERE nombre = ?", (nombre,))
+    fila = cursor.fetchone()
+
+    if not fila:
+        record_failed_attempt(cursor, conn, nombre)
+        _auditar(conn, cursor, ACCION_RESTABLECIMIENTO_FALLIDO, None)
+        raise CredencialesInvalidasError("El usuario o el código de respaldo no son válidos")
+
+    usuario_id, guardado = fila
+
+    if not guardado or not guardado.startswith(PREFIJO_CODIGOS_HASH):
+        # El formato antiguo se cifra con la contraseña: sin ella no hay nada
+        # que comparar. Se dice tal cual en vez de dejar el flujo en un error
+        # genérico que parecería un fallo del sistema.
+        raise DatosInvalidosError(
+            "Esta cuenta todavía guarda los códigos en el formato anterior: inicia "
+            "sesión una vez con tu contraseña y regenera los códigos de respaldo.")
+
+    nuevo = _consumir_codigo(guardado, codigo, None)
+    if nuevo is None:
+        record_failed_attempt(cursor, conn, nombre)
+        _auditar(conn, cursor, ACCION_RESTABLECIMIENTO_FALLIDO, usuario_id)
+        raise CredencialesInvalidasError("El usuario o el código de respaldo no son válidos")
+
+    cursor.execute(
+        "UPDATE Usuarios SET backup_codes = ? WHERE id = ?", (nuevo, usuario_id)
+    )
+    conn.commit()
+    reset_failed_attempts(cursor, conn, nombre)
+
+    _auditar(conn, cursor, ACCION_RESTABLECIMIENTO_SOLICITADO, usuario_id)
+    return {"usuario_id": usuario_id, "nombre": nombre}
+
+
+def restablecer_contrasena(
+    conn, cursor, *, usuario_id: int, nombre: str, contrasena_nueva: str
+) -> dict[str, Any]:
+    """Fija la contraseña nueva y **reinicia el segundo factor** (SCRUM-84).
+
+    El secreto TOTP y los códigos de respaldo anteriores quedan cifrados con la
+    clave derivada de la contraseña que se ha olvidado, así que no se pueden
+    re-cifrar: se descartan. La cuenta vuelve a inscribir el segundo factor en
+    el siguiente acceso. Es además lo correcto tras una recuperación —un código
+    de respaldo filtrado no debe dejar el 2FA ya resuelto a favor de quien lo
+    usó— y se revoca cualquier token de confianza, de modo que el equipo donde
+    se restablece tampoco queda recordado.
+
+    Returns:
+        ``{"usuario_id", "nombre", "segundo_factor_reiniciado": True}``.
+
+    Raises:
+        DatosInvalidosError: la contraseña nueva no cumple las reglas.
+        UsuarioInexistenteError: la cuenta no existe.
+    """
+    contrasena_nueva = (contrasena_nueva or "").strip()
+    if len(contrasena_nueva) < LONGITUD_MINIMA_CONTRASENA:
+        raise DatosInvalidosError(
+            f"La contraseña nueva debe tener al menos {LONGITUD_MINIMA_CONTRASENA} caracteres")
+
+    puntaje, etiqueta, _color = password_strength(contrasena_nueva)
+    if puntaje < PUNTAJE_MINIMO_CONTRASENA:
+        raise DatosInvalidosError(
+            f"Contraseña insegura (fortaleza: {etiqueta}). Usa al menos "
+            f"{LONGITUD_MINIMA_CONTRASENA} caracteres con mayúsculas, números y símbolos.")
+
+    cursor.execute("SELECT id FROM Usuarios WHERE id = ?", (usuario_id,))
+    if not cursor.fetchone():
+        raise UsuarioInexistenteError("La cuenta no existe")
+
+    cursor.execute(
+        "UPDATE Usuarios SET contrasena = ?, totp_secret = NULL, totp_enabled = 0, "
+        "backup_codes = NULL WHERE id = ?",
+        (hash_contrasena(contrasena_nueva), usuario_id),
+    )
+    clear_trust_token(cursor, conn, usuario_id)
+    conn.commit()
+
+    reset_failed_attempts(cursor, conn, nombre)
+    _auditar(conn, cursor, ACCION_RESTABLECIMIENTO_OK, usuario_id)
+
+    return {"usuario_id": usuario_id, "nombre": nombre, "segundo_factor_reiniciado": True}
 
 
 def generar_token_confianza(
@@ -476,7 +693,9 @@ def activar_segundo_factor(conn, cursor, *, usuario_id: int, clave_sesion: bytes
         "UPDATE Usuarios SET totp_secret = ?, totp_enabled = 1, backup_codes = ? WHERE id = ?",
         (
             EncryptionManager.encrypt_str_with_key(secreto, clave_sesion),
-            EncryptionManager.encrypt_str_with_key(",".join(codigos), clave_sesion),
+            # Los códigos se guardan como hash: así se pueden comprobar sin la
+            # contraseña y la base deja de contener material reversible.
+            _codigos_como_hash(codigos),
             usuario_id,
         ),
     )
@@ -512,7 +731,7 @@ def regenerar_codigos_de_respaldo(conn, cursor, *, usuario_id: int, clave_sesion
     codigos = _codigos_de_respaldo()
     cursor.execute(
         "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
-        (EncryptionManager.encrypt_str_with_key(",".join(codigos), clave_sesion), usuario_id),
+        (_codigos_como_hash(codigos), usuario_id),
     )
     conn.commit()
     _auditar(conn, cursor, ACCION_CODIGOS_REGENERADOS, usuario_id)
@@ -573,7 +792,9 @@ def cambiar_contrasena(conn, cursor, *, usuario_id: int, nombre: str, clave_sesi
     clave_nueva = EncryptionManager.derive_session_key(contrasena_nueva, sal_nueva)
 
     respaldo_nuevo = respaldo_cifrado
-    if respaldo_cifrado:
+    # Los códigos actuales son hashes (no dependen de la clave); solo el formato
+    # antiguo, cifrado con la clave de sesión, hay que re-cifrar.
+    if respaldo_cifrado and not respaldo_cifrado.startswith(PREFIJO_CODIGOS_HASH):
         respaldo_nuevo = EncryptionManager.encrypt_str_with_key(
             EncryptionManager.decrypt_str_with_key(respaldo_cifrado, clave_sesion),
             clave_nueva,

@@ -391,6 +391,13 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(por_dia[0]["total"], 1)
         self.assertTrue(por_dia[0]["dia"])
 
+        # La serie con regresión, predicción, R² y paleta (SCRUM-81).
+        estado, tendencia = self.pedir("GET", "/api/reportes/tendencia")
+        self.assertEqual(estado, 200)
+        self.assertEqual(tendencia["valores"], [1])
+        self.assertFalse(tendencia["suficiente"])
+        self.assertEqual(tendencia["paleta"]["tendencia"], "alerta")
+
     # ------------------------------------------------------------------ #
     # Alta de cuenta (SCRUM-57)
     # ------------------------------------------------------------------ #
@@ -448,6 +455,78 @@ class TestServidor(BaseBackendTest):
         estado, _cuerpo = self.pedir("POST", "/api/modelos", {"quitar_clave": True})
         self.assertEqual(estado, 200)
         self.assertFalse(self.pedir("GET", "/api/modelos")[1]["clave_configurada"])
+
+    # ------------------------------------------------------------------ #
+    # Restablecimiento de contraseña (SCRUM-84)
+    # ------------------------------------------------------------------ #
+
+    def test_restablecimiento_de_contrasena_por_http(self):
+        """Alta, 2FA, contraseña olvidada y recuperación: el flujo completo."""
+        estado, _alta = self.pedir("POST", "/api/registro",
+                                   {"nombre": "olvidadizo", "contrasena": CONTRASENA})
+        self.assertEqual(estado, 201)
+
+        estado, propuesta = self.pedir("POST", "/api/cuenta/2fa/preparar")
+        self.assertEqual(estado, 200)
+
+        secreto = propuesta["secreto"]
+        estado, activado = self.pedir("POST", "/api/cuenta/2fa/activar", {
+            "secreto": secreto, "codigo": pyotp.TOTP(secreto).now(),
+        })
+        self.assertEqual(estado, 200)
+        codigos = activado["codigos_de_respaldo"]
+        self.assertTrue(codigos)
+
+        # Quien olvidó la contraseña no tiene sesión: se cierra la que abrió el alta.
+        self.pedir("DELETE", "/api/sesion")
+
+        # Paso 1: el código de respaldo, sin sesión.
+        estado, _cuerpo = self.pedir("POST", "/api/sesion/restablecer",
+                                     {"nombre": "olvidadizo", "codigo": codigos[0]})
+        self.assertEqual(estado, 200)
+
+        # Paso 2: la contraseña nueva.
+        estado, cuerpo = self.pedir("POST", "/api/sesion/restablecer/contrasena",
+                                    {"contrasena_nueva": "Recuperada-2026!"})
+        self.assertEqual(estado, 200)
+        self.assertEqual(cuerpo["estado"], "contrasena_restablecida")
+
+        # Se entra con la nueva y sin segundo factor: el 2FA se reinició.
+        estado, acceso = self.pedir("POST", "/api/sesion",
+                                    {"nombre": "olvidadizo", "contrasena": "Recuperada-2026!"})
+        self.assertEqual(estado, 200)
+        self.assertEqual(acceso["estado"], autenticacion.ESTADO_COMPLETADO)
+
+        # Y la contraseña anterior ya no sirve.
+        self.pedir("DELETE", "/api/sesion")
+        estado, _cuerpo = self.pedir("POST", "/api/sesion",
+                                     {"nombre": "olvidadizo", "contrasena": CONTRASENA})
+        self.assertEqual(estado, 401)
+
+    def test_restablecer_sin_verificar_codigo_responde_422(self):
+        self.pedir("DELETE", "/api/sesion")
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion/restablecer/contrasena",
+                                    {"contrasena_nueva": "Recuperada-2026!"})
+
+        self.assertEqual(estado, 422)
+        self.assertEqual(cuerpo["detail"]["tipo"], "DatosInvalidosError")
+
+    def test_codigo_de_respaldo_incorrecto_responde_401(self):
+        # La cuenta necesita códigos en el formato de hash para que el paso se
+        # pueda comprobar sin sesión; con el formato antiguo el error sería otro.
+        self.cursor.execute(
+            "UPDATE Usuarios SET backup_codes = ? WHERE id = ?",
+            (autenticacion._codigos_como_hash(["111111", "222222"]), self.usuario_id),
+        )
+        self.conn.commit()
+        self.pedir("DELETE", "/api/sesion")
+
+        estado, cuerpo = self.pedir("POST", "/api/sesion/restablecer",
+                                    {"nombre": self.usuario_nombre, "codigo": "000000"})
+
+        self.assertEqual(estado, 401)
+        self.assertEqual(cuerpo["detail"]["tipo"], "CredencialesInvalidasError")
 
 
 class TestServidorSinToken(BaseBackendTest):
