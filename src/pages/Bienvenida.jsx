@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
+
 import { useApp } from '../estado/ProveedorApp.jsx'
 import MarcoAcceso from '../components/MarcoAcceso.jsx'
 import BotonBiometrico from '../components/BotonBiometrico.jsx'
-import Particulas from '../components/Particulas.jsx'
 import logo from '../../assets/logo/logo.png'
+import { entradaEscalonada, pulso } from '../lib/movimiento.js'
 
 /**
  * Pantalla de bienvenida (SCRUM-29): portal previo al acceso, con la marca, el
@@ -11,38 +13,41 @@ import logo from '../../assets/logo/logo.png'
  *
  * El registro ya está disponible (SCRUM-57): la segunda tarjeta lleva al alta
  * de operador, que encadena la configuración del segundo factor (SCRUM-58).
+ *
+ * **Movimiento (calidad de vida)**: la marca, el título y las dos tarjetas
+ * entran escalonadas, y cada tarjeta late al pulsarla. Las secuencias usan
+ * `lib/movimiento.js`, que respeta la preferencia del usuario y deja la pantalla
+ * en su estado final si el movimiento está desactivado. El fondo de marca
+ * —partículas y nombre— vive ahora en `MarcoAcceso`, así que también acompaña
+ * al acceso y al registro.
  */
 export default function Bienvenida({ onEntrar, onRegistrar }) {
   const { conectado, aviso, recargarSalud, limpiarAviso } = useApp()
+  const escena = useRef(null)
+
+  useEffect(() => {
+    const piezas = escena.current?.querySelectorAll('[data-entrada]')
+    if (piezas?.length) entradaEscalonada([...piezas], { retardo: 70, desde: 12 })
+  }, [])
 
   return (
     <MarcoAcceso titulo="Entorno de seguridad minera">
       <main className="aparecer relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8">
-        {/* Fondo de partículas (SCRUM-71): decorativo, no captura el puntero. */}
-        <Particulas className="pointer-events-none absolute inset-0 h-full w-full" />
-
-        {/* Marca de agua tenue del fondo, como en el mockup. */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 flex select-none items-center justify-center font-marca text-[16vw] font-bold tracking-tighter text-primario opacity-[0.03]"
-        >
-          DATENJÄGER
-        </span>
-
-        <div className="relative flex w-full max-w-3xl flex-col items-center gap-8">
+        <div ref={escena} className="relative flex w-full max-w-3xl flex-col items-center gap-8">
           <header className="flex flex-col items-center gap-3 text-center">
             <img
+              data-entrada
               src={logo}
               alt="DatenJäger"
               className="h-20 w-20 rounded-full object-contain ring-2 ring-primario/40"
             />
-            <h1 className="font-marca text-titulo-lg tracking-tight text-primario">
+            <h1 data-entrada className="font-marca text-titulo-lg tracking-tight text-primario">
               DatenJäger
             </h1>
-            <p className="text-cuerpo-lg text-texto-2">
+            <p data-entrada className="text-cuerpo-lg text-texto-2">
               Sistema de Gestión Documental Seguro · Bóveda criptográfica AES-256-GCM
             </p>
-            <p className="max-w-xl text-cuerpo-sm text-tenue">
+            <p data-entrada className="max-w-xl text-cuerpo-sm text-tenue">
               Digitalización, cifrado y consulta de documentos del sector minero de la
               Villa de San Diego de Ubaté, con todo el procesamiento en este equipo.
             </p>
@@ -92,7 +97,7 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
             />
           </div>
 
-          <p className="flex items-center gap-2 text-cuerpo-sm text-tenue">
+          <p data-entrada className="flex items-center gap-2 text-cuerpo-sm text-tenue">
             <span
               aria-hidden="true"
               className={`inline-block h-1.5 w-1.5 rounded-full ${conectado ? 'bg-exito' : 'bg-peligro'}`}
@@ -108,8 +113,13 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
 }
 
 function Tarjeta({ etiqueta, titulo, descripcion, accion, onAccion, desactivada }) {
+  const tarjeta = useRef(null)
+
   return (
     <article
+      ref={tarjeta}
+      data-entrada
+      onPointerDown={() => pulso(tarjeta.current)}
       className={[
         'flex flex-col gap-3 rounded-panel border bg-superficie p-5 text-left shadow-flotante',
         desactivada ? 'border-borde opacity-70' : 'border-borde transition-colors hover:border-primario',

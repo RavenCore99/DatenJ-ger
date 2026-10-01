@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
 import { useApp } from '../estado/ProveedorApp.jsx'
-import { backend, urlBase } from '../lib/api.js'
+import { backend } from '../lib/api.js'
 import MarcoAcceso from '../components/MarcoAcceso.jsx'
+import TerminosUso from '../components/TerminosUso.jsx'
 import Icono from '../components/Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
@@ -84,9 +85,7 @@ export default function Acceso({ onVolver }) {
       subtitulo="Volver a la bienvenida"
       onVolver={onVolver}
     >
-      <main className="aparecer flex min-h-0 flex-1">
-        <PanelContexto conectado={conectado} />
-
+      <main className="aparecer relative flex min-h-0 flex-1">
         <section className="flex flex-1 items-center justify-center overflow-y-auto p-8">
           <div className="w-full max-w-[30rem] overflow-hidden rounded-panel border border-borde bg-superficie shadow-flotante">
             {/* Filete de acento superior, como en el mockup. */}
@@ -221,7 +220,9 @@ export default function Acceso({ onVolver }) {
                 </form>
               )}
 
-              <NotaLegal />
+              <div className="flex items-center justify-center border-t border-borde pt-3">
+                <TerminosUso />
+              </div>
             </div>
           </div>
         </section>
@@ -254,68 +255,10 @@ function Cabecera({ paso }) {
           {paso === 'credenciales' ? 'Iniciar sesión en DatenJäger' : 'Verificación en dos pasos'}
         </h1>
         <p className="text-cuerpo-sm text-tenue">
-          Bóveda local segura · Sector minero de Ubaté
+          Sector minero de la Villa de San Diego de Ubaté
         </p>
       </div>
     </header>
-  )
-}
-
-/** Panel izquierdo con datos reales del sistema (oculto en ventanas estrechas). */
-function PanelContexto({ conectado }) {
-  return (
-    <aside className="hidden w-[20rem] shrink-0 flex-col justify-between border-r border-borde bg-fondo-2 p-6 lg:flex">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-panel border border-borde bg-superficie text-primario">
-            <Icono nombre="candado" tamano={18} />
-          </span>
-          <div className="leading-tight">
-            <p className="font-marca text-cuerpo-md font-semibold">Bóveda local</p>
-            <p className="font-mono text-telemetria text-tenue">sin conexión externa</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3 rounded-panel border border-borde bg-superficie p-4">
-          <span className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 font-mono text-telemetria font-medium text-texto">
-              <span
-                aria-hidden="true"
-                className={`inline-block h-1.5 w-1.5 rounded-full ${conectado ? 'bg-exito' : 'bg-peligro'}`}
-              />
-              SERVICIO LOCAL
-            </span>
-            <span className="rounded border border-borde bg-fondo px-1.5 py-0.5 font-mono text-[10px] text-tenue">
-              {urlBase()}
-            </span>
-          </span>
-
-          <p className="text-cuerpo-sm text-texto-2">
-            Instancia local para la gestión documental cifrada del sector minero y la
-            auditoría conforme a la Ley 1581.
-          </p>
-
-          <div className="flex items-center justify-between border-t border-borde pt-2 font-mono text-telemetria text-tenue">
-            <span>AES-256-GCM</span>
-            <span>PBKDF2-SHA256</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 rounded-panel border border-primario/30 bg-primario/5 p-3.5">
-          <p className="text-etiqueta-sm font-medium text-primario">
-            Cumplimiento Ley 1581 / Hábeas Data
-          </p>
-          <p className="text-cuerpo-sm text-texto-2">
-            Los documentos se cifran y se descifran en memoria en este equipo. La llave
-            simétrica no sale de la estación.
-          </p>
-        </div>
-      </div>
-
-      <p className="border-t border-borde pt-4 text-cuerpo-sm text-tenue">
-        Los documentos se guardan cifrados en disco y solo se descifran cuando los abres.
-      </p>
-    </aside>
   )
 }
 
@@ -341,20 +284,6 @@ function CuentaRegresiva() {
     <p className={`flex items-center gap-2 font-mono text-telemetria ${color}`}>
       <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
       El código se renueva en {restante} s
-    </p>
-  )
-}
-
-function NotaLegal() {
-  return (
-    <p className="flex items-start gap-2.5 rounded-lg border border-borde bg-fondo px-3 py-2.5 text-cuerpo-sm text-texto-2">
-      <span aria-hidden="true" className="shrink-0 text-primario">
-        <Icono nombre="escudo" tamano={16} />
-      </span>
-      <span>
-        <span className="font-semibold text-texto">Ley 1581 de 2012 / Hábeas Data:</span> tus
-        credenciales se verifican en este equipo con PBKDF2. Ninguna clave viaja por la red.
-      </span>
     </p>
   )
 }
