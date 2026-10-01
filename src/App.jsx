@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
+import BusquedaGlobal from './components/BusquedaGlobal.jsx'
 import Entrada from './components/Entrada.jsx'
 import Icono from './components/Icono.jsx'
 import Notificaciones from './components/Notificaciones.jsx'
+import { capaAbierta, escribiendoEn } from './lib/atajos.js'
+import { alternarPantallaCompleta } from './lib/escritorio.js'
+import { backend } from './lib/api.js'
 import { pulso } from './lib/movimiento.js'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
@@ -58,9 +62,11 @@ export function App() {
  * pegada al borde inferior.
  */
 function Marco() {
-  const { tema, autenticado, recargarSalud } = useApp()
+  const { tema, autenticado, recargarSalud, pedir } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
   const [plegada, setPlegada] = useBarraLateral()
+  // Búsqueda global (SCRUM-85), en `Ctrl / ⌘ + F`.
+  const [buscando, setBuscando] = useState(false)
   // Portal de entrada: bienvenida → acceso, o bienvenida → registro. No se
   // recuerda entre arranques, porque la bienvenida es la presentación de la
   // aplicación.
@@ -74,19 +80,76 @@ function Marco() {
     }
   }, [tema])
 
-  // Atajo para plegar y desplegar la barra lateral (SCRUM-70): Ctrl/⌘ + B,
-  // el mismo gesto que usan los editores para el panel lateral.
+  /** Cierra la sesión abierta (`Ctrl / ⌘ + Q`), con confirmación. */
+  const cerrarSesion = useCallback(async () => {
+    if (!autenticado) return
+    if (!globalThis.confirm('¿Cerrar la sesión abierta?')) return
+
+    try {
+      await backend.sesion.salir()
+    } finally {
+      await recargarSalud()
+    }
+  }, [autenticado, recargarSalud])
+
+  // Atajos globales (SCRUM-85). La tabla que se anuncia en Ajustes vive en
+  // `src/lib/atajos.js`; aquí está el manejador que los hace funcionar.
   useEffect(() => {
     const alPulsar = (evento) => {
-      if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'b') {
+      const conModificador = evento.ctrlKey || evento.metaKey
+      const tecla = evento.key.toLowerCase()
+
+      if (conModificador && tecla === 'b') {
         evento.preventDefault()
         setPlegada((valor) => !valor)
+        return
+      }
+
+      // Los atajos que abren una capa o cierran la sesión solo tienen sentido
+      // con sesión: en el portal de acceso se ignoran en vez de no hacer nada.
+      if (!autenticado) return
+
+      if (conModificador && tecla === 'f') {
+        evento.preventDefault()
+        setBuscando(true)
+        return
+      }
+
+      if (conModificador && tecla === 'n') {
+        evento.preventDefault()
+        setSeccion('documentos')
+        pedir('nuevo-documento')
+        return
+      }
+
+      if (conModificador && tecla === 'q') {
+        evento.preventDefault()
+        cerrarSesion()
+        return
+      }
+
+      if (evento.key === 'F11') {
+        evento.preventDefault()
+        alternarPantallaCompleta()
+        return
+      }
+
+      // `Supr` solo borra en Documentos, con una fila elegida y sin nada abierto
+      // encima; si el foco está en un campo, borrar es borrar texto.
+      if (
+        evento.key === 'Delete' &&
+        seccion === 'documentos' &&
+        !escribiendoEn(evento) &&
+        !capaAbierta()
+      ) {
+        evento.preventDefault()
+        pedir('eliminar-seleccionado')
       }
     }
 
     globalThis.addEventListener('keydown', alPulsar)
     return () => globalThis.removeEventListener('keydown', alPulsar)
-  }, [setPlegada])
+  }, [setPlegada, pedir, setSeccion, seccion, autenticado, cerrarSesion])
 
   // El portal manda mientras el alta no haya terminado: crear la cuenta abre
   // sesión en el backend de inmediato, así que hay que seguir mostrando el paso
@@ -160,6 +223,11 @@ function Marco() {
 
         <BarraEstado />
       </div>
+
+      {/* Búsqueda global (SCRUM-85): capa sobre el shell, no una pantalla más. */}
+      {buscando && (
+        <BusquedaGlobal onNavegar={setSeccion} onCerrar={() => setBuscando(false)} />
+      )}
     </div>
   )
 }

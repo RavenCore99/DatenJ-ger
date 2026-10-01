@@ -34,6 +34,12 @@ export function ProveedorApp({ children }) {
   const [notificaciones, setNotificaciones] = useState(() => notificacionesIniciales())
   const [avisos, setAvisos] = useState([])
   const contadorAvisos = useRef(0)
+  // Peticiones de los atajos globales a la pantalla activa (SCRUM-85): el
+  // manejador de teclado vive en el marco, pero «nuevo documento» o «eliminar
+  // el seleccionado» solo tienen sentido dentro de su pantalla. La marca
+  // distingue dos pulsaciones de la misma tecla.
+  const [peticion, setPeticion] = useState(null)
+  const contadorPeticiones = useRef(0)
 
   const montado = useRef(true)
 
@@ -190,6 +196,12 @@ export function ProveedorApp({ children }) {
     setNotificaciones((actual) => !actual)
   }, [])
 
+  /** Pide a la pantalla activa que haga algo que solo ella sabe hacer. */
+  const pedir = useCallback((accion) => {
+    contadorPeticiones.current += 1
+    setPeticion({ accion, marca: contadorPeticiones.current })
+  }, [])
+
   // La preferencia de notificaciones se recuerda entre arranques, como el tema.
   useEffect(() => {
     try {
@@ -232,8 +244,11 @@ export function ProveedorApp({ children }) {
       avisos,
       notificar,
       descartarAviso,
+      // Atajos globales (SCRUM-85).
+      peticion,
+      pedir,
     }),
-    [estadoBackend, version, sesion, tema, animaciones, baseDatos, modelos, aviso, alternarTema, alternarAnimaciones, consultarSalud, notificaciones, avisos, notificar, descartarAviso, alternarNotificaciones],
+    [estadoBackend, version, sesion, tema, animaciones, baseDatos, modelos, aviso, alternarTema, alternarAnimaciones, consultarSalud, notificaciones, avisos, notificar, descartarAviso, alternarNotificaciones, peticion, pedir],
   )
 
   return <ContextoApp.Provider value={valor}>{children}</ContextoApp.Provider>

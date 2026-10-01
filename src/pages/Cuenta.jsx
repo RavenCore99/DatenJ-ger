@@ -7,6 +7,7 @@ import Icono from '../components/Icono.jsx'
 import Auditoria from './Auditoria.jsx'
 import Modelos from './Modelos.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
+import { ATAJOS } from '../lib/atajos.js'
 import { backend, urlBase } from '../lib/api.js'
 
 /**
@@ -646,40 +647,33 @@ function Almacenamiento() {
 }
 
 /**
- * Atajos de teclado: solo se marcan como activos los que funcionan hoy.
- * El resto está documentado en `paneles_datenjager.md` y es `SCRUM-85`.
+ * Atajos de teclado (SCRUM-85).
+ *
+ * La lista se lee de `src/lib/atajos.js`, que es la misma tabla que usa el
+ * manejador global de `App.jsx`: lo que se anuncia aquí es exactamente lo que
+ * el teclado hace, sin una segunda lista que se quede atrás.
  */
-const ATAJOS = [
-  { combinacion: 'Ctrl / ⌘ + B', accion: 'Plegar o desplegar la barra lateral', activo: true },
-  { combinacion: 'Enter', accion: 'Enviar el mensaje en el asistente', activo: true },
-  { combinacion: 'Mayús + Enter', accion: 'Salto de línea en el asistente', activo: true },
-  { combinacion: 'Escape', accion: 'Cerrar el visor de documentos', activo: true },
-  { combinacion: 'Ctrl + F', accion: 'Búsqueda global', activo: false },
-  { combinacion: 'Ctrl + N', accion: 'Nuevo documento', activo: false },
-  { combinacion: 'F11', accion: 'Pantalla completa', activo: false },
-]
-
 function Atajos() {
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col divide-y divide-borde">
-        {ATAJOS.map(({ combinacion, accion, activo }) => (
-          <li key={combinacion} className="flex items-center justify-between gap-4 py-2">
-            <span className="text-cuerpo-sm text-texto-2">{accion}</span>
-            <span className="flex shrink-0 items-center gap-2">
-              <kbd className="rounded border border-borde bg-fondo px-2 py-0.5 font-mono text-codigo">
-                {combinacion}
-              </kbd>
-              <Pill tipo={activo ? 'exito' : 'neutro'}>{activo ? 'activo' : 'pendiente'}</Pill>
+        {ATAJOS.map(({ combinacion, accion, detalle }) => (
+          <li key={combinacion} className="flex items-start justify-between gap-4 py-2.5">
+            <span className="min-w-0">
+              <span className="block text-cuerpo-sm text-texto-2">{accion}</span>
+              <span className="block text-cuerpo-sm text-tenue">{detalle}</span>
             </span>
+            <kbd className="shrink-0 rounded border border-borde bg-fondo px-2 py-0.5 font-mono text-codigo">
+              {combinacion}
+            </kbd>
           </li>
         ))}
       </ul>
 
       <p className="border-t border-borde pt-3 text-cuerpo-sm text-tenue">
-        Los atajos marcados como pendientes están documentados en el inventario funcional
-        (<span className="font-mono">paneles_datenjager.md</span> §4.7) pero todavía no existen en el
-        frontend: se marcan así en lugar de anunciarlos como si funcionaran.
+        Las combinaciones siguen las del inventario funcional
+        (<span className="font-mono">paneles_datenjager.md</span> §4.7). Los atajos que abren una capa
+        o cierran la sesión solo actúan con la sesión iniciada.
       </p>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
 import AltaDocumento from '../components/AltaDocumento.jsx'
@@ -29,7 +29,7 @@ const RETARDO_BUSQUEDA_MS = 250
  * lugar, la columna de integridad muestra el cifrado real de cada expediente.
  */
 export default function Documentos() {
-  const { conectado, autenticado, notificar } = useApp()
+  const { conectado, autenticado, notificar, peticion } = useApp()
 
   const [busqueda, setBusqueda] = useState('')
   const [empresa, setEmpresa] = useState('')
@@ -197,6 +197,29 @@ export default function Documentos() {
     },
     [editar, busqueda, cargar, notificar],
   )
+
+  /**
+   * Atajos globales que actúan sobre esta pantalla (SCRUM-85): `Ctrl / ⌘ + N`
+   * abre el alta y `Supr` elimina la fila elegida. El manejador de teclado vive
+   * en el marco; aquí solo se atiende la petición. La marca evita repetir la
+   * acción cuando el efecto se re-evalúa por otro motivo.
+   */
+  const ultimaPeticion = useRef(0)
+
+  useEffect(() => {
+    if (!peticion || peticion.marca === ultimaPeticion.current) return
+    ultimaPeticion.current = peticion.marca
+
+    if (peticion.accion === 'nuevo-documento') {
+      abrirAlta()
+      return
+    }
+
+    if (peticion.accion === 'eliminar-seleccionado') {
+      const fila = visibles.find((candidata) => candidata.id === seleccion) ?? null
+      if (fila) eliminar(fila)
+    }
+  }, [peticion, visibles, seleccion, abrirAlta, eliminar])
 
   if (!conectado) {
     return (

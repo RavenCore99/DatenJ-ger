@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('datenjager', {
   /** Elige una ruta de destino sin escribir nada (reportes, SCRUM-61). */
   elegirDestino: (datos) => ipcRenderer.invoke('archivo:destino', datos),
 
+  /** Alterna la ventana entre pantalla completa y tamaño normal (SCRUM-85). */
+  alternarPantallaCompleta: () => ipcRenderer.invoke('ventana:pantalla-completa'),
+
   /** Solo lectura, sin IPC: datos del entorno de Electron. */
   versionElectron: process.versions.electron,
   versionNode: process.versions.node,

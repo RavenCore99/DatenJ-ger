@@ -156,6 +156,20 @@ ipcMain.handle('archivo:guardar', (_evento, datos) => guardarDocumento(ventana, 
 // Solo devuelve la ruta elegida: el reporte lo escribe el servicio de Python.
 ipcMain.handle('archivo:destino', (_evento, datos) => elegirDestino(ventana, datos))
 
+/**
+ * Alterna la pantalla completa de la ventana (SCRUM-85, atajo `F11`).
+ *
+ * Se resuelve aquí y no en el renderer porque el estado de la ventana es del
+ * proceso principal: el renderer solo pide el cambio y recibe el estado nuevo,
+ * que es lo que permite mostrar en Ajustes si está activo o no.
+ */
+ipcMain.handle('ventana:pantalla-completa', () => {
+  if (!ventana) return false
+  const completa = !ventana.isFullScreen()
+  ventana.setFullScreen(completa)
+  return completa
+})
+
 app.whenReady().then(async () => {
   aplicarPoliticaDeSeguridad()
   crearVentana()
