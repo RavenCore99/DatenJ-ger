@@ -125,7 +125,7 @@ function Marco() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <SubCabecera seccion={activa} plegada={plegada} onPlegar={() => setPlegada((v) => !v)} />
+        <SubCabecera seccion={activa} onAbrirAjustes={() => setSeccion('cuenta')} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
@@ -142,41 +142,46 @@ function Marco() {
   )
 }
 
-/** Sub-cabecera fija: control de la barra lateral, migas de pan e insignia de cifrado. */
-function SubCabecera({ seccion, plegada, onPlegar }) {
+/**
+ * Sub-cabecera fija: migas de pan y accesos rápidos.
+ *
+ * El control de la barra lateral vive en el propio logo (ver `BarraLateral`),
+ * así que aquí no se repite. La insignia de cifrado se retiró de este extremo
+ * porque competía con el contenido de cada panel: el cifrado en uso ya se
+ * informa donde importa —la franja de telemetría, el detalle de cada
+ * expediente y la sección «Acerca de»— y aquí ocupaba el sitio de los accesos.
+ */
+function SubCabecera({ seccion, onAbrirAjustes }) {
   return (
     <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <button
-          type="button"
-          onClick={onPlegar}
-          aria-expanded={!plegada}
-          aria-keyshortcuts="Control+B"
-          aria-label={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
-          title={`${plegada ? 'Desplegar' : 'Recoger'} la barra lateral (Ctrl+B)`}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
-        >
-          <Icono nombre={plegada ? 'chevron-derecha' : 'chevron-izquierda'} tamano={15} />
-        </button>
+      <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
+        <span className="font-marca text-tenue">DatenJäger</span>
+        <span aria-hidden="true" className="text-borde-fuerte">
+          /
+        </span>
+        <span className="truncate font-medium">{seccion.titulo}</span>
+        <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
+      </nav>
 
-        <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
-          <span className="font-marca text-tenue">DatenJäger</span>
-          <span aria-hidden="true" className="text-borde-fuerte">
-            /
-          </span>
-          <span className="truncate font-medium">{seccion.titulo}</span>
-          <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
-        </nav>
+      <div className="flex shrink-0 items-center gap-1">
+        <AccesoRapido icono="tuerca" titulo="Ajustes" onPulsar={onAbrirAjustes} />
       </div>
-
-      <span
-        className="flex shrink-0 items-center gap-1.5 rounded border border-borde bg-fondo px-2 py-1 font-mono text-telemetria text-tenue"
-        title="Los documentos se guardan cifrados con AES-256-GCM"
-      >
-        <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-exito" />
-        AES-256-GCM
-      </span>
     </header>
+  )
+}
+
+/** Acceso rápido de la sub-cabecera: mismo aspecto en todas las secciones. */
+function AccesoRapido({ icono, titulo, onPulsar }) {
+  return (
+    <button
+      type="button"
+      onClick={onPulsar}
+      title={titulo}
+      aria-label={titulo}
+      className="flex h-8 w-8 items-center justify-center rounded-md border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
+    >
+      <Icono nombre={icono} tamano={16} />
+    </button>
   )
 }
 
