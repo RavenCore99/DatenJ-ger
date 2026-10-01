@@ -370,6 +370,43 @@ documentos y dejar el proyecto instalable y publicable.
 > de `docs/issues.md`. Si Raven quiere que sea un ticket real, hay que crearlo; el
 > trabajo que representa ya está hecho y verificado.
 
+## Calidad de vida y diseño (2026-10-01)
+
+Sección nueva, pedida por Raven sobre la aplicación ya funcional y antes de abrir
+la Fase 4. Se etiqueta con las **áreas del tablero**, no con números inventados:
+
+| Área del tablero | Trabajo |
+|---|---|
+| `SCRUM-57` (Backend) | catálogo de empresas (`Empresas` + `personas.empresa_id`), normalización y migración del texto libre; corrección del alta/edición de titular en documentos |
+| `SCRUM-58` (Frontend) | panel de Personas agrupado por empresa; formulario de alta de documento con sus metadatos |
+| `SCRUM-59` (UI / UX) | animaciones del portal, fondo de marca compartido, «Términos y uso», Ajustes al pie con auditoría y modelos, asistente flotante, tuerca de acceso rápido, logo como control de la barra, franja de telemetría con estado en texto |
+| `SCRUM-61` (Chatbot) | acceso flotante al asistente desde cualquier sección |
+| `SCRUM-62` (API / Servicios) | rutas de empresas; credencial de la API escrita en el `.env` y prueba real de conexión |
+| `SCRUM-64` (Testing / QA) | 178 pruebas, con cobertura nueva de empresas, normalización, migración y modelos |
+| `SCRUM-65` (Documentación / Release) | `planning.md`, este archivo y `CLAUDE.md` al día |
+
+**Commits esperados de la sección** (los ya publicados siguen siendo trazables por
+la tabla de mapeo de arriba):
+
+```text
+feat(SCRUM-62): escribe la credencial de la API en el .env y anade la prueba real de conexion
+test(SCRUM-64): cubre el .env, la clave vigente y la prueba de conexion
+ui(SCRUM-59): escribe el estado real en la franja de telemetria
+fix(SCRUM-57): vincula la persona correcta al editar el titular de un documento
+feat(SCRUM-57): catalogo de empresas para no duplicar y asociar el personal
+feat(SCRUM-58): agrupa el personal por empresa y sugiere el catalogo al registrar
+```
+
+### Orden acordado para lo que queda (2026-10-01)
+
+1. `SCRUM-81` estadística al backend · `SCRUM-82` dashboard de gráficos
+2. `SCRUM-84` **restablecer contraseña** (el más vital; autorizado en `CLAUDE.md`,
+   con `senior-security` antes de tocar el flujo)
+3. `SCRUM-87` notificaciones · `SCRUM-88` modales de documento
+4. `SCRUM-85` atajos de teclado y búsqueda global (el último, el más simple)
+5. Fase 4 **solo API**: streaming, errores de red, decisión de motor y asistente
+   anclado al proyecto
+
 ## Bloque A — Pantallas que faltan
 
 **Estado: cerrado (2026-09-30) — hecho y verificado: 142 pruebas, `vite build`
