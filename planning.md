@@ -618,10 +618,11 @@ conduciendo la ventana real de Electron:
    `bbe44a8` (un solo commit: ambos son el área `SCRUM-59` y ambos tocan
    `Documentos.jsx`)
 5. [x] `SCRUM-85` atajos de teclado y búsqueda global — `dc0511a`
-6. [ ] **Fase 4, solo API** (modelos locales omitidos por decisión de Raven):
+6. [x] **Fase 4, solo API** (modelos locales omitidos por decisión de Raven):
    streaming del chatbot, errores de red, decisión de motor de persistencia y
-   **asistente anclado al proyecto**, que solo responda con la información del
-   propio sistema
+   **asistente anclado al proyecto** — `9cc138f`, `39dfa21` y `bd29981`. El
+   asistente solo responde sobre el sistema y con los agregados reales del
+   archivo; nunca recibe datos personales, contenido de documentos ni secretos
 
 Evaluación (paralela, backend):
 
@@ -631,7 +632,37 @@ Evaluación (paralela, backend):
 
 ## Fase 4 — Integración de APIs y modelos locales
 
-Estado: **por hacer** — Skill: `chatbot-streaming` + `local-llm-fallback`
+Estado: **hecho, solo API** — Skill: `chatbot-streaming`. Los modelos locales
+(`local-llm-fallback`) siguen **aparcados** por decisión de Raven del
+2026-09-30.
+
+**Cerrado el 2026-10-01** con el bloque del chatbot:
+
+| Pieza | Dónde | Ticket |
+| --- | --- | --- |
+| Entrega progresiva de la respuesta (RF-16) | `chatbot.py` (`enviar_mensaje_stream`), `POST /api/chat/mensajes/stream` (SSE), `src/lib/api.js` (`transmitir`), `src/pages/Chatbot.jsx` | `SCRUM-34` |
+| Tiempos límite, reintentos y errores de red accionables | `chatbot.py` (`_traducir_fallo`, `_con_reintentos`) | `SCRUM-35` |
+| Continuidad de la conversación durante el flujo | `chatbot.py` (registro único del turno) + `tests/test_asistente.py` | `SCRUM-36` |
+| **Asistente anclado al proyecto** | `backend/services/contexto.py`, reinyectado en cada turno | `SCRUM-61` (área) |
+| Prueba real de generación desde el panel | `POST /api/chat/probar`, `src/pages/Modelos.jsx` | `SCRUM-62` (área) |
+| Decisión de motor de persistencia | `docs/decision-persistencia.md` | `SCRUM-43` |
+
+Dos decisiones que conviene recordar:
+
+* **El asistente no puede filtrar lo que nunca recibe.** El contexto que se le
+  entrega son **agregados** —cuántos documentos, reparto por empresa, titulares,
+  catálogo y acciones de auditoría— y nada más: ni cédulas, ni nombres de
+  titulares, ni nombres de archivo, ni contenido, ni claves, hashes, tokens o
+  rutas. El prompt declara además el alcance estricto y prohíbe responder fuera
+  del proyecto.
+* **Se retiró el respaldo que fingía contestar.** Ante un 403 del proveedor, el
+  servicio devolvía una respuesta enlatada «en modo local de prueba». Ahora dice
+  el motivo real y accionable, que es lo que el panel de conexión ayuda a
+  resolver. Una respuesta inventada es peor que un error honesto.
+
+El panel de conexión ya existía (`SCRUM-64`, con escritura del `.env` y prueba
+real de credencial); esta fase le añade la **prueba de generación** y la
+posibilidad de elegir entre los modelos que la cuenta tiene de verdad.
 
 **Alcance inmediato: solo API (decisión 2026-09-30).** Hasta que el frontend y
 el backend estén completos al 100 %, el chatbot funciona por API y **no** se
@@ -773,7 +804,7 @@ fase, el proyecto se considera entregable cuando:
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
 | 3. Frontend conforme a mockups | **cerrada salvo el empaquetado** — además de lo anterior (base visual, movimiento, pantallas nuevas, iconos, reportes con logo, telemetría, catálogo de empresas y calidad de vida), el PR #16 cierra `SCRUM-81`, `82`, `84`, `85`, `87` y `88`. Solo queda el empaquetado de la Fase 7 | 2026-10-01 |
-| 4. Integración de APIs y modelos locales | **reencuadrado: solo API** (decidido por Raven el 2026-10-01; los modelos locales quedan omitidos por ahora). El panel de conexión ya está hecho (`SCRUM-64`, con `.env` y prueba real); quedan el streaming, el manejo de errores de red, la decisión de motor de persistencia y el **asistente anclado al proyecto** | 2026-10-01 |
+| 4. Integración de APIs y modelos locales | **hecho, solo API** — `SCRUM-34` (streaming), `35` (tiempos y reintentos), `36` (continuidad), `SCRUM-61` (asistente anclado al proyecto con datos reales en vivo) y `SCRUM-43` (SQLite con WAL, decisión en `docs/decision-persistencia.md`). El panel de conexión permite cargar la credencial, probarla y probar la generación. Los modelos locales quedan omitidos por decisión de Raven | 2026-10-01 |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
 | 7. Empaquetado y publicación en GitHub Packages | por hacer (la app debe quedar como instalador listo para usarse) | 2026-09-30 |
