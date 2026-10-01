@@ -56,11 +56,13 @@ REINTENTOS_POR_DEFECTO = 3
 #: Espera entre reintentos, en segundos; crece con cada intento (1 s, 2 s…).
 ESPERA_REINTENTO = 1.0
 
-#: Modelos que se prueban, en orden, si el elegido no responde.
+#: Modelos de último recurso, si el llamante no aporta una lista mejor. Son
+#: **alias**, no versiones fijas: `gemini-2.0-flash` se retiró y el asistente
+#: respondía 503 «high demand» al pedírselo. Un alias apunta siempre a la
+#: versión vigente de su familia y no caduca.
 MODELOS_POR_DEFECTO = (
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
     "gemini-flash-latest",
+    "gemini-pro-latest",
 )
 
 #: Base del proveedor. El panel de conexión puede guardar otro punto de
@@ -111,12 +113,20 @@ class ErrorRedChatbot(ChatbotError):
 
     Lleva el ``motivo`` ya legible para el usuario y una marca ``reintentable``
     que decide si tiene sentido volver a intentarlo.
+
+    ``modelo_invalido`` es distinto: dice que el problema **es el modelo**, no la
+    credencial ni la red. Un 503 «high demand» sobre un modelo retirado no se
+    arregla repitiendo —se arregla con otro modelo—, así que con esta marca se
+    pasa al siguiente candidato sin gastar los reintentos en uno que no va a
+    responder.
     """
 
-    def __init__(self, mensaje: str, *, motivo: str = "", reintentable: bool = False):
+    def __init__(self, mensaje: str, *, motivo: str = "", reintentable: bool = False,
+                 modelo_invalido: bool = False):
         super().__init__(mensaje)
         self.motivo = motivo or mensaje
         self.reintentable = reintentable
+        self.modelo_invalido = modelo_invalido
 
 
 def declaracion_transhumana() -> str:
@@ -186,6 +196,7 @@ class ChatbotService:
         tiempo_limite: float = TIEMPO_LIMITE_POR_DEFECTO,
         reintentos: int = REINTENTOS_POR_DEFECTO,
         contexto: str = "",
+        modelos: list[str] | None = None,
     ):
         api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
         if not api_key:
@@ -194,11 +205,16 @@ class ChatbotService:
             )
 
         self.api_key = api_key
-        self.model_candidates: list[str] = list(MODELOS_POR_DEFECTO)
-        if modelo and modelo.strip() and modelo.strip() not in self.model_candidates:
-            # El modelo elegido en el panel de conexión se prueba primero; la
-            # lista de candidatos se conserva como respaldo si falla.
-            self.model_candidates.insert(0, modelo.strip())
+        #: Candidatos, en orden: el modelo elegido, los que la cuenta tiene
+        #: comprobados —los aporta el panel tras una prueba de conexión— y, al
+        #: final, los alias del catálogo. El orden es la diferencia entre
+        #: responder y devolver un 503: si el elegido se retiró, el asistente cae
+        #: en uno que existe.
+        self.model_candidates: list[str] = []
+        for nombre in [modelo, *(modelos or []), *MODELOS_POR_DEFECTO]:
+            limpio = (nombre or "").strip()
+            if limpio and limpio not in self.model_candidates:
+                self.model_candidates.append(limpio)
 
         self.tiempo_limite = float(tiempo_limite)
         self.reintentos = max(1, int(reintentos))
@@ -275,11 +291,17 @@ class ChatbotService:
                     f"El proveedor rechazó la petición ({codigo}). Revisa el nombre del modelo "
                     "en el panel de conexión.",
                     motivo=detalle or f"{codigo}",
+                    modelo_invalido=True,
                 )
             return ErrorRedChatbot(
                 f"El proveedor respondió con un error ({codigo}).",
                 motivo=detalle or str(exc),
                 reintentable=codigo >= 500,
+                # Un 5xx sobre un modelo concreto suele ser «este modelo no está
+                # disponible» (retirado, saturado). Repetirlo no lo arregla; otro
+                # modelo sí. Un 5xx de verdad, del proveedor entero, fallará en
+                # todos los candidatos y acabará saliendo igual.
+                modelo_invalido=codigo >= 500,
             )
 
         if isinstance(exc, error.URLError):
@@ -402,9 +424,10 @@ class ChatbotService:
 
                     if ya_emitido():
                         raise fallo
-                    if not fallo.reintentable:
-                        # Un 403 o un 400 no se arreglan repitiendo: se pasa al
-                        # siguiente modelo candidato, si lo hay.
+                    if not fallo.reintentable or fallo.modelo_invalido:
+                        # Un 403 o un 400 no se arreglan repitiendo, y un modelo
+                        # retirado o saturado tampoco: se pasa al siguiente
+                        # candidato sin gastar aquí los reintentos.
                         break
                     if intento + 1 < self.reintentos:
                         time.sleep(ESPERA_REINTENTO * (intento + 1))
@@ -539,6 +562,7 @@ def crear_servicio(
     *,
     tiempo_limite: float = TIEMPO_LIMITE_POR_DEFECTO,
     reintentos: int = REINTENTOS_POR_DEFECTO,
+    modelos: list[str] | None = None,
 ) -> ChatbotService:
     """Punto de entrada único para iniciar la conversación de un usuario.
 
@@ -550,6 +574,9 @@ def crear_servicio(
         modelo: modelo elegido en el panel de conexión; se prueba primero.
         tiempo_limite: segundos de espera por petición.
         reintentos: intentos por modelo.
+        modelos: modelos que la cuenta tiene comprobados, para respaldar al
+            elegido si este falla. Los aporta el panel
+            (``backend/services/modelos.modelos_candidatos``).
 
     Returns:
         ``ChatbotService`` listo para conversar.
@@ -564,4 +591,5 @@ def crear_servicio(
         tiempo_limite=tiempo_limite,
         reintentos=reintentos,
         contexto=contexto,
+        modelos=modelos,
     )

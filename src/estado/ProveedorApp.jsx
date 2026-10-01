@@ -20,13 +20,14 @@ export function ProveedorApp({ children }) {
   const [animaciones, setAnimaciones] = useState(() => animacionesIniciales())
   const [aviso, setAviso] = useState(null)
   // Estado de las piezas del sistema (SCRUM-68): la base de datos se comprueba
-  // leyendo de verdad el archivo; las conexiones de modelos y el chatbot no
-  // tienen configuración todavía (llegan en la Fase 4), así que su estado real
-  // hoy es «sin configurar».
+  // leyendo de verdad el archivo; las conexiones de modelos y el chatbot toman
+  // su estado de la **última prueba real** (SCRUM-62), no de que exista una
+  // credencial: verde sin prueba detrás sería una suposición.
   const [baseDatos, setBaseDatos] = useState('sin_verificar')
   // Conexión de modelos (SCRUM-64): el panel la guarda y la franja de
-  // telemetría la muestra. Sin sesión no se puede consultar, así que su estado
-  // honesto es «sin configurar».
+  // telemetría muestra su salud real (`salud`: sin_configurar / sin_verificar /
+  // ok / error). Sin sesión no se puede consultar, así que su estado honesto es
+  // «sin configurar».
   const [modelos, setModelos] = useState(null)
   // Notificaciones del sistema (SCRUM-87): los avisos transitorios y la
   // preferencia de mostrarlos viven aquí para que cualquier pantalla —incluido
@@ -228,10 +229,14 @@ export function ProveedorApp({ children }) {
       alternarAnimaciones,
       componentes: {
         baseDatos,
-        // Con la conexión de modelos guardada (SCRUM-64) el estado deja de ser
-        // un supuesto: verde solo si el servicio confirma que hay credencial.
-        apis: modelos ? (modelos.clave_configurada ? 'ok' : 'sin_configurar') : 'sin_configurar',
-        chatbot: modelos ? (modelos.clave_configurada ? 'ok' : 'sin_configurar') : 'sin_configurar',
+        // El estado no se supone (SCRUM-62): tener una credencial guardada no es
+        // tener una conexión que funcione —puede ser de otro proveedor y no
+        // servir para nada—. Verde solo lo pone una prueba real superada;
+        // «sin verificar» mientras no se haya probado, y «error» si la última
+        // prueba falló. Es el mismo valor que muestra el panel de conexión, así
+        // que la franja y la pantalla no pueden contradecirse.
+        apis: modelos?.salud ?? 'sin_configurar',
+        chatbot: modelos?.salud ?? 'sin_configurar',
       },
       modelos,
       recargarModelos: () => consultarSalud(),

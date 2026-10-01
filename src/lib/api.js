@@ -329,6 +329,11 @@ export const backend = {
     estado: () => solicitar('/api/modelos'),
     guardar: (datos) => solicitar('/api/modelos', { metodo: 'POST', cuerpo: datos }),
     probar: () => solicitar('/api/modelos/probar', { metodo: 'POST' }),
+    // Reconoce el proveedor de una clave sin llamar a nadie: es lo que permite
+    // que el panel muestre a qué proveedor pertenece y qué URL base le toca,
+    // para que el usuario no tenga que saber ninguna de las dos (SCRUM-62).
+    identificar: (clave) =>
+      solicitar('/api/modelos/identificar', { metodo: 'POST', cuerpo: { clave } }),
   },
 
   chat: {

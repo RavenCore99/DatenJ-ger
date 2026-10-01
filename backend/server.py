@@ -151,6 +151,17 @@ class ConexionModelos(BaseModel):
     quitar_clave: bool = False
 
 
+class ClavePorIdentificar(BaseModel):
+    """Credencial que se quiere reconocer, para deducir su proveedor.
+
+    La clave viaja al backend —que es donde va a ir de todas formas al
+    guardarla— y **no se guarda** por el hecho de identificarla: la respuesta
+    solo dice a qué proveedor pertenece.
+    """
+
+    clave: str
+
+
 class SegundoFactorNuevo(BaseModel):
     """Secreto TOTP propuesto y código con el que el usuario lo confirma."""
 
@@ -459,8 +470,22 @@ def crear_app(
 
     @app.post("/api/modelos/probar", dependencies=protegido)
     async def probar_conexion_de_modelos() -> dict[str, Any]:
-        """Prueba real de la credencial contra el proveedor configurado."""
+        """Prueba real de la credencial contra el proveedor configurado.
+
+        El resultado se anota en el almacén: es lo que permite que la franja de
+        telemetría refleje la prueba y no solo la existencia de una clave.
+        """
         return comandos.probar_conexion_de_modelos()
+
+    @app.post("/api/modelos/identificar", dependencies=protegido)
+    async def identificar_credencial(cuerpo: ClavePorIdentificar) -> dict[str, Any]:
+        """Reconoce el proveedor de una clave **sin llamar a ningún servicio**.
+
+        Solo aplica las reglas del catálogo. Permite que el panel muestre a qué
+        proveedor pertenece la clave y qué URL base le corresponde antes de
+        guardarla, para que el usuario no tenga que saber ninguna de las dos.
+        """
+        return comandos.identificar_clave(cuerpo.clave)
 
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:

@@ -469,7 +469,12 @@ class ComandosDatenJager:
         """
         self._exigir_sesion()
         self._chat = crear_servicio(
-            self._usuario_nombre, contexto, api_key=_modelos.clave(self._raiz))
+            self._usuario_nombre,
+            contexto,
+            api_key=_modelos.clave(self._raiz),
+            # Los modelos que la cuenta tiene comprobados respaldan al elegido:
+            # si el elegido se retiró, el asistente cae en uno que existe.
+            modelos=_modelos.modelos_candidatos(self._raiz))
         self._refrescar_contexto()
         return self._chat
 
@@ -522,11 +527,21 @@ class ComandosDatenJager:
         self._exigir_sesion()
         clave = _modelos.clave(self._raiz)
         if not clave:
-            return {"ok": False, "mensaje": "No hay credencial configurada que probar."}
+            return _modelos.registrar_prueba(
+                self._raiz,
+                {"ok": False, "mensaje": "No hay credencial configurada que probar."},
+                _modelos.PRUEBA_RESPUESTA)
 
-        modelo = _modelos.estado(self._raiz).get("modelo")
-        servicio = crear_servicio(self._usuario_nombre, api_key=clave, modelo=modelo)
-        return servicio.probar_respuesta()
+        estado = _modelos.estado(self._raiz)
+        servicio = crear_servicio(
+            self._usuario_nombre,
+            api_key=clave,
+            modelo=estado.get("modelo"),
+            modelos=_modelos.modelos_candidatos(self._raiz))
+        # El resultado se anota: es lo que permite que la franja de telemetría
+        # diga la verdad después, en vez de quedarse verde por inercia.
+        return _modelos.registrar_prueba(
+            self._raiz, servicio.probar_respuesta(), _modelos.PRUEBA_RESPUESTA)
 
     def limpiar_chat(self) -> None:
         """Reinicia el historial de la conversación activa."""
@@ -813,9 +828,19 @@ class ComandosDatenJager:
         return _modelos.guardar(self._raiz, **campos)
 
     def probar_conexion_de_modelos(self) -> dict:
-        """Prueba la credencial guardada contra el proveedor, de verdad."""
+        """Comprueba la credencial guardada contra el proveedor, de verdad."""
         self._exigir_sesion()
         return _modelos.probar(self._raiz)
+
+    def identificar_clave(self, clave: str) -> dict:
+        """Reconoce el proveedor de una clave, **sin llamar a nadie**.
+
+        Permite que el panel diga «detectado: NVIDIA NIM · https://…» antes de
+        guardar nada, para que el usuario compruebe que su clave se reconoce en
+        vez de descubrirlo cuando ya falló.
+        """
+        self._exigir_sesion()
+        return _modelos.identificar(clave)
 
     # ------------------------------------------------------------------ #
     # Catálogo
