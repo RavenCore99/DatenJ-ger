@@ -335,7 +335,38 @@ def actualizar_documento(
             "UPDATE PDFs SET nombre = ?, descripcion = ? WHERE id = ? AND usuario_id = ?",
             (nuevo_nombre, nueva_descripcion, documento_id, usuario_id),
         )
-        if cedula:
+        if cedula and nombres:
+            # La cédula identifica al titular. Si la persona vinculada es la
+            # misma, se actualizan sus datos; si cambió —o si el documento no
+            # tenía titular— se resuelve la persona de esa cédula y se vincula.
+            #
+            # Antes se hacía un `UPDATE` por subconsulta sobre el `persona_id`
+            # del documento: sin titular vinculado no afectaba a ninguna fila y
+            # el dato se perdía en silencio mientras la interfaz decía
+            # «Documento actualizado»; y con una cédula distinta se renombraba a
+            # la persona equivocada.
+            cursor.execute(
+                "SELECT pe.id, pe.cedula FROM Personas pe "
+                "JOIN PDFs p ON p.persona_id = pe.id WHERE p.id = ?",
+                (documento_id,),
+            )
+            vinculada = cursor.fetchone()
+            cedula_nueva = str(cedula).strip()
+
+            if vinculada and str(vinculada[1]) == cedula_nueva:
+                cursor.execute(
+                    "UPDATE Personas SET nombres = ?, empresa = ? WHERE id = ?",
+                    (nombres, empresa or None, vinculada[0]),
+                )
+            else:
+                persona_id = _resolver_persona(cursor, cedula_nueva, nombres, empresa or None)
+                cursor.execute(
+                    "UPDATE PDFs SET persona_id = ? WHERE id = ? AND usuario_id = ?",
+                    (persona_id, documento_id, usuario_id),
+                )
+        elif nombres:
+            # Sin cédula no se puede resolver a quién pertenece: solo se
+            # actualiza la persona que ya estuviera vinculada, si la hay.
             cursor.execute(
                 """UPDATE Personas SET nombres = ?, empresa = ?
                    WHERE id = (SELECT persona_id FROM PDFs WHERE id = ?)""",

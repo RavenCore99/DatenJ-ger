@@ -137,8 +137,13 @@ class TestConexionDeModelos(unittest.TestCase):
 
         estado = modelos.estado(self.tmpdir)
         self.assertTrue(estado["clave_configurada"])
-        self.assertEqual(estado["origen_clave"], "almacen")
+        # El panel deja la credencial también en el `.env` del proyecto, que es
+        # de donde la lee el asistente: el origen efectivo pasa a ser el entorno.
+        self.assertEqual(estado["origen_clave"], "entorno")
         self.assertEqual(estado["endpoint"], "https://ejemplo.invalido/v1")
+
+        with open(os.path.join(self.tmpdir, modelos.NOMBRE_ENV), encoding="utf-8") as archivo:
+            self.assertIn("clave-secreta-123", archivo.read())
 
         # La clave no aparece en el estado, pero el servicio la recupera.
         self.assertNotIn("clave-secreta-123", str(estado))
@@ -165,12 +170,26 @@ class TestConexionDeModelos(unittest.TestCase):
         with self.assertRaises(DatosInvalidosError):
             modelos.guardar(self.tmpdir, proveedor="inventado")
 
-    def test_el_entorno_tiene_prioridad(self):
-        modelos.guardar(self.tmpdir, api_key="clave-del-almacen")
-        os.environ[modelos.VARIABLE_ENTORNO] = "clave-del-entorno"
+    def test_el_env_manda_sobre_el_entorno_del_proceso(self):
+        """Contrato nuevo: la credencial del panel surte efecto sin reiniciar.
+
+        `config.py` carga el `.env` en `os.environ` al arrancar, así que si el
+        entorno del proceso mandara, una clave guardada desde el panel no se
+        aplicaría hasta reiniciar —y «Quitar la credencial» no quitaría nada.
+        """
+        modelos.guardar(self.tmpdir, api_key="clave-del-panel")
+        os.environ[modelos.VARIABLE_ENTORNO] = "clave-cargada-al-arrancar"
         try:
-            self.assertEqual(modelos.clave(self.tmpdir), "clave-del-entorno")
+            self.assertEqual(modelos.clave(self.tmpdir), "clave-del-panel")
             self.assertEqual(modelos.estado(self.tmpdir)["origen_clave"], "entorno")
+        finally:
+            del os.environ[modelos.VARIABLE_ENTORNO]
+
+    def test_sin_env_manda_el_entorno_del_proceso(self):
+        """Sin `.env` (pruebas, o una variable exportada a mano) se usa el entorno."""
+        os.environ[modelos.VARIABLE_ENTORNO] = "clave-exportada"
+        try:
+            self.assertEqual(modelos.clave(self.tmpdir), "clave-exportada")
         finally:
             del os.environ[modelos.VARIABLE_ENTORNO]
 

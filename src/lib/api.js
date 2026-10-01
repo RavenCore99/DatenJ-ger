@@ -243,6 +243,7 @@ export const backend = {
   modelos: {
     estado: () => solicitar('/api/modelos'),
     guardar: (datos) => solicitar('/api/modelos', { metodo: 'POST', cuerpo: datos }),
+    probar: () => solicitar('/api/modelos/probar', { metodo: 'POST' }),
   },
 
   chat: {

@@ -4,6 +4,8 @@ import Panel, { Aviso, CabeceraPagina, Esqueleto, EstadoError, Pill } from '../c
 import ConmutadorNotificaciones from '../components/ConmutadorNotificaciones.jsx'
 import { CampoSuave, FormularioSuave } from '../components/FormularioSuave.jsx'
 import Icono from '../components/Icono.jsx'
+import Auditoria from './Auditoria.jsx'
+import Modelos from './Modelos.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend, urlBase } from '../lib/api.js'
 
@@ -30,11 +32,20 @@ const SECCIONES = [
   // mockup de configuración, que son referencia de estilo (CLAUDE.md §6).
   { clave: 'sesion', titulo: 'Sesión', descripcion: 'Inactividad y cierre' },
   { clave: 'almacenamiento', titulo: 'Almacenamiento', descripcion: 'Bóveda y volumen' },
+  // Secciones que Raven pidió reunir aquí (calidad de vida): la auditoría y la
+  // conexión de modelos dejan de ser destinos aparte y pasan a ser dos
+  // secciones más de Ajustes. Se incrustan tal cual —con su propia cabecera y
+  // sus propios datos— para no duplicar su lógica ni su mantenimiento.
+  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Trazabilidad de acciones' },
+  { clave: 'modelos', titulo: 'Conexión de modelos', descripcion: 'Proveedor y credencial' },
   { clave: 'atajos', titulo: 'Atajos', descripcion: 'Teclado' },
   { clave: 'acerca', titulo: 'Acerca de', descripcion: 'Versión y entorno' },
 ]
 
-export default function Cuenta() {
+/** Secciones que se pintan incrustando otra pantalla en vez de un formulario. */
+const INCRUSTADAS = new Set(['auditoria', 'modelos'])
+
+export default function Cuenta({ onNavegar }) {
   const [seccion, setSeccion] = useState('apariencia')
   const [estado, setEstado] = useState(null)
   const [error, setError] = useState(null)
@@ -104,7 +115,13 @@ export default function Cuenta() {
             </Panel>
           )}
 
-          {estado && (
+          {/* Auditoría y modelos conservan su propia cabecera y su propio
+              contenido: se incrustan sin el marco del Panel para no anidar dos
+              cabeceras. */}
+          {estado && seccion === 'auditoria' && <Auditoria nivelTitulo={2} />}
+          {estado && seccion === 'modelos' && <Modelos onNavegar={onNavegar} nivelTitulo={2} />}
+
+          {estado && !INCRUSTADAS.has(seccion) && (
             <Panel titulo={activa.titulo} descripcion={activa.descripcion}>
               {seccion === 'apariencia' && <Apariencia />}
               {seccion === 'doble_factor' && <SegundoFactor estado={estado} onCambio={recargar} />}

@@ -28,7 +28,7 @@ const FILTROS_VACIOS = { desde: '', hasta: '', accion: '' }
  * tabla con la acción en pill coloreada y visor de log tipo terminal en
  * monoespaciada.
  */
-export default function Auditoria() {
+export default function Auditoria({ nivelTitulo = 1 }) {
   const { conectado, autenticado } = useApp()
 
   const [filtros, setFiltros] = useState(FILTROS_VACIOS)
@@ -126,6 +126,7 @@ export default function Auditoria() {
   return (
     <div className="flex flex-col gap-6">
       <CabeceraPagina
+        nivel={nivelTitulo}
         titulo="Auditoría"
         descripcion="Trazabilidad de acciones · Ley 1581 de 2012"
         acciones={

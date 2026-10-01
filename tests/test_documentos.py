@@ -15,6 +15,7 @@ from backend.errors import (
     NoEncontradoError,
 )
 from backend.services import documentos
+from backend.services import personas
 
 
 class TestDocumentos(BaseBackendTest):
@@ -79,6 +80,61 @@ class TestDocumentos(BaseBackendTest):
         self.assertEqual(actualizado["nombres"], "Ana Diaz Rojas")
         self.assertEqual(actualizado["empresa"], "Minera A SAS")
         self.assertIn(documentos.ACCION_EDITAR, self.eventos())
+
+    def test_actualizar_un_documento_sin_titular_crea_la_persona(self):
+        """Rellenar la persona al editar un documento sin titular debe crearla.
+
+        Antes, el `UPDATE` de la persona apuntaba por subconsulta al
+        `persona_id` del documento: si no tenía ninguna, no afectaba a ninguna
+        fila y el dato se perdía en silencio mientras la interfaz decía
+        «Documento actualizado».
+        """
+        creado = self.crear_documento()
+        self.assertIsNone(creado["persona_id"])
+
+        actualizado = documentos.actualizar_documento(
+            self.conn, self.cursor,
+            usuario_id=self.usuario_id,
+            documento_id=creado["id"],
+            cedula="555",
+            nombres="Luis Mora",
+            empresa="Minera B",
+        )
+
+        self.assertEqual(actualizado["nombres"], "Luis Mora")
+        self.assertEqual(actualizado["empresa"], "Minera B")
+
+        # Y la persona existe de verdad, con el documento vinculado.
+        creadas = personas.listar_personas(self.conn, self.cursor, "555")
+        self.assertEqual(len(creadas), 1)
+        self.assertEqual(creadas[0]["documentos"], 1)
+
+    def test_actualizar_con_otra_cedula_vincula_al_titular_correcto(self):
+        """Corregir la cédula debe llevar el documento al titular correcto.
+
+        Antes solo se propagaban nombres y empresa a la persona ya vinculada; la
+        cédula nueva se ignoraba, así que el documento seguía apuntando a otra
+        persona y el inventario mostraba una cédula que ya no era la suya.
+        """
+        creado = self.crear_documento(cedula="333", nombres="Ana Diaz", empresa="Minera A")
+
+        actualizado = documentos.actualizar_documento(
+            self.conn, self.cursor,
+            usuario_id=self.usuario_id,
+            documento_id=creado["id"],
+            cedula="444",
+            nombres="Ana Diaz Rojas",
+            empresa="Minera A",
+        )
+
+        self.assertEqual(actualizado["cedula"], "444")
+        self.assertEqual(actualizado["nombres"], "Ana Diaz Rojas")
+
+        # El documento pasó al titular de la cédula nueva; el anterior queda sin él.
+        nueva = personas.listar_personas(self.conn, self.cursor, "444")
+        anterior = personas.listar_personas(self.conn, self.cursor, "333")
+        self.assertEqual(nueva[0]["documentos"], 1)
+        self.assertEqual(anterior[0]["documentos"], 0)
 
     def test_eliminar_quita_el_documento(self):
         creado = self.crear_documento()

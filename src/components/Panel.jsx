@@ -31,11 +31,16 @@ export default function Panel({ titulo, descripcion, acciones, children, classNa
  * Cabecera de una pantalla completa: título de marca, subtítulo y acciones.
  * Es la pieza que los mockups dibujan en la parte alta del área de contenido.
  */
-export function CabeceraPagina({ titulo, descripcion, acciones }) {
+export function CabeceraPagina({ titulo, descripcion, acciones, nivel = 1 }) {
+  // El título es `h1` cuando la pantalla es la vista entera, y `h2` cuando la
+  // pantalla se incrusta dentro de otra (por ejemplo, Auditoría dentro de
+  // Ajustes): una vista con dos `h1` deja de tener un título principal claro.
+  const Titulo = nivel === 1 ? 'h1' : 'h2'
+
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-marca text-titulo-md tracking-tight">{titulo}</h1>
+        <Titulo className="font-marca text-titulo-md tracking-tight">{titulo}</Titulo>
         {descripcion && <p className="text-cuerpo-sm text-tenue">{descripcion}</p>}
       </div>
       {acciones && <div className="flex shrink-0 flex-wrap items-center gap-2">{acciones}</div>}

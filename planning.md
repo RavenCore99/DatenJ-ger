@@ -705,18 +705,19 @@ fase, el proyecto se considera entregable cuando:
 - [ ] Si el cambio tocó cifrado, autenticación, o más de 2 archivos de UI,
       fue aprobado explícitamente por Raven antes del commit (ver
       `CLAUDE.md`, sección 10).
-- [ ] `add` / `commit` / `push` los ejecuta el agente con autorización de
-      Raven (ver `CLAUDE.md` §8); `pull` y `pr` quedan fuera de su alcance.
+- [ ] `add` / `commit` / `push` **y `pr`** los ejecuta el agente con
+      autorización de Raven (ver `CLAUDE.md` §8), siempre desde `v2.1` y con
+      `--base main` (ver `jira.md`).
 
 ## Seguimiento de progreso
 
 | Fase | Estado | Última actualización |
 | --- | --- | --- |
-| 0. Preparación | por hacer (mockups pendientes de recibir) | 2026-09-28 |
+| 0. Preparación | hecho (mockups recibidos y versionados en `SCRUM-79`) | 2026-10-01 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | en progreso (base visual y movimiento hecha; pantallas nuevas `SCRUM-57` a `SCRUM-64` cerradas; faltan `SCRUM-80` a `SCRUM-88`) | 2026-09-30 |
-| 4. Integración de APIs y modelos locales | por hacer | — |
+| 3. Frontend conforme a mockups | casi cerrada (base visual y movimiento hechas; pantallas nuevas `SCRUM-57` a `SCRUM-64` cerradas; de `SCRUM-80` a `SCRUM-88` hechos el set de iconos, los reportes con logo y la franja de telemetría; más el lote de calidad de vida del 2026-10-01) | 2026-10-01 |
+| 4. Integración de APIs y modelos locales | por hacer — **reencuadre propuesto: solo API**. El panel de conexión ya está hecho (`SCRUM-64`); quedan el streaming, el manejo de errores de red y la decisión de motor de persistencia. Los modelos locales siguen en espera | 2026-10-01 |
 | 5. Búsqueda semántica (evaluación) | evaluación | — |
 | 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
 | 7. Empaquetado y publicación en GitHub Packages | por hacer (la app debe quedar como instalador listo para usarse) | 2026-09-30 |
