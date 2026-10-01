@@ -30,7 +30,7 @@ import { backend } from '../lib/api.js'
  * que se inicia una conversación, así que basta con abrir una nueva en el panel
  * del asistente.
  */
-export default function Modelos({ onNavegar }) {
+export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const { conectado, autenticado, modelos, recargarModelos } = useApp()
 
   const [estado, setEstado] = useState(null)
@@ -133,6 +133,7 @@ export default function Modelos({ onNavegar }) {
   return (
     <div className="flex flex-col gap-4">
       <CabeceraPagina
+        nivel={nivelTitulo}
         titulo="Conexión de modelos"
         descripcion="Proveedor, modelo y credencial del asistente"
         acciones={
