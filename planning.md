@@ -664,6 +664,21 @@ El panel de conexión ya existía (`SCRUM-64`, con escritura del `.env` y prueba
 real de credencial); esta fase le añade la **prueba de generación** y la
 posibilidad de elegir entre los modelos que la cuenta tiene de verdad.
 
+### Cierre de la Fase 4 (2026-10-01)
+
+Los tres defectos que aparecieron al probarla con la credencial real, ya
+corregidos:
+
+| Defecto | Causa | Corrección |
+| --- | --- | --- |
+| El `503` al usar el asistente | El modelo guardado (`gemini-2.0-flash`) estaba retirado; Google responde `503` a un modelo que ya no existe | El catálogo usa **alias** (`-latest`) que no caducan, la prueba de conexión sustituye el modelo retirado por uno vigente de la cuenta, y un `5xx` sobre un modelo pasa al siguiente candidato |
+| La sesión se caía al guardar o probar la API | Los manejadores de modelos y del asistente eran `async def` con esperas **bloqueantes**: dejaban al servicio sin atender el sondeo de sesión durante hasta 25 s. El sondeo, además, cerraba la sesión ante **cualquier** fallo, no solo un 401 | Los manejadores pasan a `def` (FastAPI los ejecuta en un hilo aparte) y la sesión solo se cierra cuando el servicio **responde** que no hay sesión |
+| El asistente mostraba su razonamiento | Los modelos con razonamiento devuelven sus pasos como partes marcadas (`thought`) y se concatenaban con el texto; además el prompt no lo prohibía, y los modelos pequeños lo escriben como texto normal | Se descartan las partes de pensamiento —en el flujo y en la respuesta completa— y el prompt exige responder directamente, sin analizar la petición ni enumerar opciones |
+
+Y un cambio de sitio pedido por Raven: **Auditoría y Modelos salen de la barra de
+secciones** del dashboard y quedan solo dentro de **Ajustes**, que es donde
+corresponde a unos ajustes del sistema. Estaban en los dos sitios.
+
 **Alcance inmediato: solo API (decisión 2026-09-30).** Hasta que el frontend y
 el backend estén completos al 100 %, el chatbot funciona por API y **no** se
 implementan modelos locales: el respaldo vía Ollama (`SCRUM-37` a `SCRUM-39`)
