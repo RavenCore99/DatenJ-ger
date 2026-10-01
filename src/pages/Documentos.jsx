@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
+import AltaDocumento from '../components/AltaDocumento.jsx'
 import Icono from '../components/Icono.jsx'
 import VisorPdf from '../components/VisorPdf.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
-import { elegirArchivo, guardarArchivo } from '../lib/escritorio.js'
+import { guardarArchivo } from '../lib/escritorio.js'
 import { fechaCorta, tamanoLegible, titular } from '../lib/formato.js'
 
 /** Retardo de la búsqueda: evita una petición por pulsación. */
@@ -39,6 +40,10 @@ export default function Documentos() {
   const [seleccion, setSeleccion] = useState(null)
   // Documento abierto en el visor interno (SCRUM-60).
   const [visor, setVisor] = useState(null)
+  // Formulario de alta (calidad de vida): los metadatos se piden antes de
+  // guardar, no después entrando al detalle del expediente.
+  const [alta, setAlta] = useState(false)
+  const [errorAlta, setErrorAlta] = useState(null)
 
   const cargar = useCallback(async (texto) => {
     setEstado('cargando')
@@ -98,24 +103,37 @@ export default function Documentos() {
     [busqueda, cargar],
   )
 
-  const agregar = useCallback(async () => {
-    const archivo = await elegirArchivo()
-    if (archivo?.cancelado) return
-    if (archivo?.error) {
-      setAviso(`Error: ${archivo.error}`)
-      return
-    }
+  const abrirAlta = useCallback(() => {
+    setErrorAlta(null)
+    setAlta(true)
+  }, [])
 
-    await ejecutar(
-      'agregar',
-      () =>
-        backend.documentos.crear({
-          nombre: archivo.nombre,
-          contenido_b64: archivo.contenido_b64,
-        }),
-      `Documento "${archivo.nombre}" cifrado y guardado`,
-    )
-  }, [ejecutar])
+  /**
+   * Alta de documento con sus metadatos en el mismo acto: el backend recibe el
+   * archivo y los datos del titular juntos, y crea o asocia la persona en la
+   * misma transacción. El formulario solo se cierra si el alta salió bien; si
+   * falla, el motivo se muestra dentro y no se pierde lo escrito.
+   */
+  const guardarAlta = useCallback(
+    async (datos) => {
+      setOcupado('agregar')
+      setAviso(null)
+      setErrorAlta(null)
+
+      try {
+        const nuevo = await backend.documentos.crear(datos)
+        setAlta(false)
+        setAviso(`Documento "${nuevo.nombre}" cifrado y guardado`)
+        await cargar(busqueda)
+        if (nuevo?.id) setSeleccion(nuevo.id)
+      } catch (fallo) {
+        setErrorAlta(fallo.message)
+      } finally {
+        setOcupado(null)
+      }
+    },
+    [busqueda, cargar],
+  )
 
   const descargar = useCallback(
     async (fila) => {
@@ -183,7 +201,7 @@ export default function Documentos() {
 
         <button
           type="button"
-          onClick={agregar}
+          onClick={abrirAlta}
           disabled={ocupado === 'agregar'}
           className="flex items-center gap-2 rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
         >
@@ -265,7 +283,7 @@ export default function Documentos() {
                 ) : (
                   <button
                     type="button"
-                    onClick={agregar}
+                    onClick={abrirAlta}
                     className="mt-2 rounded-lg bg-primario px-3 py-1.5 text-etiqueta-sm font-medium text-sobre-primario"
                   >
                     Agregar documento
@@ -437,6 +455,18 @@ export default function Documentos() {
 
       {/* Visor interno (SCRUM-60): capa modal sobre el panel, no una ventana aparte. */}
       {visor && <VisorPdf documento={visor} onCerrar={() => setVisor(null)} />}
+
+      {/* Formulario de alta (calidad de vida): aquí se elige el PDF y se
+          rellenan los metadatos, y todo se guarda de una vez. */}
+      {alta && (
+        <AltaDocumento
+          empresas={empresas}
+          ocupado={ocupado === 'agregar'}
+          error={errorAlta}
+          onGuardar={guardarAlta}
+          onCerrar={() => setAlta(false)}
+        />
+      )}
     </div>
   )
 }

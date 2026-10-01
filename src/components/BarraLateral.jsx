@@ -10,8 +10,22 @@ import logo from '../../assets/logo/logo.png'
  * usuario la pliega. Cada sección ocupa `36px` de alto, como pide el spec, y
  * lleva el icono del set del sistema; plegada, el icono es el único distintivo
  * y el título viaja en el atributo accesible.
+ *
+ * **El logo es el control de plegado** (calidad de vida): había dos botones
+ * para lo mismo —uno aquí y otro en la sub-cabecera—, así que se retiraron
+ * ambos y el gesto quedó donde el usuario lo busca: sobre la marca. El atajo
+ * `Ctrl/⌘+B` sigue funcionando y se anuncia en el `title` y en
+ * `aria-keyshortcuts`.
+ *
+ * **Ajustes vive al pie, junto al tema**: no es una sección de trabajo como las
+ * demás —no se entra a ella para operar sobre documentos—, sino el lugar donde
+ * se configura la aplicación. Bajarla al pie, pegada al conmutador de tema, la
+ * separa del flujo y la deja donde se espera.
  */
 export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar }) {
+  const ajustes = SECCIONES.find(({ clave }) => clave === 'cuenta')
+  const principales = SECCIONES.filter(({ clave }) => clave !== 'cuenta')
+
   return (
     <nav
       aria-label="Secciones del sistema"
@@ -21,71 +35,85 @@ export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar
         plegada ? 'w-lateral-min' : 'w-lateral',
       ].join(' ')}
     >
-      <div className="flex h-cabecera shrink-0 items-center gap-2 border-b border-borde px-3">
-        <img
-          src={logo}
-          alt="DatenJäger"
-          className="h-8 w-8 shrink-0 rounded-full object-contain"
-        />
-
-        {!plegada && (
-          <div className="min-w-0 leading-tight">
-            <p className="truncate font-marca text-cuerpo-md font-semibold tracking-tight">
-              DatenJäger
-            </p>
-            <p className="truncate text-etiqueta-sm text-tenue">Gestión documental</p>
-          </div>
-        )}
-
+      <div className="flex h-cabecera shrink-0 items-center border-b border-borde px-3">
         <button
           type="button"
           onClick={onPlegar}
           aria-expanded={!plegada}
+          aria-keyshortcuts="Control+B"
           aria-label={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
-          title={plegada ? 'Desplegar la barra lateral' : 'Recoger la barra lateral'}
-          className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
+          title={`${plegada ? 'Desplegar' : 'Recoger'} la barra lateral (Ctrl+B)`}
+          className="group flex min-w-0 items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-primario"
         >
-          <Icono nombre={plegada ? 'chevron-derecha' : 'chevron-izquierda'} />
+          <img
+            src={logo}
+            alt=""
+            className="h-8 w-8 shrink-0 rounded-full object-contain ring-2 ring-transparent transition-all duration-200 group-hover:ring-primario/40"
+          />
+
+          {!plegada && (
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate font-marca text-cuerpo-md font-semibold tracking-tight">
+                DatenJäger
+              </span>
+              <span className="block truncate text-etiqueta-sm text-tenue">
+                Gestión documental
+              </span>
+            </span>
+          )}
         </button>
       </div>
 
       <ul className="flex flex-1 flex-col gap-space-xs overflow-y-auto px-2 py-3">
-        {SECCIONES.map(({ clave, titulo, descripcion, icono }) => {
-          const activa = clave === seccion
-          return (
-            <li key={clave}>
-              <button
-                type="button"
-                onClick={() => onSeleccionar(clave)}
-                aria-current={activa ? 'page' : undefined}
-                title={plegada ? titulo : undefined}
-                className={[
-                  'flex h-9 w-full items-center rounded-md px-3 text-left transition-colors',
-                  plegada ? 'justify-center' : 'gap-2.5',
-                  activa
-                    ? 'bg-primario-suave font-medium text-primario'
-                    : 'text-texto hover:bg-fondo-2',
-                ].join(' ')}
-              >
-                <Icono nombre={icono} tamano={18} />
-                {!plegada && (
-                  <>
-                    <span className="truncate text-etiqueta-md">{titulo}</span>
-                    <span className="ml-auto truncate text-etiqueta-sm text-tenue">
-                      {descripcion}
-                    </span>
-                  </>
-                )}
-              </button>
-            </li>
-          )
-        })}
+        {principales.map((entrada) => (
+          <li key={entrada.clave}>
+            <BotonSeccion
+              {...entrada}
+              activa={entrada.clave === seccion}
+              plegada={plegada}
+              onSeleccionar={onSeleccionar}
+            />
+          </li>
+        ))}
       </ul>
 
-      <div className="border-t border-borde px-2 py-3">
+      <div className="flex flex-col gap-space-xs border-t border-borde px-2 py-3">
         <BotonTema plegada={plegada} />
+        {ajustes && (
+          <BotonSeccion
+            {...ajustes}
+            activa={ajustes.clave === seccion}
+            plegada={plegada}
+            onSeleccionar={onSeleccionar}
+          />
+        )}
       </div>
     </nav>
+  )
+}
+
+/** Entrada de navegación: la misma pieza arriba y al pie. */
+function BotonSeccion({ clave, titulo, descripcion, icono, activa, plegada, onSeleccionar }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSeleccionar(clave)}
+      aria-current={activa ? 'page' : undefined}
+      title={plegada ? titulo : undefined}
+      className={[
+        'flex h-9 w-full items-center rounded-md px-3 text-left transition-colors',
+        plegada ? 'justify-center' : 'gap-2.5',
+        activa ? 'bg-primario-suave font-medium text-primario' : 'text-texto hover:bg-fondo-2',
+      ].join(' ')}
+    >
+      <Icono nombre={icono} tamano={18} />
+      {!plegada && (
+        <>
+          <span className="truncate text-etiqueta-md">{titulo}</span>
+          <span className="ml-auto truncate text-etiqueta-sm text-tenue">{descripcion}</span>
+        </>
+      )}
+    </button>
   )
 }
 

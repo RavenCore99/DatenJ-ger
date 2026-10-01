@@ -676,6 +676,12 @@ lo justifican, se convierte en tarea propia.
 
 ---
 
+## Fase 7 - final. build instalable / uso de GitHub packages
+
+1. considerar buildear la app con y para github packages. para que la app sea 100% instalable mediante comando y archivo instalable
+2. sugerir formas faciles de generar el emapquetado que quede funcional
+3.  el backend y bases de datos deben generarse en local en la instalacion, por la filosofia del proyecto, maneja SQLite en local
+
 ## Criterio de cierre del proyecto
 
 `SCRUM-75` a `SCRUM-78` en `jira.md` (Sprint 5). Además del criterio de cada
