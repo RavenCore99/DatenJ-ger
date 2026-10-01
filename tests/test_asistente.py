@@ -15,6 +15,7 @@ sustituidos, que es justo la frontera donde vive la lógica propia.
 
 from __future__ import annotations
 
+import json
 import os
 import unittest
 from email.message import Message
@@ -246,6 +247,94 @@ class TestContextoDelProyecto(BaseBackendTest):
         self.assertIn("CONTEXTO REAL DE DATENJÄGER", conversacion.contexto)
         self.assertIn("Documentos cifrados: 1", conversacion.contexto)
         self.assertIn("Minera Ubaté", conversacion.contexto)
+
+
+class RazonamientoNoSeMuestraTest(unittest.TestCase):
+    """El pensamiento del modelo no es la respuesta que ve el usuario.
+
+    Lo reportó Raven al probar la conexión: el asistente devolvía su
+    planificación —«el usuario pregunta si funciono, debo responder que sí»—
+    mezclada con la respuesta. Los modelos con razonamiento la devuelven como
+    partes marcadas, y hay que descartarlas.
+    """
+
+    @staticmethod
+    def _respuesta(cuerpo: bytes = b"", lineas=None):
+        class Respuesta:
+            def read(self):
+                return cuerpo
+
+            def __iter__(self):
+                return iter(lineas or [])
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_argumentos):
+                return False
+
+        return Respuesta()
+
+    @staticmethod
+    def _servicio():
+        return chatbot.ChatbotService(
+            "prueba", api_key=CLAVE_DE_PRUEBA, modelo="modelo-de-prueba")
+
+    def test_la_respuesta_completa_descarta_el_pensamiento(self):
+        cuerpo = json.dumps({
+            "candidates": [{"content": {"parts": [
+                {"text": "Analizo: el usuario prueba la conexion.", "thought": True},
+                {"text": "Sí, funciono."},
+            ]}}],
+        }).encode("utf-8")
+
+        with mock.patch(
+            "urllib.request.urlopen", lambda *_a, **_k: self._respuesta(cuerpo)
+        ):
+            texto = self._servicio()._generar_completo("modelo-de-prueba", [])
+
+        self.assertEqual(texto, "Sí, funciono.")
+        self.assertNotIn("Analizo", texto)
+
+    def test_los_fragmentos_descartan_el_pensamiento(self):
+        def marco(trozo):
+            return ("data: " + json.dumps(trozo) + "\n").encode("utf-8")
+
+        lineas = [
+            marco({"candidates": [{"content": {"parts": [
+                {"text": "Pienso en la respuesta...", "thought": True}]}}]}),
+            marco({"candidates": [{"content": {"parts": [{"text": "Hola."}]}}]}),
+        ]
+
+        with mock.patch(
+            "urllib.request.urlopen", lambda *_a, **_k: self._respuesta(b"", lineas)
+        ):
+            fragmentos = list(self._servicio()._fragmentos("modelo-de-prueba", []))
+
+        self.assertEqual(fragmentos, ["Hola."])
+
+    def test_una_respuesta_que_solo_tiene_pensamiento_es_un_fallo(self):
+        # Si todo lo que llegó era pensamiento, no hay nada que mostrar: es un
+        # fallo explicado, no una respuesta vacía.
+        cuerpo = json.dumps({
+            "candidates": [{"content": {"parts": [
+                {"text": "Solo pienso.", "thought": True}]}}],
+        }).encode("utf-8")
+
+        with mock.patch(
+            "urllib.request.urlopen", lambda *_a, **_k: self._respuesta(cuerpo)
+        ):
+            with self.assertRaises(chatbot.ErrorRedChatbot):
+                self._servicio()._generar_completo("modelo-de-prueba", [])
+
+    def test_el_prompt_prohibe_mostrar_el_razonamiento(self):
+        # El prompt es la otra mitad del arreglo: los modelos que escriben su
+        # planificación como texto (los gemma) no la marcan como pensamiento, y
+        # ahí solo se les puede pedir que no la escriban.
+        from chatbot import SYSTEM_PROMPT
+
+        self.assertIn("No muestres tu razonamiento", SYSTEM_PROMPT)
+        self.assertIn("directamente", SYSTEM_PROMPT)
 
 
 if __name__ == "__main__":

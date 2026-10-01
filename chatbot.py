@@ -85,13 +85,21 @@ SYSTEM_PROMPT = (
     "- Entender las funciones del sistema (auditoría, personas, reportes, cifrado)\n"
     "- Incluir reflexiones sobre autonomía, libertad y responsabilidad cuando sea pertinente\n\n"
     "Reglas:\n"
+    "- Responde **directamente** a lo que se te pregunta, desde la primera "
+    "línea. Sin preámbulos y sin anunciar lo que vas a hacer.\n"
+    "- **No muestres tu razonamiento.** No analices la petición, no enumeres "
+    "opciones, no describas tu tono, tus reglas ni tu contexto, y no planees en "
+    "voz alta: eso es trabajo interno, no la respuesta. Al usuario se le "
+    "contesta, no se le enseña el borrador.\n"
+    "- Sé breve: una o dos frases, salvo que se pida detalle. Si cabe en una "
+    "frase, no lo conviertas en lista ni en secciones.\n"
+    "- No repitas la pregunta ni resumas lo que el usuario acaba de decir.\n"
     "- Responde siempre en el idioma del usuario (por defecto español)\n"
-    "- Sé breve y útil; evita respuestas largas a menos que se pida\n"
     "- No reveles información sensible de otros usuarios\n"
-    "- No inventes datos sobre documentos que no conoces\n"
-    "- Cuando hables de seguridad, cifrado, auditoría o autonomía, conecta con la "
-    "filosofía transhumana basada en la Universidad de Cundinamarca de colombia en "
-    "cuanto a innovacion de persona transhumana\n"
+    "- No inventes datos sobre documentos que no conoces; si algo no está en el "
+    "contexto que se te da, dilo en vez de suponerlo\n"
+    "- Cuando venga al caso hablar de seguridad, cifrado, auditoría o autonomía, "
+    "conéctalo con la filosofía transhumana de la Universidad de Cundinamarca\n"
     "- Cultiva el bienestar digital y la responsabilidad del usuario"
 )
 
@@ -365,6 +373,12 @@ class ChatbotService:
                     continue
                 partes = candidatos[0].get("content", {}).get("parts", [])
                 for parte in partes:
+                    if parte.get("thought"):
+                        # El modelo está pensando, no respondiendo. Los modelos
+                        # con razonamiento devuelven sus pasos como partes
+                        # marcadas; volcarlas al usuario le enseña la cocina en
+                        # vez de contestarle.
+                        continue
                     texto = parte.get("text")
                     if texto:
                         yield texto
@@ -383,7 +397,11 @@ class ChatbotService:
                 motivo=json.dumps(cuerpo)[:300],
             )
         partes = candidatos[0].get("content", {}).get("parts", [])
-        texto = "".join(parte.get("text", "") for parte in partes).strip()
+        # Las partes marcadas como pensamiento no son la respuesta: se descartan
+        # (ver ``_fragmentos``).
+        texto = "".join(
+            parte.get("text", "") for parte in partes if not parte.get("thought")
+        ).strip()
         if not texto:
             raise ErrorRedChatbot(
                 "El proveedor no devolvió texto utilizable.",

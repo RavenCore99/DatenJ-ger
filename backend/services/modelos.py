@@ -343,13 +343,15 @@ def modelos_candidatos(raiz: str | os.PathLike) -> list[str]:
     """
     elegido = estado(raiz)["modelo"]
     orden: list[str] = []
-    # La lista de la cuenta trae de todo; para el respaldo solo sirven los que
-    # generan texto. El elegido se respeta tal cual: si el usuario lo escogió,
-    # es su decisión, aunque no parezca de conversación.
+    # El orden importa. Primero lo elegido; después los **alias del catálogo**,
+    # que están curados y no caducan; y al final la lista cruda de la cuenta.
+    # La cuenta trae de todo y sin curar: fue caer en un `gemma` de ahí lo que
+    # puso a la vista su razonamiento, porque los gemma escriben su
+    # planificación como texto en vez de devolverla marcada como pensamiento.
     for nombre in [
         elegido,
-        *[modelo for modelo in modelos_conocidos(raiz) if _conversa(modelo)],
         *proveedores.modelos_de(_proveedor_guardado(raiz)),
+        *[modelo for modelo in modelos_conocidos(raiz) if _conversa(modelo)],
     ]:
         limpio = (nombre or "").strip()
         if limpio and limpio not in orden:
