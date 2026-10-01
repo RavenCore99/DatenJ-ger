@@ -17,7 +17,7 @@ cifras que ya mostraba cada pantalla.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from database import format_size
 from reporter import ReporteInventario
@@ -97,6 +97,81 @@ def documentos_por_dia(conn, cursor, usuario_id: Optional[int]) -> list[tuple]:
         (usuario_id,),
     )
     return cursor.fetchall()
+
+
+# --------------------------------------------------------------------------- #
+# Estadística y gráficos
+# --------------------------------------------------------------------------- #
+
+#: Paleta de los gráficos por **rol semántico** del sistema de diseño.
+#:
+#: El backend decide *qué* rol usa cada serie; el frontend decide *cómo* se ve
+#: ese rol (tokens ``--dj-*``). Así los colores dejan de estar incrustados en la
+#: capa de interfaz —hoy en ``ui_components.DashboardWidget``— y el frontend
+#: nuevo dibuja con la paleta del sistema (decisión del 2026-09-30).
+PALETA_GRAFICOS: dict[str, Any] = {
+    "series": ("primario", "acento", "exito", "alerta", "peligro"),
+    "tendencia": "alerta",
+    "prediccion": "peligro",
+    "barras_temporales": "primario",
+}
+
+
+def tendencia(conn, cursor, usuario_id: Optional[int]) -> dict:
+    """Serie temporal con regresión lineal, predicción y R².
+
+    Sube al backend el cálculo que vivía en ``ui_components.DashboardWidget``
+    (``numpy.polyfit``/``polyval`` y el coeficiente de determinación) para que
+    el frontend solo tenga que dibujar. No es una promesa estadística: es la
+    misma recta por mínimos cuadrados que ya mostraba el dashboard, expuesta
+    como datos.
+
+    Returns:
+        Dict con ``dias`` y ``valores`` (la serie), ``suficiente`` (si hay
+        puntos para ajustar), ``pendiente``, ``intercepto``, ``linea`` (la recta
+        evaluada en cada día), ``prediccion`` (el día siguiente) y ``r2``
+        (solo con tres puntos o más, como en la vista anterior). Con menos de
+        dos puntos, los campos de la recta van en ``None`` y ``linea`` vacía.
+    """
+    serie = documentos_por_dia(conn, cursor, usuario_id)
+    dias = [fila[0] for fila in serie]
+    valores = [int(fila[1]) for fila in serie]
+
+    resultado: dict[str, Any] = {
+        "dias": dias,
+        "valores": valores,
+        "suficiente": len(valores) >= 2,
+        "pendiente": None,
+        "intercepto": None,
+        "linea": [],
+        "prediccion": None,
+        "r2": None,
+        "paleta": dict(PALETA_GRAFICOS),
+    }
+    if len(valores) < 2:
+        return resultado
+
+    import numpy as np
+
+    x = np.arange(len(valores))
+    coeficientes = np.polyfit(x, valores, 1)
+    linea = np.polyval(coeficientes, x)
+
+    resultado.update(
+        pendiente=float(coeficientes[0]),
+        intercepto=float(coeficientes[1]),
+        linea=[float(valor) for valor in linea],
+        # La predicción nunca baja de cero: no se suben documentos negativos.
+        prediccion=float(max(0.0, np.polyval(coeficientes, len(valores)))),
+    )
+
+    if len(valores) >= 3:
+        observado = np.asarray(valores, dtype=float)
+        suma_total = float(np.sum((observado - observado.mean()) ** 2))
+        suma_residual = float(np.sum((observado - linea) ** 2))
+        resultado["r2"] = float(1 - suma_residual / suma_total) if suma_total > 0 else 0.0
+
+    return resultado
 
 
 # --------------------------------------------------------------------------- #

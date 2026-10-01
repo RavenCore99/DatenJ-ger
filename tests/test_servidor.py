@@ -391,6 +391,13 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(por_dia[0]["total"], 1)
         self.assertTrue(por_dia[0]["dia"])
 
+        # La serie con regresión, predicción, R² y paleta (SCRUM-81).
+        estado, tendencia = self.pedir("GET", "/api/reportes/tendencia")
+        self.assertEqual(estado, 200)
+        self.assertEqual(tendencia["valores"], [1])
+        self.assertFalse(tendencia["suficiente"])
+        self.assertEqual(tendencia["paleta"]["tendencia"], "alerta")
+
     # ------------------------------------------------------------------ #
     # Alta de cuenta (SCRUM-57)
     # ------------------------------------------------------------------ #

@@ -419,6 +419,11 @@ class ComandosDatenJager:
         usuario_id = self._exigir_sesion()
         return self._ejecutar(_reportes.documentos_por_dia, usuario_id=usuario_id)
 
+    def tendencia_documentos(self) -> dict:
+        """Serie temporal con regresión, predicción, R² y la paleta de gráficos."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(_reportes.tendencia, usuario_id=usuario_id)
+
     def datos_inventario(self) -> tuple[list, dict]:
         """Filas y estadísticas del reporte de inventario."""
         usuario_id = self._exigir_sesion()

@@ -43,6 +43,7 @@ class TestComandosSinSesion(BaseBackendTest):
             lambda: self.comandos.estadisticas_dashboard(),
             lambda: self.comandos.documentos_por_empresa(),
             lambda: self.comandos.documentos_por_dia(),
+            lambda: self.comandos.tendencia_documentos(),
             lambda: self.comandos.datos_inventario(),
             lambda: self.comandos.exportar_inventario(self.ruta_temporal("r.pdf")),
             lambda: self.comandos.iniciar_chat(),

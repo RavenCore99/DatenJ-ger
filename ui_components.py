@@ -672,6 +672,26 @@ class ProgressBarModerno:
 
 # dashboard con graficos
 
+#: Resolución de los roles semánticos de ``reportes.PALETA_GRAFICOS`` a los
+#: colores de la interfaz heredada de CustomTkinter. El backend decide **qué**
+#: rol usa cada serie (SCRUM-81); el frontend nuevo los resuelve contra los
+#: tokens ``--dj-*`` y aquí, mientras la UI antigua siga en pie, contra estos
+#: valores. Cada rol trae su variante clara y oscura.
+ROLES_GRAFICO_HEX = {
+    "primario": ("#1d4ed8", "#2563eb"),
+    "acento": ("#0284c7", "#4edea3"),
+    "exito": ("#10b981", "#10b981"),
+    "alerta": ("#d97706", "#f59e0b"),
+    "peligro": ("#ba1a1a", "#ffb4ab"),
+}
+
+
+def color_de_rol(rol, is_dark):
+    """Color del rol semántico para el modo de apariencia en curso."""
+    claro, oscuro = ROLES_GRAFICO_HEX.get(rol, ROLES_GRAFICO_HEX["primario"])
+    return oscuro if is_dark else claro
+
+
 class DashboardWidget:
     # Dashboard con tarjetas KPI, gráfico donut por empresa y línea de
     # tendencia temporal con regresión lineal (numpy).
@@ -697,6 +717,11 @@ class DashboardWidget:
         # subidas por dia (delegado al servicio de reportes)
         return reportes.documentos_por_dia(self.conn, self.cursor, self.usuario_id)
 
+    def _query_tendencia(self):
+        # serie temporal + regresion + prediccion + R2 + paleta (SCRUM-81):
+        # el calculo vive en el backend; aqui solo se dibuja.
+        return reportes.tendencia(self.conn, self.cursor, self.usuario_id)
+
     # construir dashboard
 
     def construir_dashboard(self):
@@ -710,7 +735,6 @@ class DashboardWidget:
         is_dark = ctk.get_appearance_mode() == "Dark"
         stats = self._query_stats()
         empresas = self._query_empresas()
-        timeline = self._query_timeline()
 
         # colores matplotlib
         fig_bg   = "#1a1a2e" if is_dark else "#f0f4ff"
@@ -879,31 +903,32 @@ class DashboardWidget:
                                       expand=True, fill="both")
         self._chart_canvases.append((fig1, canvas1))
 
-        # linea temporal + regresion
+        # linea temporal + regresion (el calculo vive en el backend, SCRUM-81)
         fig2, ax2 = plt.subplots(figsize=(4.4, 2.4), dpi=90)
         fig2.patch.set_facecolor(fig_bg)
         ax2.set_facecolor(ax_bg)
 
-        if timeline and len(timeline) >= 1:
-            dias    = [t[0] for t in timeline]
-            counts  = [t[1] for t in timeline]
+        tendencia = self._query_tendencia()
+        dias = tendencia["dias"]
+        counts = tendencia["valores"]
+        roles = tendencia["paleta"]
+        color_tendencia = color_de_rol(roles["tendencia"], is_dark)
 
+        if dias:
             x_vals = np.arange(len(dias))
 
-            bar_colors = "#4CAF50" if is_dark else "#2196F3"
+            bar_colors = color_de_rol(roles["barras_temporales"], is_dark)
             ax2.bar(x_vals, counts, color=bar_colors, alpha=0.7,
                     width=0.6, zorder=2, label="Subidas/día")
 
-            if len(timeline) >= 2:
-                coeffs = np.polyfit(x_vals, counts, 1)
-                trend_line = np.polyval(coeffs, x_vals)
-                ax2.plot(x_vals, trend_line, color="#FF9800",
+            if tendencia["suficiente"]:
+                ax2.plot(x_vals, tendencia["linea"], color=color_tendencia,
                          linewidth=2, linestyle="--", zorder=3,
-                         label=f"Tendencia (m={coeffs[0]:+.2f})")
+                         label=f"Tendencia (m={tendencia['pendiente']:+.2f})")
 
-                next_x = len(dias)
-                pred_y = max(0, np.polyval(coeffs, next_x))
-                ax2.scatter([next_x], [pred_y], color="#E53935",
+                pred_y = tendencia["prediccion"]
+                ax2.scatter([len(dias)], [pred_y],
+                            color=color_de_rol(roles["prediccion"], is_dark),
                             s=40, zorder=4, marker="D",
                             label=f"Predicción: {pred_y:.0f}")
 
@@ -930,14 +955,10 @@ class DashboardWidget:
             ax2.set_title("Actividad Temporal ", 
                           fontsize=9, fontweight="bold", color=txt_col, pad=8)
 
-            if len(timeline) >= 3:
-                y_mean = np.mean(counts)
-                ss_tot = np.sum((np.array(counts) - y_mean) ** 2)
-                ss_res = np.sum((np.array(counts) - trend_line) ** 2)
-                r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
-                ax2.text(0.98, 0.02, f"R²={r2:.3f}",
+            if tendencia["r2"] is not None:
+                ax2.text(0.98, 0.02, f"R²={tendencia['r2']:.3f}",
                          transform=ax2.transAxes, fontsize=6.5,
-                         ha="right", va="bottom", color="#FF9800",
+                         ha="right", va="bottom", color=color_tendencia,
                          fontweight="bold", alpha=0.8)
         else:
             ax2.text(0.5, 0.5,

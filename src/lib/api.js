@@ -250,6 +250,8 @@ export const backend = {
     // Distribución y serie temporal para el panel de datos y estadísticas.
     porEmpresa: () => solicitar('/api/reportes/por-empresa'),
     porDia: () => solicitar('/api/reportes/por-dia'),
+    // Serie con regresión, predicción, R² y la paleta de gráficos (SCRUM-81).
+    tendencia: () => solicitar('/api/reportes/tendencia'),
     exportar: (destino, formato) =>
       solicitar('/api/reportes/exportar', { metodo: 'POST', cuerpo: { destino, formato } }),
   },

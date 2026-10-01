@@ -614,6 +614,16 @@ def crear_app(
             for dia, total in comandos.documentos_por_dia()
         ]
 
+    @app.get("/api/reportes/tendencia", dependencies=protegido)
+    async def tendencia_documentos() -> dict[str, Any]:
+        """Serie temporal con regresión, predicción, R² y la paleta de gráficos.
+
+        El cálculo vive en Python (``backend/services/reportes.py``) y el
+        frontend solo dibuja; la paleta viaja como **roles semánticos** para que
+        el renderer la resuelva contra sus tokens (SCRUM-57).
+        """
+        return comandos.tendencia_documentos()
+
     @app.post("/api/reportes/exportar", dependencies=protegido)
     async def exportar_reporte(cuerpo: Exportacion) -> dict[str, str]:
         destino = comandos.exportar_inventario(cuerpo.destino, cuerpo.formato)
