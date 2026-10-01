@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import json
 import logging
 import os
 import secrets
@@ -59,7 +60,7 @@ from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.commands import ComandosDatenJager
@@ -669,12 +670,65 @@ def crear_app(
     async def enviar_mensaje(cuerpo: MensajeChat) -> dict[str, str]:
         return {"respuesta": comandos.enviar_mensaje(cuerpo.mensaje)}
 
+    @app.post("/api/chat/mensajes/stream", dependencies=protegido)
+    async def enviar_mensaje_stream(cuerpo: MensajeChat) -> StreamingResponse:
+        """Entrega la respuesta del asistente **por fragmentos** (RF-16).
+
+        Es un flujo SSE: cada ``data:`` trae un fragmento; el último marco lleva
+        ``fin``. Un fallo viaja como un marco de error, no como una respuesta a
+        medias, para que la interfaz pueda decirlo y no dejar la conversación
+        colgada.
+        """
+        return StreamingResponse(
+            _flujo_del_asistente(comandos, cuerpo.mensaje),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.post("/api/chat/probar", dependencies=protegido)
+    async def probar_respuesta_del_asistente() -> dict[str, Any]:
+        """Pide al modelo una respuesta de verdad, para probar la conexión.
+
+        Distinto de ``/api/modelos/probar``, que comprueba la credencial: aquí
+        se genera texto, que es lo que prueba que el asistente funciona.
+        """
+        return comandos.probar_respuesta_del_asistente()
+
     @app.delete("/api/chat", dependencies=protegido)
     async def limpiar_chat() -> dict[str, bool]:
         comandos.limpiar_chat()
         return {"limpio": True}
 
     return app
+
+
+def _marco_sse(datos: dict[str, Any]) -> str:
+    """Un marco del flujo SSE: ``data:`` con el objeto y doble salto."""
+    return f"data: {json.dumps(datos, ensure_ascii=False)}\n\n"
+
+
+def _flujo_del_asistente(comandos, mensaje: str):
+    """Traduce los fragmentos del servicio a marcos SSE.
+
+    Los errores se entregan como marco propio en vez de cortar el flujo sin
+    explicación: la interfaz ya está pintando la respuesta y necesita saber que
+    se interrumpió y por qué.
+    """
+    try:
+        for fragmento in comandos.enviar_mensaje_stream(mensaje):
+            yield _marco_sse({"fragmento": fragmento})
+    except BackendError as fallo:
+        LOG.warning("asistente: %s", fallo)
+        yield _marco_sse({"error": str(fallo), "tipo": type(fallo).__name__})
+    except Exception as fallo:  # pragma: no cover - salvaguarda del flujo
+        LOG.exception("asistente: fallo inesperado")
+        yield _marco_sse({
+            "error": "El asistente falló de forma inesperada.",
+            "tipo": "ErrorInesperado",
+            "detalle": str(fallo),
+        })
+    finally:
+        yield _marco_sse({"fin": True})
 
 
 # --------------------------------------------------------------------------- #
