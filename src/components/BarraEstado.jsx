@@ -34,19 +34,22 @@ export default function BarraEstado() {
         <ChipEstado
           etiqueta="BD"
           estado={componentes.baseDatos}
-          detalle="Base de datos cifrada: se marca en verde cuando una lectura real responde"
+          leyendaOk="disponible"
+          detalle="Se marca disponible cuando una lectura real de la base responde (un conteo de documentos), no porque el servicio esté vivo"
         />
 
         <ChipEstado
           etiqueta="APIs"
           estado={componentes.apis}
-          detalle="Conexión de modelos por API: se configura en la Fase 4"
+          leyendaOk="credencial lista"
+          detalle="Se marca cuando hay una credencial configurada; «Probar conexión» en el panel comprueba que además sirva"
         />
 
         <ChipEstado
           etiqueta="Chatbot"
           estado={componentes.chatbot}
-          detalle="El asistente funciona por API: se configura en la Fase 4"
+          leyendaOk="credencial lista"
+          detalle="El asistente usa la misma credencial que las APIs: sin ella no hay conversación"
         />
 
         <Filete />
@@ -103,17 +106,23 @@ function Indicador({ estado }) {
 }
 
 /**
- * Pieza del sistema con su punto de color. El estado se anuncia en texto para
- * lectores de pantalla y el detalle viaja en el `title`.
+ * Pieza del sistema con su punto de color **y su estado en texto**.
+ *
+ * El estado se escribe, no solo se colorea: un punto verde sin palabra obliga a
+ * adivinar si «verde» significa conectado, configurado o probado. El detalle de
+ * qué se está midiendo viaja en el `title`.
  */
-function ChipEstado({ etiqueta, estado, detalle }) {
-  const leyenda = LEYENDA[estado] ?? estado
+function ChipEstado({ etiqueta, estado, detalle, leyendaOk }) {
+  const leyenda = (estado === 'ok' && leyendaOk) || LEYENDA[estado] || estado
 
   return (
-    <span className="hidden shrink-0 items-center gap-1.5 md:flex" title={`${etiqueta}: ${detalle}`}>
+    <span
+      className="hidden shrink-0 items-center gap-1.5 md:flex"
+      title={`${etiqueta}: ${detalle}`}
+    >
       <span className={`inline-block h-1.5 w-1.5 rounded-full ${PUNTO[estado] ?? 'bg-borde-fuerte'}`} />
       <span className="text-texto-2">{etiqueta}</span>
-      <span className="sr-only">{leyenda}</span>
+      <span className="text-tenue">{leyenda}</span>
     </span>
   )
 }
