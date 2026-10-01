@@ -148,7 +148,14 @@ export default function Cuenta({ onNavegar }) {
 /* -------------------------------------------------------------------- */
 
 function Apariencia() {
-  const { tema, alternarTema, animaciones, alternarAnimaciones } = useApp()
+  const {
+    tema,
+    alternarTema,
+    animaciones,
+    alternarAnimaciones,
+    notificaciones,
+    alternarNotificaciones,
+  } = useApp()
 
   return (
     <div className="flex flex-col gap-4">
@@ -174,6 +181,17 @@ function Apariencia() {
           onCambiar={() => alternarAnimaciones()}
           etiqueta="Animaciones y transiciones"
           descripcion="Desactivarlas reduce el movimiento en toda la aplicación."
+        />
+      </div>
+
+      {/* Notificaciones del sistema (SCRUM-87): los avisos de resultado —alta,
+          edición, descarga, error— aparecen y se van solos. Aquí se silencian. */}
+      <div className="border-t border-borde pt-4">
+        <ConmutadorNotificaciones
+          activo={notificaciones}
+          onCambiar={() => alternarNotificaciones()}
+          etiqueta="Notificaciones del sistema"
+          descripcion="Avisos transitorios al guardar, exportar o eliminar. Silenciarlos no afecta a los mensajes de error de los formularios."
         />
       </div>
     </div>

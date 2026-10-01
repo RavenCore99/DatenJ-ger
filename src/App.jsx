@@ -5,6 +5,7 @@ import BarraLateral from './components/BarraLateral.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
 import Entrada from './components/Entrada.jsx'
 import Icono from './components/Icono.jsx'
+import Notificaciones from './components/Notificaciones.jsx'
 import { pulso } from './lib/movimiento.js'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
@@ -43,6 +44,9 @@ export function App() {
     <ProveedorApp>
       <Entrada />
       <Marco />
+      {/* Notificaciones del sistema (SCRUM-87): viven fuera del marco para que
+          también se vean en el portal de acceso y en el registro. */}
+      <Notificaciones />
     </ProveedorApp>
   )
 }
