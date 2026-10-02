@@ -37,6 +37,7 @@ from backend.errors import (
 )
 from backend.services import auditoria as _auditoria
 from backend.services import autenticacion as _autenticacion
+from backend.services import contexto as _contexto
 from backend.services import modelos as _modelos
 from backend import tokens as _tokens
 from backend.services import documentos as _documentos
@@ -460,23 +461,87 @@ class ComandosDatenJager:
         La clave de API se resuelve aquí, en cada arranque de conversación:
         así el panel de conexión de modelos (SCRUM-64) cambia el modelo activo
         **sin reiniciar la aplicación** — basta con volver a iniciar el chat.
+
+        ``contexto`` es una nota adicional del cliente. El contexto **real del
+        proyecto** no se fija aquí: se recalcula en cada turno
+        (``_refrescar_contexto``) para que las cifras que da el asistente sean
+        las de este momento.
         """
         self._exigir_sesion()
         self._chat = crear_servicio(
-            self._usuario_nombre, contexto, api_key=_modelos.clave(self._raiz))
+            self._usuario_nombre,
+            contexto,
+            api_key=_modelos.clave(self._raiz),
+            # Los modelos que la cuenta tiene comprobados respaldan al elegido:
+            # si el elegido se retiró, el asistente cae en uno que existe.
+            modelos=_modelos.modelos_candidatos(self._raiz))
+        self._refrescar_contexto()
         return self._chat
 
-    def enviar_mensaje(self, texto: str) -> str:
-        """Envía un mensaje al asistente y devuelve su respuesta.
+    def _contexto_del_proyecto(self) -> str:
+        """Agregados reales del sistema, para anclar al asistente (SCRUM-61)."""
+        usuario_id = self._exigir_sesion()
+        return self._ejecutar(_contexto.contexto_del_proyecto, usuario_id=usuario_id)
 
-        Hoy la llamada es bloqueante (el streaming llega en la Fase 4), así
-        que el cliente debe invocarla fuera del hilo de interfaz.
+    def _refrescar_contexto(self) -> None:
+        """Recalcula el contexto del proyecto en la conversación activa.
+
+        Se llama antes de cada turno: el asistente debe responder con las cifras
+        de ahora, no con las de cuando se abrió la conversación.
+        """
+        if self._chat is None:
+            return
+        self._chat.set_context(self._contexto_del_proyecto())
+
+    def enviar_mensaje_stream(self, texto: str):
+        """Envía un mensaje y entrega la respuesta por fragmentos (RF-16).
+
+        Yields:
+            Fragmentos de texto, en orden.
+
+        Raises:
+            ConfiguracionChatbotError: no hay credencial configurada.
+            ErrorRedChatbot: fallo de red, de tiempo o del proveedor.
         """
         self._exigir_sesion()
-        chat = self._chat
-        if chat is None:
-            chat = self.iniciar_chat()
-        return chat.enviar_mensaje(texto)
+        chat = self._chat or self.iniciar_chat()
+        self._refrescar_contexto()
+        yield from chat.enviar_mensaje_stream(texto)
+
+    def enviar_mensaje(self, texto: str) -> str:
+        """Envía un mensaje al asistente y devuelve la respuesta completa.
+
+        Es la variante de una sola pieza; el puente expone además el flujo
+        progresivo. La espera es bloqueante, así que el cliente debe invocarla
+        fuera del hilo de interfaz.
+        """
+        return "".join(self.enviar_mensaje_stream(texto))
+
+    def probar_respuesta_del_asistente(self) -> dict:
+        """Pide una respuesta de verdad al modelo, para probar la conexión.
+
+        Listar modelos prueba que la credencial existe; esto prueba que la
+        generación funciona. No toca la conversación en curso: crea un servicio
+        aparte y lo descarta.
+        """
+        self._exigir_sesion()
+        clave = _modelos.clave(self._raiz)
+        if not clave:
+            return _modelos.registrar_prueba(
+                self._raiz,
+                {"ok": False, "mensaje": "No hay credencial configurada que probar."},
+                _modelos.PRUEBA_RESPUESTA)
+
+        estado = _modelos.estado(self._raiz)
+        servicio = crear_servicio(
+            self._usuario_nombre,
+            api_key=clave,
+            modelo=estado.get("modelo"),
+            modelos=_modelos.modelos_candidatos(self._raiz))
+        # El resultado se anota: es lo que permite que la franja de telemetría
+        # diga la verdad después, en vez de quedarse verde por inercia.
+        return _modelos.registrar_prueba(
+            self._raiz, servicio.probar_respuesta(), _modelos.PRUEBA_RESPUESTA)
 
     def limpiar_chat(self) -> None:
         """Reinicia el historial de la conversación activa."""
@@ -763,9 +828,19 @@ class ComandosDatenJager:
         return _modelos.guardar(self._raiz, **campos)
 
     def probar_conexion_de_modelos(self) -> dict:
-        """Prueba la credencial guardada contra el proveedor, de verdad."""
+        """Comprueba la credencial guardada contra el proveedor, de verdad."""
         self._exigir_sesion()
         return _modelos.probar(self._raiz)
+
+    def identificar_clave(self, clave: str) -> dict:
+        """Reconoce el proveedor de una clave, **sin llamar a nadie**.
+
+        Permite que el panel diga «detectado: NVIDIA NIM · https://…» antes de
+        guardar nada, para que el usuario compruebe que su clave se reconoce en
+        vez de descubrirlo cuando ya falló.
+        """
+        self._exigir_sesion()
+        return _modelos.identificar(clave)
 
     # ------------------------------------------------------------------ #
     # Catálogo

@@ -10,9 +10,11 @@ import Icono from './Icono.jsx'
  * color—; a la derecha la dirección del servicio y la versión con el hash del
  * build.
  *
- * Solo la base de datos se pinta verde cuando una lectura real ha respondido:
- * las conexiones de modelos y el chatbot aún no tienen configuración (Fase 4),
- * así que se muestran como «sin configurar», no como si estuvieran listos.
+ * Solo se pinta verde lo que una comprobación real ha confirmado: la base de
+ * datos cuando una lectura responde, y las conexiones de modelos y el chatbot
+ * cuando la **última prueba real** pasó (SCRUM-62). Tener una credencial
+ * guardada no basta —puede ser de otro proveedor y no servir—, así que mientras
+ * no se pruebe queda «sin verificar», y si la prueba falló, «error».
  *
  * `__VERSION__` y `__HASH__` los inyecta Vite al compilar (ver `vite.config.mjs`),
  * de modo que la aplicación empaquetada no depende de tener git al lado.
@@ -41,15 +43,15 @@ export default function BarraEstado() {
         <ChipEstado
           etiqueta="APIs"
           estado={componentes.apis}
-          leyendaOk="credencial lista"
-          detalle="Se marca cuando hay una credencial configurada; «Probar conexión» en el panel comprueba que además sirva"
+          leyendaOk="verificada"
+          detalle="Verde solo si la última prueba real pasó. «Probar conexión» en el panel comprueba que la credencial sirva; sin probar queda «sin verificar» y, si falló, «error»"
         />
 
         <ChipEstado
           etiqueta="Chatbot"
           estado={componentes.chatbot}
-          leyendaOk="credencial lista"
-          detalle="El asistente usa la misma credencial que las APIs: sin ella no hay conversación"
+          leyendaOk="verificada"
+          detalle="El asistente usa la misma credencial que las APIs. Verde solo si la última prueba de generación respondió; tener la clave guardada no basta"
         />
 
         <Filete />
@@ -131,6 +133,6 @@ const LEYENDA = {
   ok: 'disponible',
   error: 'no disponible',
   verificando: 'verificando',
-  sin_verificar: 'sin verificar',
+  sin_verificar: 'guardada, sin probar',
   sin_configurar: 'sin configurar',
 }

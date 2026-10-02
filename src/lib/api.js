@@ -146,6 +146,64 @@ export async function solicitar(ruta, { metodo = 'GET', cuerpo, senal } = {}) {
   return respuesta.json()
 }
 
+/**
+ * Ejecuta una petición que responde **en flujo** (SSE) y entrega cada marco ya
+ * parseado. `solicitar` espera un JSON completo, así que no sirve para esto:
+ * aquí se lee el cuerpo a medida que llega y se avisa marco a marco.
+ */
+export async function transmitir(ruta, cuerpo, onMarco, senal) {
+  const { puerto, token } = await configuracion()
+
+  const cabeceras = { 'Content-Type': 'application/json' }
+  if (token) cabeceras['X-DatenJager-Token'] = token
+
+  let respuesta
+  try {
+    respuesta = await fetch(`http://127.0.0.1:${puerto}${ruta}`, {
+      method: 'POST',
+      headers: cabeceras,
+      body: JSON.stringify(cuerpo),
+      signal: senal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw new ErrorBackend(
+      'No se pudo contactar el servicio local. Verifica que el backend esté en ejecución.',
+      'ServicioNoDisponible',
+      0,
+    )
+  }
+
+  if (!respuesta.ok) throw await aError(respuesta)
+  if (!respuesta.body) {
+    throw new ErrorBackend('El servicio no entregó un flujo de respuesta.', 'SinFlujo', 0)
+  }
+
+  const lector = respuesta.body.getReader()
+  const decodificador = new TextDecoder()
+  let pendiente = ''
+
+  while (true) {
+    const { value, done } = await lector.read()
+    if (done) break
+
+    pendiente += decodificador.decode(value, { stream: true })
+    const marcos = pendiente.split('\n\n')
+    // El último trozo puede estar a medias: se guarda para el ciclo siguiente.
+    pendiente = marcos.pop() ?? ''
+
+    for (const marco of marcos) {
+      const linea = marco.split('\n').find((candidata) => candidata.startsWith('data:'))
+      if (!linea) continue
+      try {
+        onMarco?.(JSON.parse(linea.slice(5).trim()))
+      } catch {
+        /* marco ilegible: se ignora en vez de cortar el flujo */
+      }
+    }
+  }
+}
+
 /** Accesos concretos al backend, por área del sistema. */
 export const backend = {
   salud: (senal) => solicitar('/api/salud', { senal }),
@@ -271,12 +329,23 @@ export const backend = {
     estado: () => solicitar('/api/modelos'),
     guardar: (datos) => solicitar('/api/modelos', { metodo: 'POST', cuerpo: datos }),
     probar: () => solicitar('/api/modelos/probar', { metodo: 'POST' }),
+    // Reconoce el proveedor de una clave sin llamar a nadie: es lo que permite
+    // que el panel muestre a qué proveedor pertenece y qué URL base le toca,
+    // para que el usuario no tenga que saber ninguna de las dos (SCRUM-62).
+    identificar: (clave) =>
+      solicitar('/api/modelos/identificar', { metodo: 'POST', cuerpo: { clave } }),
   },
 
   chat: {
     iniciar: (contexto = '') =>
       solicitar('/api/chat', { metodo: 'POST', cuerpo: { contexto } }),
     enviar: (mensaje) => solicitar('/api/chat/mensajes', { metodo: 'POST', cuerpo: { mensaje } }),
+    // Respuesta progresiva (RF-16): cada marco trae un `fragmento`, un `error`
+    // o el `fin` del flujo.
+    enviarStream: (mensaje, onMarco, senal) =>
+      transmitir('/api/chat/mensajes/stream', { mensaje }, onMarco, senal),
+    // Prueba real de generación, para el panel de conexión (SCRUM-62).
+    probar: () => solicitar('/api/chat/probar', { metodo: 'POST' }),
     limpiar: () => solicitar('/api/chat', { metodo: 'DELETE' }),
   },
 }

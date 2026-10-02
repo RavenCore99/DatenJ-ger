@@ -239,6 +239,15 @@ feat(SCRUM-32): añade estados y transiciones
 | `SCRUM-38` | Definir criterio de fallback Gemini → Ollama | `ollama`, `rf-17`, `arquitectura` |
 | `SCRUM-39` | Implementar prototipo de fallback local | `ollama`, `rf-17`, `evaluacion` |
 
+> **`SCRUM-34`, `SCRUM-35` y `SCRUM-36` hechos** (PR de la Fase 4, 2026-10-01,
+> `9cc138f`): la respuesta llega **por fragmentos** (`POST
+> /api/chat/mensajes/stream`, SSE), con tiempos límite, reintentos de espera
+> creciente y mensajes accionables por código de error; y el turno se registra
+> **una sola vez**, conservando lo que el usuario llegó a ver si el flujo se
+> corta. Además el asistente queda **anclado al proyecto**
+> (`backend/services/contexto.py`): recibe solo agregados reales del sistema y
+> responde únicamente sobre DatenJäger.
+
 > **`SCRUM-37` a `SCRUM-39` aparcados (2026-09-30).** Raven decidió que no se
 > implementan modelos locales hasta que el frontend y el backend estén completos
 > al 100 %; por ahora el chatbot funciona **solo por API** (`SCRUM-61`/`SCRUM-62`).
@@ -251,6 +260,13 @@ feat(SCRUM-32): añade estados y transiciones
 | `SCRUM-41` | Integrar autenticación y 2FA mediante API | `api`, `auth`, `feat` |
 | `SCRUM-42` | Integrar documentos, personas y auditoría mediante API | `api`, `integracion`, `feat` |
 | `SCRUM-43` | Evaluar persistencia de modelos y datos | `persistencia`, `evaluacion` |
+
+> **`SCRUM-43` decidido** (2026-10-01, `bd29981`): se mantiene **SQLite con
+> WAL**. El patrón real de acceso —un solo proceso, una conexión y `db_lock`
+> serializando, el renderer sin tocar la base— no justifica un motor
+> cliente-servidor, y cambiarlo encarecería el instalador de la Fase 7. La
+> decisión completa y sus criterios de revisión están en
+> `docs/decision-persistencia.md`.
 
 ## Bloque C — Búsqueda semántica
 

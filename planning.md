@@ -275,7 +275,7 @@ Dos reglas de alcance confirmadas por Raven:
   detrás de ellas, salvo que Raven pida explícitamente ampliar el
   alcance de Configuración más adelante.
 - La búsqueda semántica (`Hermes IA Semantic` en el sidebar del mockup)
-  **sigue como Fase 5, en evaluación** — que ya tenga un ítem diseñado
+  **sigue como Fase 6, en evaluación** — que ya tenga un ítem diseñado
   en el mockup no la promueve a compromiso cerrado.
 
 ### Decisiones cerradas (2026-09-30, revisión del material de diseño)
@@ -618,10 +618,11 @@ conduciendo la ventana real de Electron:
    `bbe44a8` (un solo commit: ambos son el área `SCRUM-59` y ambos tocan
    `Documentos.jsx`)
 5. [x] `SCRUM-85` atajos de teclado y búsqueda global — `dc0511a`
-6. [ ] **Fase 4, solo API** (modelos locales omitidos por decisión de Raven):
+6. [x] **Fase 4, solo API** (modelos locales omitidos por decisión de Raven):
    streaming del chatbot, errores de red, decisión de motor de persistencia y
-   **asistente anclado al proyecto**, que solo responda con la información del
-   propio sistema
+   **asistente anclado al proyecto** — `9cc138f`, `39dfa21` y `bd29981`. El
+   asistente solo responde sobre el sistema y con los agregados reales del
+   archivo; nunca recibe datos personales, contenido de documentos ni secretos
 
 Evaluación (paralela, backend):
 
@@ -631,7 +632,52 @@ Evaluación (paralela, backend):
 
 ## Fase 4 — Integración de APIs y modelos locales
 
-Estado: **por hacer** — Skill: `chatbot-streaming` + `local-llm-fallback`
+Estado: **hecho, solo API** — Skill: `chatbot-streaming`. Los modelos locales
+(`local-llm-fallback`) siguen **aparcados** por decisión de Raven del
+2026-09-30.
+
+**Cerrado el 2026-10-01** con el bloque del chatbot:
+
+| Pieza | Dónde | Ticket |
+| --- | --- | --- |
+| Entrega progresiva de la respuesta (RF-16) | `chatbot.py` (`enviar_mensaje_stream`), `POST /api/chat/mensajes/stream` (SSE), `src/lib/api.js` (`transmitir`), `src/pages/Chatbot.jsx` | `SCRUM-34` |
+| Tiempos límite, reintentos y errores de red accionables | `chatbot.py` (`_traducir_fallo`, `_con_reintentos`) | `SCRUM-35` |
+| Continuidad de la conversación durante el flujo | `chatbot.py` (registro único del turno) + `tests/test_asistente.py` | `SCRUM-36` |
+| **Asistente anclado al proyecto** | `backend/services/contexto.py`, reinyectado en cada turno | `SCRUM-61` (área) |
+| Prueba real de generación desde el panel | `POST /api/chat/probar`, `src/pages/Modelos.jsx` | `SCRUM-62` (área) |
+| Decisión de motor de persistencia | `docs/decision-persistencia.md` | `SCRUM-43` |
+
+Dos decisiones que conviene recordar:
+
+* **El asistente no puede filtrar lo que nunca recibe.** El contexto que se le
+  entrega son **agregados** —cuántos documentos, reparto por empresa, titulares,
+  catálogo y acciones de auditoría— y nada más: ni cédulas, ni nombres de
+  titulares, ni nombres de archivo, ni contenido, ni claves, hashes, tokens o
+  rutas. El prompt declara además el alcance estricto y prohíbe responder fuera
+  del proyecto.
+* **Se retiró el respaldo que fingía contestar.** Ante un 403 del proveedor, el
+  servicio devolvía una respuesta enlatada «en modo local de prueba». Ahora dice
+  el motivo real y accionable, que es lo que el panel de conexión ayuda a
+  resolver. Una respuesta inventada es peor que un error honesto.
+
+El panel de conexión ya existía (`SCRUM-64`, con escritura del `.env` y prueba
+real de credencial); esta fase le añade la **prueba de generación** y la
+posibilidad de elegir entre los modelos que la cuenta tiene de verdad.
+
+### Cierre de la Fase 4 (2026-10-01)
+
+Los tres defectos que aparecieron al probarla con la credencial real, ya
+corregidos:
+
+| Defecto | Causa | Corrección |
+| --- | --- | --- |
+| El `503` al usar el asistente | El modelo guardado (`gemini-2.0-flash`) estaba retirado; Google responde `503` a un modelo que ya no existe | El catálogo usa **alias** (`-latest`) que no caducan, la prueba de conexión sustituye el modelo retirado por uno vigente de la cuenta, y un `5xx` sobre un modelo pasa al siguiente candidato |
+| La sesión se caía al guardar o probar la API | Los manejadores de modelos y del asistente eran `async def` con esperas **bloqueantes**: dejaban al servicio sin atender el sondeo de sesión durante hasta 25 s. El sondeo, además, cerraba la sesión ante **cualquier** fallo, no solo un 401 | Los manejadores pasan a `def` (FastAPI los ejecuta en un hilo aparte) y la sesión solo se cierra cuando el servicio **responde** que no hay sesión |
+| El asistente mostraba su razonamiento | Los modelos con razonamiento devuelven sus pasos como partes marcadas (`thought`) y se concatenaban con el texto; además el prompt no lo prohibía, y los modelos pequeños lo escriben como texto normal | Se descartan las partes de pensamiento —en el flujo y en la respuesta completa— y el prompt exige responder directamente, sin analizar la petición ni enumerar opciones |
+
+Y un cambio de sitio pedido por Raven: **Auditoría y Modelos salen de la barra de
+secciones** del dashboard y quedan solo dentro de **Ajustes**, que es donde
+corresponde a unos ajustes del sistema. Estaban en los dos sitios.
 
 **Alcance inmediato: solo API (decisión 2026-09-30).** Hasta que el frontend y
 el backend estén completos al 100 %, el chatbot funciona por API y **no** se
@@ -674,81 +720,257 @@ la fase.
 
 ---
 
-## Fase 5 — Búsqueda semántica sobre el corpus documental (evaluación, paralela)
+## Fase 5 — La app, instalable y publicada (GitHub Packages)
 
-Estado: **evaluación** — Skill: `semantic-search-poc`
+Estado: **por hacer** — se arranca con una **prueba de viabilidad**, no con el
+pipeline completo. Reordena lo que antes era la Fase 7: se adelanta porque es lo
+que convierte el proyecto en algo entregable, y porque las fases de evaluación
+(Fase 6) no bloquean nada y pueden ir después sin coste.
 
-Explícitamente no comprometida al 100% según el anteproyecto: se testea
-durante el semestre y se define o se descarta según resultados y consumo
-de hardware. Es **backend-only**: no depende de qué frontend esté activo,
-así que puede evaluarse en paralelo con cualquier fase posterior a la
-Fase 1, sin bloquear el camino principal.
+**Objetivo.** Que alguien que no sabe nada del proyecto pueda instalarlo y
+usarlo: descargar, ejecutar y que funcione. Ni «clona el repositorio», ni
+«instala Python», ni «crea un entorno virtual».
 
-Secciones sugeridas (como prototipo, no como entrega cerrada):
+### El problema real, dicho sin adornos
 
-1. Extracción y fragmentación de texto de los documentos ya indexados.
-2. Generación de embeddings con `sentence-transformers`
-   (`all-MiniLM-L6-v2` como punto de partida).
-3. Almacenamiento vectorial local: ChromaDB **o** extensión `sqlite-vss`
-   sobre el motor SQLite ya existente — elegir una sola vía tras el
-   prototipo, no mantener ambas.
-4. Integración de la búsqueda semántica como complemento (no reemplazo) de
-   la búsqueda léxica actual, expuesta al chatbot.
+Hoy la aplicación necesita tres cosas que un usuario final no tiene ni debería
+tener que conseguir:
 
-Criterio de cierre: decisión documentada de continuar o descartar, con datos
-de consumo de hardware y calidad de resultados que la respalden.
+1. **Un intérprete de Python** con `fastapi`, `uvicorn`, `cryptography`,
+   `pyotp`, `PyMuPDF`, `numpy`… instalados.
+2. **Un Node/Electron** que arranque la ventana.
+3. **Saber que hay dos procesos** y que uno lanza al otro.
+
+El instalador tiene que hacer desaparecer las tres. Eso es toda la fase.
+
+### Vía técnica (a validar en la prueba de viabilidad)
+
+**Empaquetado de la ventana: `electron-builder`.** Es el estándar para
+Electron y da los dos formatos que hacen falta de una sola configuración:
+
+| Plataforma | Formato | Por qué |
+| --- | --- | --- |
+| Windows | **NSIS `.exe`** | Es lo que la gente espera: doble clic, siguiente, siguiente. Genera también desinstalador |
+| Linux | **AppImage** | Un solo archivo ejecutable, sin permisos de root ni repositorio. `.deb` como segundo formato si hace falta |
+
+**El backend Python, sin que el usuario instale nada.** Dos caminos, y la prueba
+de viabilidad debe decidir con datos cuál se queda:
+
+* **Congelar el backend** (`PyInstaller` o `PyOxidizer`) a un binario por
+  plataforma y meterlo como `extraResource` del paquete de Electron. El usuario
+  nunca ve Python. Contra: un binario por plataforma y arquitectura, y hay que
+  verificar que `cryptography` y `PyMuPDF` se congelen bien —son los que suelen
+  dar guerra por dependencias nativas—.
+* **Vendorizar un Python portable** (CPython *standalone* o `uv`) junto al
+  paquete, con las dependencias ya instaladas en un directorio
+  (`pip install --target`). Contra: pesa más y hay que resolver las rutas en
+  tiempo de ejecución, pero es más transparente para depurar.
+
+En ambos casos, **`electron/backend.js` ya está preparado**: `interprete()`
+acepta `DATENJAGER_PYTHON`, así que basta con apuntarlo al binario o al
+intérprete empaquetado. No hay que rehacer el arranque.
+
+**Versionado y publicación.** Aquí conviene ser preciso, porque «GitHub
+Packages» y «GitHub Releases» no son lo mismo:
+
+* **GitHub Releases** es donde van los **instaladores** (`.exe`, `.AppImage`).
+  Es el sitio natural para binarios de release, y es lo que consume
+  `electron-updater` para las actualizaciones automáticas.
+* **GitHub Packages** es un registro de paquetes (npm, contenedores, Maven…).
+  Tiene sentido si publicamos además el paquete npm del proyecto —útil para
+  instalar por `npm`, no para el usuario final— o una imagen de contenedor.
+  Se usará para eso, y para llevar el control de versiones del paquete.
+
+Un flujo de GitHub Actions que, al empujar una etiqueta `vX.Y.Z`, compile en
+Windows y en Linux, adjunte los instaladores al Release y publique el paquete
+npm en Packages. La versión sale de `package.json`; no se escribe a mano en dos
+sitios.
+
+**La web que ofrece Raven.** Una página con el instalador para descargar y, para
+Linux, una línea de consola del estilo
+`curl -fsSL https://…/install.sh | sh`, que descarga el AppImage, lo deja en
+`~/.local/bin` y crea el acceso directo. Para Windows, el `.exe` y —si el
+tiempo alcanza— un manifiesto para `winget`. La web es el escaparate; los
+binarios siguen viviendo en el Release.
+
+### Lo que la instalación **no** puede traer
+
+Por la filosofía del proyecto, y porque así está construido:
+
+* **Nada de base de datos empaquetada.** `database.py` crea el archivo SQLite
+  local en el primer arranque. El instalador no lleva datos, ni vacíos.
+* **Nada de credenciales.** El `.env` y el almacén `modelos/` los crea el panel
+  de conexión cuando el usuario carga su clave, con permisos `0600`.
+* **Nada de tokens de confianza.** `tokens_confianza/` se genera en local.
+
+Es decir: el instalador lleva **programa**, no **estado**. Cualquier cosa que
+lleve estado del desarrollador es un defecto de la fase.
+
+### Orden de trabajo
+
+1. **Prueba de viabilidad (lo primero, y sin prometer nada):** empaquetar el
+   backend con cada una de las dos vías y **medir**: peso del paquete, tiempo de
+   arranque en frío y si `cryptography`, `PyMuPDF` y `uvicorn` funcionan
+   congelados. Decidir con esos números, no por preferencia.
+2. Instalador de **Linux** funcionando de punta a punta en una máquina limpia
+   (contenedor o usuario nuevo): instalar, abrir, registrar usuario, subir un
+   PDF, cerrar y volver a abrir con los datos intactos.
+3. Instalador de **Windows** con el mismo recorrido, incluido el aviso de
+   SmartScreen —**el `.exe` irá sin firmar**, porque firmar cuesta dinero; hay
+   que documentar que el aviso es esperado y cómo continuar—.
+4. **CI** en GitHub Actions: etiqueta → build en las dos plataformas → Release
+   con los instaladores → paquete npm en Packages.
+5. **Documentación de instalación** para alguien que llega nuevo: qué descargar,
+   qué hace el sistema en el primer arranque y dónde quedan los datos.
+6. **Retirada de CustomTkinter** una vez el instalador cubra todo lo que la
+   interfaz antigua hacía.
+
+Criterio de cierre: existe un instalador que funciona en Windows y Linux, se
+publica con su versión, y una persona ajena al proyecto lo instala y lo usa
+siguiendo solo la documentación.
 
 ---
 
-## Fase 6 — Clasificación automática de documentos (evaluación, paralela)
+## Fase 6 — Búsqueda semántica y clasificación automática (evaluación)
 
-Estado: **evaluación** — `SCRUM-72` a `SCRUM-74` en `jira.md` (Sprint 5).
-Dependencia: se puede prototipar en paralelo a
-cualquier fase posterior a la Fase 1, pero **solo backend**.
+Estado: **evaluación** — Skill: `semantic-search-poc` — `SCRUM-72` a `SCRUM-74`
+en `jira.md` (Sprint 5).
 
-Objetivo: evaluar si un método de aprendizaje automático puede clasificar los
-PDF que ya entran al sistema (afiliaciones, reportes de seguridad social,
-contratos laborales, etc.) sin que nadie elija la categoría a mano. El valor
-académico está en la **medición**, no en la promesa: si la precisión no
-justifica el costo, se documenta y se descarta igual que la búsqueda semántica.
+**Las dos evaluaciones van juntas porque comparten casi todo.** Buscar por
+significado y clasificar por tipo son dos usos del mismo trabajo: extraer el
+texto del PDF, partirlo en fragmentos y calcular sus embeddings. Hacerlas por
+separado sería montar dos veces la misma tubería. Se evalúan juntas, se miden
+por separado y se deciden por separado —puede salir bien una y mal la otra—.
 
-Alcance sugerido:
+Explícitamente **no comprometida** según el anteproyecto: se prueba durante el
+semestre y se define o se descarta según resultados y consumo de hardware. Es
+**backend-only**: no depende de qué frontend esté activo.
 
-1. **Corpus de evaluación**: tomar los documentos reales ya cargados y
-   etiquetarlos a mano como referencia (sin sacarlos del sistema).
-2. **Línea base sin modelo**: clasificación por reglas sobre el texto extraído
-   (palabras clave, nombre del archivo, entidad asociada). Si esto ya acierta
-   lo suficiente, es la respuesta más barata y hay que decirlo.
-3. **Extracción de texto**: reutilizar el camino de lectura de PDF ya existente.
-4. **Prototipo con embeddings**: `sentence-transformers` sobre texto extraído y
-   un clasificador simple encima; alternativamente un modelo de cero disparos.
-5. **Medición**: precisión, exhaustividad y matriz de confusión sobre el corpus
-   etiquetado, con el mismo rigor que la Fase 5.
-6. **Decisión**: continuar, ajustar o descartar, documentada con los números.
+### La tubería compartida (se construye una vez)
 
-Criterio de cierre: existe una medición reproducible sobre documentos reales y
-una decisión escrita. No se integra a la interfaz en esta fase: si los números
-lo justifican, se convierte en tarea propia.
+1. **Extracción y fragmentación** del texto de los documentos ya indexados.
+   Se reutiliza el camino de lectura de PDF que el sistema ya tiene.
+2. **Embeddings** con `sentence-transformers` (`all-MiniLM-L6-v2` como punto de
+   partida, que es pequeño y corre en CPU).
+3. **Almacén vectorial local**: ChromaDB **o** la extensión `sqlite-vss` sobre
+   el SQLite que ya existe. Se elige **una** vía tras el prototipo, no se
+   mantienen las dos.
+
+### Uso A — Búsqueda semántica
+
+Complemento de la búsqueda léxica actual, **no su reemplazo**: quien busca un
+número de cédula quiere coincidencia exacta, no «parecido». Se expone al
+asistente, que es donde aporta: «¿qué contratos hablan de trabajo en altura?»
+no se responde con `LIKE`.
+
+### Uso B — Clasificación automática
+
+Evaluar si un método de aprendizaje automático puede clasificar los PDF que ya
+entran al sistema (afiliaciones, reportes de seguridad social, contratos
+laborales…) sin que nadie elija la categoría a mano. El valor académico está en
+la **medición**, no en la promesa.
+
+1. **Corpus de evaluación**: los documentos reales ya cargados, etiquetados a
+   mano como referencia (sin sacarlos del sistema).
+2. **Línea base sin modelo**: reglas sobre el texto extraído (palabras clave,
+   nombre del archivo, entidad asociada). **Si esto ya acierta lo suficiente, es
+   la respuesta más barata y hay que decirlo**: un clasificador de verdad solo
+   se justifica si le gana con margen.
+3. **Prototipo**: un clasificador simple sobre los embeddings de la tubería
+   compartida; alternativamente, un modelo de cero disparos.
+4. **Medición**: precisión, exhaustividad y matriz de confusión sobre el corpus
+   etiquetado.
+
+### Decisión
+
+Se documenta cada uso por separado —continuar, ajustar o descartar— con los
+números que lo respalden, incluido el consumo de hardware. **No se integra a la
+interfaz en esta fase**: si los números lo justifican, se convierte en tarea
+propia. Descartar con datos es un resultado válido, y el anteproyecto lo
+contempla.
 
 ---
 
-## Fase 7 - final. build instalable / uso de GitHub packages
+## Fase 7 — Pulido final: diseño, animaciones y orden del repositorio
 
-1. considerar buildear la app con y para github packages. para que la app sea 100% instalable mediante comando y archivo instalable
-2. sugerir formas faciles de generar el emapquetado que quede funcional
-3.  el backend y bases de datos deben generarse en local en la instalacion, por la filosofia del proyecto, maneja SQLite en local
+Estado: **por hacer** — es la última fase, y la más fácil de posponer sin coste
+porque no bloquea nada.
+
+### 1. Diseño, animaciones y retoques de interfaz
+
+Lo que quede por pulir una vez todo funcione: detalles de la transición entre
+temas, micro-interacciones que falten, revisión de los estados de carga y de
+error pantalla por pantalla, y los cambios ligeros de interfaz que aparezcan al
+usarla de verdad. **Se hace al final a propósito**: pulir antes de que la app
+sea instalable es pulir algo que quizá haya que mover.
+
+### 2. Orden del repositorio: los `.py` de la raíz
+
+Hoy la raíz tiene **13 módulos Python, 8.840 líneas**, mezclando el backend real
+con la interfaz antigua de CustomTkinter. Eso es lo que queda del desacople: el
+código está separado por dentro, pero no por fuera.
+
+El reparto, medido:
+
+| Se van a `backend/` (backend puro, sin Tkinter) | Líneas |
+| --- | --- |
+| `chatbot.py` (servicio del asistente) | 612 |
+| `database.py` (SQLite) | 485 |
+| `reporter.py` (informes) | 396 |
+| `transhumano.py` (textos de la declaración) | 262 |
+| `encryption.py` (AES-256-GCM) | 130 |
+| `config.py` (carga del `.env`) | 107 |
+
+| Se **retiran** (interfaz CustomTkinter) | Líneas |
+| --- | --- |
+| `main.py` | 3.556 |
+| `ui_components.py` | 1.271 |
+| `pdf_manager.py` | 709 |
+| `personas.py` | 459 |
+| `audit.py` | 404 |
+| `chatbot_ui.py` | 353 |
+| `icons.py` | 96 |
+
+**Los dos trabajos son el mismo.** No tiene sentido mover `main.py` a
+`backend/`: se retira. Y los siete módulos de interfaz solo pueden retirarse
+cuando el instalador (Fase 5) cubra todo lo que la interfaz antigua hacía, así
+que esta parte depende de aquella.
+
+**Cómo hacerlo sin romper nada**, en este orden:
+
+1. Retirar primero la interfaz antigua: es la que *importa* los módulos de
+   backend, no al revés. Mientras esté, mover los módulos obliga a tocar sus
+   importaciones para nada.
+2. Mover los seis módulos de backend, uno por commit, actualizando
+   importaciones en `backend/`, `tests/` y `scripts/`. La suite es la red de
+   seguridad: si sigue en verde, el movimiento está bien.
+3. Actualizar `CLAUDE.md` (§3 y §5) y `backend/README.md`.
+
+**Aviso, y es una parada obligatoria:** `database.py` y `encryption.py` son
+**cifrado y base de datos**. Moverlos no cambia ni una línea de criptografía,
+pero toca los dos archivos que `CLAUDE.md` §10 marca como sensibles. Se pide
+aprobación explícita de Raven antes de empezar esa parte, no después.
+
+Criterio de cierre: la raíz no tiene módulos Python de la aplicación —solo
+configuración y puntos de entrada—, la suite pasa en verde y CustomTkinter ya no
+está en el proyecto.
+
+---
 
 ## Criterio de cierre del proyecto
 
 `SCRUM-75` a `SCRUM-78` en `jira.md` (Sprint 5). Además del criterio de cada
 fase, el proyecto se considera entregable cuando:
 
-* existe un **instalador de escritorio** que funciona en Windows y Linux y se
-  publica como paquete en GitHub Packages;
-* la instalación y el arranque están documentados para alguien que llega nuevo;
+* existe un **instalador de escritorio** que funciona en Windows y Linux, con su
+  versión publicada y sus instaladores descargables;
+* una persona ajena al proyecto lo instala y lo usa **sin instalar Python ni
+  dependencias a mano** y siguiendo solo la documentación;
 * el código Python que queda es **backend funcional** (servicios, cifrado, base
-  de datos, asistente); CustomTkinter se retira una vez la Fase 3 cierra
-  pantalla por pantalla.
+  de datos, asistente) y vive bajo `backend/`;
+* **CustomTkinter ya no está** en el repositorio;
+* la base de datos, el `.env` y los almacenes cifrados se generan **en local**
+  en la instalación: el instalador lleva programa, no estado.
 
 ---
 
@@ -772,11 +994,27 @@ fase, el proyecto se considera entregable cuando:
 | 0. Preparación | hecho (mockups recibidos y versionados en `SCRUM-79`) | 2026-10-01 |
 | 1. Pulir backend Python | hecho | 2026-09-28 |
 | 2. Migración a Electron/React/Tailwind (andamiaje) | hecho | 2026-09-28 |
-| 3. Frontend conforme a mockups | **cerrada salvo el empaquetado** — además de lo anterior (base visual, movimiento, pantallas nuevas, iconos, reportes con logo, telemetría, catálogo de empresas y calidad de vida), el PR #16 cierra `SCRUM-81`, `82`, `84`, `85`, `87` y `88`. Solo queda el empaquetado de la Fase 7 | 2026-10-01 |
-| 4. Integración de APIs y modelos locales | **reencuadrado: solo API** (decidido por Raven el 2026-10-01; los modelos locales quedan omitidos por ahora). El panel de conexión ya está hecho (`SCRUM-64`, con `.env` y prueba real); quedan el streaming, el manejo de errores de red, la decisión de motor de persistencia y el **asistente anclado al proyecto** | 2026-10-01 |
-| 5. Búsqueda semántica (evaluación) | evaluación | — |
-| 6. Clasificación automática (evaluación) | evaluación | 2026-09-28 |
-| 7. Empaquetado y publicación en GitHub Packages | por hacer (la app debe quedar como instalador listo para usarse) | 2026-09-30 |
+| 3. Frontend conforme a mockups | **cerrada salvo el empaquetado** — además de lo anterior (base visual, movimiento, pantallas nuevas, iconos, reportes con logo, telemetría, catálogo de empresas y calidad de vida), el PR #16 cierra `SCRUM-81`, `82`, `84`, `85`, `87` y `88`. Solo queda el empaquetado, que es la Fase 5 | 2026-10-01 |
+| 4. Integración de APIs y modelos locales | **hecho, solo API** — `SCRUM-34` (streaming), `35` (tiempos y reintentos), `36` (continuidad), `SCRUM-61` (asistente anclado al proyecto con datos reales en vivo) y `SCRUM-43` (SQLite con WAL, decisión en `docs/decision-persistencia.md`). El panel de conexión permite cargar la credencial, probarla y probar la generación. Los modelos locales quedan omitidos por decisión de Raven | 2026-10-01 |
+| 5. App instalable y publicada (GitHub Packages) | **por hacer** — adelantada desde el final (ver «Reordenación» abajo). Arranca por la **prueba de viabilidad** del backend empaquetado | 2026-10-01 |
+| 6. Búsqueda semántica + clasificación (evaluación) | evaluación — las dos juntas: comparten extracción de texto y embeddings | 2026-10-01 |
+| 7. Pulido final: diseño, animaciones y orden del repositorio | por hacer — la retirada de CustomTkinter depende de que la Fase 5 cubra todo | 2026-10-01 |
+
+### Reordenación de fases (2026-10-01, decisión de Raven)
+
+El orden cambia respecto al planteamiento inicial, por dos razones:
+
+* **La instalación sube al puesto 5.** Es lo que convierte el proyecto en algo
+  entregable y lo que permite retirar CustomTkinter; dejarla para el final
+  obligaba a pulir una interfaz que quizá hubiera que mover.
+* **Búsqueda semántica y clasificación se juntan en la Fase 6.** Comparten casi
+  todo el trabajo —extracción de texto, fragmentación, embeddings—, así que
+  separarlas era montar dos veces la misma tubería. Se evalúan juntas, se miden
+  por separado y se deciden por separado.
+
+El orden queda: **5 → instalable**, **6 → evaluación (búsqueda + clasificación)**,
+**7 → pulido y orden del repositorio**. Ninguna de las tres bloquea a las otras
+dos más allá de lo indicado en cada una.
 Actualiza esta tabla al cerrar cada fase o hito relevante, y refleja el
 cambio en `CLAUDE.md` (sección 12) en la misma sesión.
 

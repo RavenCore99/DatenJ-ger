@@ -91,15 +91,53 @@ export default function Chatbot({ onNavegar }) {
       if (!limpio || estado === 'esperando') return
 
       setTexto('')
-      setMensajes((actuales) => [...actuales, { autor: 'usuario', texto: limpio }])
-      setEstado('esperando')
       setError(null)
+      setEstado('esperando')
+
+      // Se pinta el turno del usuario y, debajo, la burbuja del modelo vacía
+      // que se irá rellenando con cada fragmento (RF-16).
+      setMensajes((actuales) => [
+        ...actuales,
+        { autor: 'usuario', texto: limpio },
+        { autor: 'modelo', texto: '', enCurso: true },
+      ])
+
+      let falloDelFlujo = null
 
       try {
-        const respuesta = await backend.chat.enviar(limpio)
-        setMensajes((actuales) => [...actuales, { autor: 'modelo', texto: respuesta.respuesta }])
-        setEstado('listo')
+        await backend.chat.enviarStream(limpio, (marco) => {
+          if (marco.fragmento) {
+            setMensajes((actuales) =>
+              actuales.map((mensaje, indice) =>
+                indice === actuales.length - 1
+                  ? { ...mensaje, texto: mensaje.texto + marco.fragmento }
+                  : mensaje,
+              ),
+            )
+          }
+          // El backend avisa del fallo dentro del flujo: ya hay texto pintado,
+          // así que no se puede responder con un estado de error a secas.
+          if (marco.error) falloDelFlujo = marco.error
+        })
+
+        setMensajes((actuales) =>
+          actuales.map((mensaje, indice) =>
+            indice === actuales.length - 1 ? { ...mensaje, enCurso: false } : mensaje,
+          ),
+        )
+
+        if (falloDelFlujo) {
+          setError(falloDelFlujo)
+          setEstado('error')
+        } else {
+          setEstado('listo')
+        }
       } catch (fallo) {
+        setMensajes((actuales) =>
+          actuales.map((mensaje, indice) =>
+            indice === actuales.length - 1 ? { ...mensaje, enCurso: false } : mensaje,
+          ),
+        )
         setError(fallo.message)
         setEstado('error')
       }
@@ -208,7 +246,7 @@ export default function Chatbot({ onNavegar }) {
             <div className="min-w-0 leading-tight">
               <p className="text-etiqueta-md font-medium">Hermes IA</p>
               <p className="text-cuerpo-sm text-tenue">
-                Respuesta completa, sin streaming (RF-16 llega en la Fase 4)
+                Respuesta progresiva · solo sobre este proyecto
               </p>
             </div>
           </header>
@@ -225,15 +263,8 @@ export default function Chatbot({ onNavegar }) {
             )}
 
             {mensajes.map((mensaje, indice) => (
-              <Burbuja key={`${mensaje.role}-${indice}`} mensaje={mensaje} />
+              <Burbuja key={`${mensaje.autor}-${indice}`} mensaje={mensaje} />
             ))}
-
-            {estado === 'esperando' && (
-              <div className="flex items-center gap-2 text-cuerpo-sm text-tenue" aria-live="polite">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primario" />
-                El modelo está respondiendo…
-              </div>
-            )}
 
             {estado === 'error' && <EstadoError mensaje={error} onReintentar={iniciar} />}
 
@@ -280,7 +311,6 @@ export default function Chatbot({ onNavegar }) {
 
 function Burbuja({ mensaje }) {
   const esUsuario = mensaje.autor === 'usuario'
-  const esFallo = !esUsuario && /^\[(Error|Gemini)/.test(mensaje.texto)
 
   return (
     <div className={`animar-entrada flex ${esUsuario ? 'justify-end' : 'justify-start'}`}>
@@ -289,12 +319,18 @@ function Burbuja({ mensaje }) {
           'max-w-[46rem] whitespace-pre-wrap rounded-panel px-3.5 py-2.5 text-cuerpo-md',
           esUsuario
             ? 'bg-primario text-sobre-primario'
-            : esFallo
-              ? 'border border-peligro/40 bg-peligro/5 text-peligro'
-              : 'border border-borde bg-fondo text-texto',
+            : 'border border-borde bg-fondo text-texto',
         ].join(' ')}
       >
         {mensaje.texto}
+        {/* Cursor de escritura: la respuesta llega por fragmentos (RF-16), así
+            que mientras fluye se marca dónde va. */}
+        {mensaje.enCurso && (
+          <span
+            aria-hidden="true"
+            className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-primario align-text-bottom"
+          />
+        )}
       </div>
     </div>
   )

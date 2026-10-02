@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import base64
 import binascii
+import json
 import logging
 import os
 import secrets
@@ -59,7 +60,7 @@ from typing import Any, Optional
 
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.commands import ComandosDatenJager
@@ -148,6 +149,17 @@ class ConexionModelos(BaseModel):
     endpoint: Optional[str] = None
     api_key: Optional[str] = None
     quitar_clave: bool = False
+
+
+class ClavePorIdentificar(BaseModel):
+    """Credencial que se quiere reconocer, para deducir su proveedor.
+
+    La clave viaja al backend —que es donde va a ir de todas formas al
+    guardarla— y **no se guarda** por el hecho de identificarla: la respuesta
+    solo dice a qué proveedor pertenece.
+    """
+
+    clave: str
 
 
 class SegundoFactorNuevo(BaseModel):
@@ -457,9 +469,30 @@ def crear_app(
         return comandos.guardar_conexion_de_modelos(**cuerpo.model_dump())
 
     @app.post("/api/modelos/probar", dependencies=protegido)
-    async def probar_conexion_de_modelos() -> dict[str, Any]:
-        """Prueba real de la credencial contra el proveedor configurado."""
+    def probar_conexion_de_modelos() -> dict[str, Any]:
+        """Prueba real de la credencial contra el proveedor configurado.
+
+        El resultado se anota en el almacén: es lo que permite que la franja de
+        telemetría refleje la prueba y no solo la existencia de una clave.
+
+        **Es `def`, no `async def`, a propósito.** La prueba hace una petición de
+        red que puede tardar decenas de segundos. Declarándola `async`, su espera
+        —que es bloqueante— ocuparía el bucle de eventos y dejaría al servicio sin
+        atender nada más mientras tanto, incluido el sondeo de sesión que hace el
+        frontend. FastAPI ejecuta los manejadores síncronos en un hilo aparte, así
+        que la espera no bloquea al resto.
+        """
         return comandos.probar_conexion_de_modelos()
+
+    @app.post("/api/modelos/identificar", dependencies=protegido)
+    async def identificar_credencial(cuerpo: ClavePorIdentificar) -> dict[str, Any]:
+        """Reconoce el proveedor de una clave **sin llamar a ningún servicio**.
+
+        Solo aplica las reglas del catálogo. Permite que el panel muestre a qué
+        proveedor pertenece la clave y qué URL base le corresponde antes de
+        guardarla, para que el usuario no tenga que saber ninguna de las dos.
+        """
+        return comandos.identificar_clave(cuerpo.clave)
 
     @app.post("/api/sesion/heredar", dependencies=protegido)
     async def heredar_sesion(cuerpo: SesionHeredada) -> dict[str, Any]:
@@ -666,8 +699,40 @@ def crear_app(
         return {"mensajes": list(chat.history)}
 
     @app.post("/api/chat/mensajes", dependencies=protegido)
-    async def enviar_mensaje(cuerpo: MensajeChat) -> dict[str, str]:
+    def enviar_mensaje(cuerpo: MensajeChat) -> dict[str, str]:
+        # Síncrono a propósito: espera la respuesta del modelo, que puede tardar.
+        # En el bucle de eventos, esa espera dejaría al servicio sin atender el
+        # sondeo de sesión y la franja de telemetría (ver «probar conexión»).
         return {"respuesta": comandos.enviar_mensaje(cuerpo.mensaje)}
+
+    @app.post("/api/chat/mensajes/stream", dependencies=protegido)
+    def enviar_mensaje_stream(cuerpo: MensajeChat) -> StreamingResponse:
+        """Entrega la respuesta del asistente **por fragmentos** (RF-16).
+
+        Es un flujo SSE: cada ``data:`` trae un fragmento; el último marco lleva
+        ``fin``. Un fallo viaja como un marco de error, no como una respuesta a
+        medias, para que la interfaz pueda decirlo y no dejar la conversación
+        colgada.
+
+        Síncrono: el generador lee del proveedor bloqueando, y Starlette lo itera
+        en un hilo aparte en vez de ocupar el bucle de eventos.
+        """
+        return StreamingResponse(
+            _flujo_del_asistente(comandos, cuerpo.mensaje),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    @app.post("/api/chat/probar", dependencies=protegido)
+    def probar_respuesta_del_asistente() -> dict[str, Any]:
+        """Pide al modelo una respuesta de verdad, para probar la conexión.
+
+        Distinto de ``/api/modelos/probar``, que comprueba la credencial: aquí
+        se genera texto, que es lo que prueba que el asistente funciona.
+        Síncrono por el mismo motivo: la generación tarda y no debe ocupar el
+        bucle de eventos.
+        """
+        return comandos.probar_respuesta_del_asistente()
 
     @app.delete("/api/chat", dependencies=protegido)
     async def limpiar_chat() -> dict[str, bool]:
@@ -675,6 +740,35 @@ def crear_app(
         return {"limpio": True}
 
     return app
+
+
+def _marco_sse(datos: dict[str, Any]) -> str:
+    """Un marco del flujo SSE: ``data:`` con el objeto y doble salto."""
+    return f"data: {json.dumps(datos, ensure_ascii=False)}\n\n"
+
+
+def _flujo_del_asistente(comandos, mensaje: str):
+    """Traduce los fragmentos del servicio a marcos SSE.
+
+    Los errores se entregan como marco propio en vez de cortar el flujo sin
+    explicación: la interfaz ya está pintando la respuesta y necesita saber que
+    se interrumpió y por qué.
+    """
+    try:
+        for fragmento in comandos.enviar_mensaje_stream(mensaje):
+            yield _marco_sse({"fragmento": fragmento})
+    except BackendError as fallo:
+        LOG.warning("asistente: %s", fallo)
+        yield _marco_sse({"error": str(fallo), "tipo": type(fallo).__name__})
+    except Exception as fallo:  # pragma: no cover - salvaguarda del flujo
+        LOG.exception("asistente: fallo inesperado")
+        yield _marco_sse({
+            "error": "El asistente falló de forma inesperada.",
+            "tipo": "ErrorInesperado",
+            "detalle": str(fallo),
+        })
+    finally:
+        yield _marco_sse({"fin": True})
 
 
 # --------------------------------------------------------------------------- #

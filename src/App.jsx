@@ -14,7 +14,6 @@ import { pulso } from './lib/movimiento.js'
 import Inicio from './pages/Inicio.jsx'
 import Documentos from './pages/Documentos.jsx'
 import Personas from './pages/Personas.jsx'
-import Auditoria from './pages/Auditoria.jsx'
 import Cuenta from './pages/Cuenta.jsx'
 import Acceso from './pages/Acceso.jsx'
 import Bienvenida from './pages/Bienvenida.jsx'
@@ -22,7 +21,6 @@ import Registro from './pages/Registro.jsx'
 import Chatbot from './pages/Chatbot.jsx'
 import Reportes from './pages/Reportes.jsx'
 import Estadisticas from './pages/Estadisticas.jsx'
-import Modelos from './pages/Modelos.jsx'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
@@ -30,16 +28,20 @@ import Modelos from './pages/Modelos.jsx'
  *
  * Las cinco primeras son los paneles migrados en el Sprint 2; de «Asistente» en
  * adelante son las pantallas que faltaban (Sprint 5, `SCRUM-57` a `SCRUM-64`).
+ *
+ * **Auditoría y Modelos no están aquí.** Son ajustes del sistema —historial de
+ * acciones y conexión de las APIs— y viven **solo** dentro de «Ajustes»
+ * (`src/pages/Cuenta.jsx`), que es donde Raven los pidió. Tenerlos además en la
+ * barra de secciones los duplicaba: la misma pantalla en dos sitios, con el
+ * usuario sin saber cuál es «el bueno».
  */
 export const SECCIONES = [
   { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', icono: 'inicio', Componente: Inicio },
   { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', icono: 'documentos', Componente: Documentos },
   { clave: 'personas', titulo: 'Personas', descripcion: 'Titulares y empresas', icono: 'personas', Componente: Personas },
-  { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Historial de acciones', icono: 'auditoria', Componente: Auditoria },
   { clave: 'chatbot', titulo: 'Asistente', descripcion: 'Chat por API', icono: 'chatbot', Componente: Chatbot },
   { clave: 'reportes', titulo: 'Reportes', descripcion: 'Inventario exportable', icono: 'lista', Componente: Reportes },
   { clave: 'estadisticas', titulo: 'Estadísticas', descripcion: 'Datos y gráficos', icono: 'grafico', Componente: Estadisticas },
-  { clave: 'modelos', titulo: 'Modelos', descripcion: 'Conexión de APIs', icono: 'globo', Componente: Modelos },
   { clave: 'cuenta', titulo: 'Ajustes', descripcion: 'Cuenta y seguridad', icono: 'cuenta', Componente: Cuenta },
 ]
 
