@@ -93,8 +93,11 @@ function directorioDeDatos(raiz = RAIZ) {
 /**
  * Intérprete de Python a usar.
  *
- * Prioridad: variable de entorno, entorno virtual del proyecto, `python3`.
- * Solo aplica cuando **no** hay binario empaquetado.
+ * Prioridad: variable de entorno, entorno virtual del proyecto, `python3` en el
+ * PATH. No se pasa `/usr/bin/python3` como candidato fijo: en un runner de CI el
+ * intérprete que dejó `setup-python` (con las dependencias) vive en el PATH como
+ * `python3` y el del sistema no tiene Pillow ni PyInstaller; fiarse de la ruta
+ * dura rompe el empaquetado en Linux. Solo aplica cuando no hay binario empaquetado.
  */
 function interprete(raiz = RAIZ) {
   if (process.env.DATENJAGER_PYTHON) return process.env.DATENJAGER_PYTHON
@@ -102,7 +105,7 @@ function interprete(raiz = RAIZ) {
   const candidatos =
     process.platform === 'win32'
       ? [path.join(raiz, 'venv', 'Scripts', 'python.exe')]
-      : [path.join(raiz, 'venv', 'bin', 'python'), '/usr/bin/python3']
+      : [path.join(raiz, 'venv', 'bin', 'python')]
 
   return candidatos.find((ruta) => fs.existsSync(ruta)) ?? 'python3'
 }
