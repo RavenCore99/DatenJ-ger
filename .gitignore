@@ -25,6 +25,12 @@ node_modules/
 *.log
 npm-debug.log*
 
+# Empaquetado (Fase 5). El backend congelado, los iconos que genera el guion y
+# los instaladores son artefactos: se regeneran con `npm run dist` y no se
+# versionan. Las recetas y los guiones que los producen sí.
+/empaquetado/
+/release/
+
 # Tokens de confianza cifrados (SCRUM-25): son secretos locales
 /tokens_confianza/
 # Conexión de modelos cifrada (SCRUM-64): la clave nunca se versiona
