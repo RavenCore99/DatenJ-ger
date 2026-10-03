@@ -722,10 +722,12 @@ la fase.
 
 ## Fase 5 — La app, instalable y publicada (GitHub Packages)
 
-Estado: **por hacer** — se arranca con una **prueba de viabilidad**, no con el
-pipeline completo. Reordena lo que antes era la Fase 7: se adelanta porque es lo
-que convierte el proyecto en algo entregable, y porque las fases de evaluación
-(Fase 6) no bloquean nada y pueden ir después sin coste.
+Estado: **en curso** — empaquetado, CI/CD y Release **hechos y publicados**
+(2026-10-03, `v1.0.0`). Falta: documentación de instalación, público del paquete
+npm en GitHub Packages y retirada de CustomTkinter (que depende de que la Fase 3
+cierre todas las pantallas). Reordena lo que antes era la Fase 7: se adelanta
+porque es lo que convierte el proyecto en algo entregable, y porque las fases de
+evaluación (Fase 6) no bloquean nada y pueden ir después sin coste.
 
 **Objetivo.** Que alguien que no sabe nada del proyecto pueda instalarlo y
 usarlo: descargar, ejecutar y que funcione. Ni «clona el repositorio», ni
@@ -810,26 +812,31 @@ lleve estado del desarrollador es un defecto de la fase.
 
 ### Orden de trabajo
 
-1. **Prueba de viabilidad (lo primero, y sin prometer nada):** empaquetar el
-   backend con cada una de las dos vías y **medir**: peso del paquete, tiempo de
-   arranque en frío y si `cryptography`, `PyMuPDF` y `uvicorn` funcionan
-   congelados. Decidir con esos números, no por preferencia.
-2. Instalador de **Linux** funcionando de punta a punta en una máquina limpia
-   (contenedor o usuario nuevo): instalar, abrir, registrar usuario, subir un
-   PDF, cerrar y volver a abrir con los datos intactos.
-3. Instalador de **Windows** con el mismo recorrido, incluido el aviso de
-   SmartScreen —**el `.exe` irá sin firmar**, porque firmar cuesta dinero; hay
-   que documentar que el aviso es esperado y cómo continuar—.
-4. **CI** en GitHub Actions: etiqueta → build en las dos plataformas → Release
-   con los instaladores → paquete npm en Packages.
-5. **Documentación de instalación** para alguien que llega nuevo: qué descargar,
-   qué hace el sistema en el primer arranque y dónde quedan los datos.
-6. **Retirada de CustomTkinter** una vez el instalador cubra todo lo que la
-   interfaz antigua hacía.
+1. **Prueba de viabilidad** — **hecha**: se congeló el backend con PyInstaller
+   (`--onedir`) y se validó que `cryptography`, `PyMuPDF` y `uvicorn` funcionan
+   congelados (backend autónomo de 173 MB que arranca y sirve `/api/salud` sin
+   Python instalado). La receta reproducible vive en
+   `scripts/datenjager-servidor.spec`; se descartó vendorizar un Python portable.
+2. Instalador de **Linux** — **hecho**: `npm run dist:linux` produce el AppImage
+   (`datenj-ger-<v>-linux-x86_64.AppImage`, ~153 MB) con el backend congelado en
+   `resources/servidor/`. Verificado local de punta a punta.
+3. Instalador de **Windows** — **hecho**: NSIS `.exe` generado por la CI
+   (`datenj-ger-<v>-win-x64.exe`). Irá **sin firmar**: hay que documentar el
+   aviso de SmartScreen y cómo continuar.
+4. **CI/CD** — **hecho**: `.github/workflows/release.yml` compila en las dos
+   plataformas al empujar una etiqueta `vX.Y.Z` (validada antes de usarse, versión
+   desde `package.json`) y publica el Release con `gh release create`. Queda por
+   añadir la publicación del **paquete npm en GitHub Packages** (parte de este
+   punto, no hecha hoy).
+5. **Documentación de instalación** — **pendiente**: qué descargar, qué hace el
+   sistema en el primer arranque y dónde quedan los datos.
+6. **Retirada de CustomTkinter** — **pendiente**, bloqueada por el cierre de la
+   Fase 3.
 
 Criterio de cierre: existe un instalador que funciona en Windows y Linux, se
 publica con su versión, y una persona ajena al proyecto lo instala y lo usa
-siguiendo solo la documentación.
+siguiendo solo la documentación. **Los dos primeros se cumplen hoy; la prueba
+con alguien ajeno y la documentación todavía no.**
 
 ---
 
@@ -1060,8 +1067,8 @@ funcionales: `Acceso` (login y 2FA), `Documentos`, `Personas`, `Auditoria` y
 
 **Pendiente de verdad:** **nada del desacople.** El alta de usuario se movió al
 backend en `SCRUM-57` y `ComandosDatenJager.operaciones_pendientes()` quedó
-vacío. Lo único que sigue en pausa es el empaquetado (`SCRUM-26`, retomado por
-`SCRUM-75`/`SCRUM-76`).
+vacío. El empaquetado (`SCRUM-26`, retomado por `SCRUM-75`/`SCRUM-76`) ya no
+está en pausa: se resolvió con la Fase 5 (ver «Empaquetado y publicación»).
 
 **Pantallas nuevas (Fase 3, Sprint 5).** Cerradas el 2026-09-30 con
 `SCRUM-57` a `SCRUM-64`:
@@ -1083,6 +1090,33 @@ vacío. Lo único que sigue en pausa es el empaquetado (`SCRUM-26`, retomado por
 **Variables de entorno del servicio:** `DATENJAGER_DB` (base alternativa) y
 `DATENJAGER_TOKENS` (almacén alternativo de tokens). Las pruebas y las sondas
 las usan siempre para no tocar los datos reales del usuario.
+
+**Empaquetado y publicación (Fase 5, 2026-10-03).** La app es instalable sin
+que el usuario final instale Python ni Node:
+
+| Pieza | Archivo | Estado |
+| --- | --- | --- |
+| Receta de instalador | `electron-builder.yml` (NSIS Windows, AppImage Linux) | hecho |
+| Congelado del backend | `scripts/empaquetar_backend.py` + `scripts/datenjager-servidor.spec` (PyInstaller `--onedir`) | hecho |
+| Entrada del binario congelado | `scripts/servidor_entry.py` (resuelve el directorio de datos del usuario) | hecho |
+| Iconos del instalador | `scripts/preparar_recursos.py` (PNG 512 e `.ico` multi-resolución) | hecho |
+| Orquestador | `scripts/empaquetar.mjs` (`npm run dist:linux` / `dist:win`) | hecho |
+| Sonda del instalador | `scripts/verificar_instalador.py` (conduce el `.AppImage` por CDP) | hecho |
+| CI/CD + Release | `.github/workflows/release.yml` (etiqueta `vX.Y.Z` → build win/linux → `gh release create`) | hecho |
+| Despliegue del binario en el paquete | `extraResources` → `resources/servidor/`, `electron/backend.js` (`binarioEmpaquetado()`) | hecho |
+
+**Inversión de estado:** la base de datos (`base_datos_pdfs.db`), el `.env` y
+los almacenes cifrados se crean en el directorio de datos del usuario
+(`~/.local/share/DatenJager` en Linux, `%APPDATA%\DatenJager` en Windows), **no
+junto al programa**. Así la instalación regenera sola la base y conserva los
+datos y las APIs que cargue el usuario entre reinstalaciones. Verificado con el
+binario congelado: arranca sin Python, anuncia `DATENJAGER_LISTO` y sirve
+`/api/salud` con `base_datos: ok`.
+
+**Publicado:** `v1.0.0` en GitHub Releases
+(`datenj-ger-1.0.0-win-x64.exe` y `datenj-ger-1.0.0-linux-x86_64.AppImage`).
+Queda pendiente de la Fase 5: paquete npm en GitHub Packages, documentación de
+instalación y retirada de CustomTkinter.
 
 **Cómo verificar sin rehacer:** `./venv/bin/python -m unittest discover -s tests -t .`
 (142 pruebas, sin Tkinter), `npx vite build`, `./node_modules/.bin/electron . --no-sandbox`.
