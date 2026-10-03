@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import Icono from './Icono.jsx'
 import { animar } from '../lib/movimiento.js'
 import { fechaCorta, tamanoLegible, titular } from '../lib/formato.js'
+import { useCerrarConEscape } from '../lib/modal.js'
 
 /**
  * Modales de documento (SCRUM-88): **detalles** y **editar**.
@@ -19,7 +20,9 @@ import { fechaCorta, tamanoLegible, titular } from '../lib/formato.js'
 /** Cáscara compartida: velo, tarjeta, cierre con `Esc` y animación de entrada. */
 function MarcoModal({ id, titulo, descripcion, onCerrar, children, ancho = 'max-w-xl' }) {
   const panel = useRef(null)
-  const cerrar = useRef(null)
+  // `Esc` y el foco de entrada, sin robar el foco en cada pulsación
+  // (ver `src/lib/modal.js`).
+  const cerrar = useCerrarConEscape(onCerrar)
 
   useEffect(() => {
     animar(panel.current, {
@@ -30,16 +33,6 @@ function MarcoModal({ id, titulo, descripcion, onCerrar, children, ancho = 'max-
       ease: 'outQuad',
     })
   }, [])
-
-  useEffect(() => {
-    const alPulsar = (evento) => {
-      if (evento.key === 'Escape') onCerrar()
-    }
-
-    globalThis.addEventListener('keydown', alPulsar)
-    cerrar.current?.focus()
-    return () => globalThis.removeEventListener('keydown', alPulsar)
-  }, [onCerrar])
 
   return (
     <div
@@ -265,22 +258,29 @@ export function ModalEditar({ documento, empresas = [], ocupado, error, onGuarda
           </p>
         )}
 
-        <div className="flex items-center justify-end gap-3 border-t border-borde pt-4">
-          <button
-            type="button"
-            onClick={onCerrar}
-            className="rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={ocupado}
-            className="inline-flex items-center gap-2 rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
-          >
-            <Icono nombre="guardar" tamano={14} />
-            {ocupado ? 'Guardando…' : 'Guardar cambios'}
-          </button>
+        {/* Pie del formulario: el PDF ya está cifrado en el alta; aquí no se
+            reemplaza. El selector de archivo vive en AltaDocumento. */}
+        <div className="flex items-center justify-between gap-3 border-t border-borde pt-4">
+          <span className="min-w-0 truncate font-mono text-telemetria text-tenue" title={documento.nombre}>
+            PDF cifrado · {documento.nombre}
+          </span>
+          <span className="flex shrink-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={onCerrar}
+              className="rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={ocupado}
+              className="inline-flex items-center gap-2 rounded-lg bg-primario px-3.5 py-2 text-etiqueta-md font-medium text-sobre-primario transition-colors hover:bg-primario-enfasis disabled:opacity-50"
+            >
+              <Icono nombre="guardar" tamano={14} />
+              {ocupado ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </span>
         </div>
       </form>
     </MarcoModal>

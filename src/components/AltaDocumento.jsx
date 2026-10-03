@@ -4,6 +4,7 @@ import Icono from './Icono.jsx'
 import { animar } from '../lib/movimiento.js'
 import { elegirArchivo } from '../lib/escritorio.js'
 import { tamanoLegible } from '../lib/formato.js'
+import { useCerrarConEscape } from '../lib/modal.js'
 
 /**
  * Formulario de alta de documento (calidad de vida).
@@ -20,7 +21,9 @@ import { tamanoLegible } from '../lib/formato.js'
  */
 export default function AltaDocumento({ empresas = [], ocupado, error, onGuardar, onCerrar }) {
   const panel = useRef(null)
-  const cerrar = useRef(null)
+  // Cerrar con Escape y llevar el foco al botón de cierre, sin robar el foco en
+  // cada pulsación (ver `src/lib/modal.js`).
+  const cerrar = useCerrarConEscape(onCerrar)
 
   const [archivo, setArchivo] = useState(null)
   const [campos, setCampos] = useState({
@@ -42,16 +45,6 @@ export default function AltaDocumento({ empresas = [], ocupado, error, onGuardar
       ease: 'outQuad',
     })
   }, [])
-
-  useEffect(() => {
-    const alPulsar = (evento) => {
-      if (evento.key === 'Escape') onCerrar()
-    }
-
-    globalThis.addEventListener('keydown', alPulsar)
-    cerrar.current?.focus()
-    return () => globalThis.removeEventListener('keydown', alPulsar)
-  }, [onCerrar])
 
   const cambiar = (campo) => (evento) =>
     setCampos((actual) => ({ ...actual, [campo]: evento.target.value }))
@@ -242,9 +235,29 @@ export default function AltaDocumento({ empresas = [], ocupado, error, onGuardar
             </div>
           </div>
 
+          {/* Pie del formulario: aquí vivía el rótulo «sin archivo». El botón
+              abre el mismo selector que la sección Archivo y alimenta
+              `contenido_b64` del alta. */}
           <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-borde px-6 py-3">
-            <span className="min-w-0 truncate font-mono text-telemetria text-tenue">
-              {archivo ? tamanoLegible(archivo.tamano) : 'sin archivo'}
+            <span className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={elegir}
+                className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-borde px-3.5 py-2 text-etiqueta-md font-medium transition-colors hover:border-primario hover:text-primario"
+              >
+                <Icono nombre="carpeta" tamano={15} />
+                {archivo ? 'Cambiar PDF' : 'Cargar PDF'}
+              </button>
+              {archivo ? (
+                <span
+                  className="min-w-0 truncate font-mono text-telemetria text-tenue"
+                  title={archivo.nombre}
+                >
+                  {archivo.nombre} · {tamanoLegible(archivo.tamano)}
+                </span>
+              ) : (
+                <span className="font-mono text-telemetria text-tenue">sin archivo</span>
+              )}
             </span>
 
             <span className="flex shrink-0 items-center gap-3">
