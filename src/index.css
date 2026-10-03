@@ -98,6 +98,42 @@ body {
     animation: entrada-anillo 900ms ease-out both;
   }
 
+  @keyframes asistente-rebote {
+    0%,
+    80%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.35;
+    }
+    40% {
+      transform: translateY(-4px);
+      opacity: 1;
+    }
+  }
+
+  @keyframes asistente-cursor {
+    0%,
+    45% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .asistente-rebote-2 {
+    animation: asistente-rebote 0.9s ease-in-out 0.15s infinite;
+  }
+
+  .asistente-rebote-3 {
+    animation: asistente-rebote 0.9s ease-in-out 0.3s infinite;
+  }
+
+  .asistente-cursor {
+    animation: asistente-cursor 0.85s steps(1) infinite;
+  }
+
   /* Micro-interacción de pulsación (SCRUM-67): los controles se hunden un punto
    * al pulsarlos. Es global, sutil y no altera el flujo de la página. */
   button:not(:disabled):active {

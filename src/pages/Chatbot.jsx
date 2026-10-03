@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import Panel, { CabeceraPagina, EstadoError, EstadoVacio, Esqueleto, Pill } from '../components/Panel.jsx'
+import Panel, { CabeceraPagina, EstadoError, EstadoVacio, Pill } from '../components/Panel.jsx'
 import Icono from '../components/Icono.jsx'
+import PensandoAsistente from '../components/PensandoAsistente.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
@@ -252,7 +253,9 @@ export default function Chatbot({ onNavegar }) {
           </header>
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
-            {estado === 'cargando' && <Esqueleto variante="texto" filas={4} />}
+            {estado === 'cargando' && (
+              <p className="text-cuerpo-sm text-tenue">Abriendo la conversación…</p>
+            )}
 
             {estado !== 'cargando' && mensajes.length === 0 && (
               <EstadoVacio
@@ -316,20 +319,16 @@ function Burbuja({ mensaje }) {
     <div className={`animar-entrada flex ${esUsuario ? 'justify-end' : 'justify-start'}`}>
       <div
         className={[
-          'max-w-[46rem] whitespace-pre-wrap rounded-panel px-3.5 py-2.5 text-cuerpo-md',
+          'max-w-[46rem] rounded-panel px-3.5 py-2.5 text-cuerpo-md',
           esUsuario
-            ? 'bg-primario text-sobre-primario'
-            : 'border border-borde bg-fondo text-texto',
+            ? 'whitespace-pre-wrap bg-primario text-sobre-primario'
+            : 'min-w-[12rem] border border-borde bg-fondo text-texto',
         ].join(' ')}
       >
-        {mensaje.texto}
-        {/* Cursor de escritura: la respuesta llega por fragmentos (RF-16), así
-            que mientras fluye se marca dónde va. */}
-        {mensaje.enCurso && (
-          <span
-            aria-hidden="true"
-            className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-primario align-text-bottom"
-          />
+        {esUsuario ? (
+          mensaje.texto
+        ) : (
+          <PensandoAsistente texto={mensaje.texto} enCurso={Boolean(mensaje.enCurso)} />
         )}
       </div>
     </div>
