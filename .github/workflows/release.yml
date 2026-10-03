@@ -99,15 +99,15 @@ jobs:
           - nombre: Linux
             sistema: ubuntu-latest
             bandera: --linux
+            # Solo el instalador: los `.yml` (manifiesto de auto-actualización y
+            # `builder-debug.yml`) se generan igual, pero no van al Release.
             adjuntos: |
               release/${{ needs.version.outputs.version }}/*.AppImage
-              release/${{ needs.version.outputs.version }}/*.yml
           - nombre: Windows
             sistema: windows-latest
             bandera: --win
             adjuntos: |
               release/${{ needs.version.outputs.version }}/*.exe
-              release/${{ needs.version.outputs.version }}/*.yml
     steps:
       - uses: actions/checkout@v4
         with:
