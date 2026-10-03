@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import Icono from './Icono.jsx'
 import { animar } from '../lib/movimiento.js'
+import { useCerrarConEscape } from '../lib/modal.js'
 
 /**
  * Términos y uso (calidad de vida).
@@ -43,7 +44,9 @@ export default function TerminosUso({ className = '' }) {
 
 function Subpanel({ onCerrar }) {
   const panel = useRef(null)
-  const cerrar = useRef(null)
+  // Escape cierra y el foco entra en el subpanel para que el teclado no se
+  // quede detrás — una sola vez, no en cada pulsación (ver `src/lib/modal.js`).
+  const cerrar = useCerrarConEscape(onCerrar)
 
   // Entrada del subpanel. Si el movimiento está desactivado, `animar` no hace
   // nada y el panel ya está en su posición final: nunca se anima «hacia» la
@@ -57,18 +60,6 @@ function Subpanel({ onCerrar }) {
       ease: 'outQuad',
     })
   }, [])
-
-  // Escape cierra, y el foco entra en el subpanel para que el teclado no se
-  // quede detrás.
-  useEffect(() => {
-    const alPulsar = (evento) => {
-      if (evento.key === 'Escape') onCerrar()
-    }
-
-    globalThis.addEventListener('keydown', alPulsar)
-    cerrar.current?.focus()
-    return () => globalThis.removeEventListener('keydown', alPulsar)
-  }, [onCerrar])
 
   return (
     <div

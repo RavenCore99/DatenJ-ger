@@ -56,7 +56,14 @@ if (enDesarrollo) {
 }
 
 /** Servicio Python local. Se arranca al estar lista la aplicación. */
-const servicio = new ServicioPython({ puerto: PUERTO_BACKEND })
+const servicio = new ServicioPython({
+  puerto: PUERTO_BACKEND,
+  // Instalada, la aplicación escribe su estado —base de datos, `.env`,
+  // almacenes cifrados— en el directorio de datos del usuario. Junto al
+  // programa no puede: en Linux suele ser de solo lectura, y el instalador
+  // lleva programa, no estado.
+  datos: app.isPackaged ? app.getPath('userData') : undefined,
+})
 
 let ventana = null
 

@@ -1,0 +1,118 @@
+# Copyright (c) 2024 DatenJäger. All rights reserved.
+# electron-builder.yml — receta del instalador de escritorio
+# Trazabilidad Jira: SCRUM-54 (DatenJäger — Electron).
+#
+# Qué produce, de una sola configuración:
+#
+#   Windows   datenj-ger-<versión>-setup.exe   (NSIS: siguiente, siguiente,
+#                                              desinstalador incluido)
+#   Linux     datenj-ger-<versión>-x86_64.AppImage  (un archivo, sin root)
+#
+# El instalador lleva **programa, no estado**: el backend congelado
+# (`scripts/empaquetar_backend.py`) viaja como recurso del paquete, y la base de
+# datos, el `.env` y los almacenes cifrados los crea la aplicación en el
+# directorio de datos del usuario al primer arranque (`electron/backend.js`).
+#
+# Uso:
+#
+#   ./venv/bin/python scripts/empaquetar_backend.py   # congela el backend
+#   ./venv/bin/python scripts/preparar_recursos.py    # iconos del instalador
+#   npm run build                                     # compila el renderer
+#   npx electron-builder --linux                      # o --win, o --publish
+
+appId: com.datenjager.desktop
+productName: DatenJäger
+copyright: Copyright © 2024 DatenJäger
+
+directories:
+  # Una carpeta por versión: así dos releases no se pisan los artefactos y se ve
+  # de un vistazo qué se publicó. `release/` no se versiona.
+  output: release/${version}
+  buildResources: empaquetado/recursos
+
+# Lo que se copia dentro del paquete. El renderer ya viene compilado por Vite en
+# `dist/`, y `node_modules` no hace falta: React, React DOM y anime.js quedan
+# dentro del bundle de Vite, y el proceso principal solo usa módulos de Electron.
+# Incluir `node_modules` engordaría el instalador sin que nada lo lea.
+files:
+  - dist/**/*
+  - electron/**/*
+  - assets/logo/**/*
+  - package.json
+  - '!node_modules/**/*'
+
+# El backend Python congelado. Electron lo busca en `process.resourcesPath`
+# (`electron/backend.js`, `binarioEmpaquetado()`), que es donde acaba esto.
+extraResources:
+  - from: empaquetado/servidor/datenjager-servidor
+    to: servidor
+    filter:
+      - '**/*'
+
+asar: true
+
+# Los tres son solo de compilación: no hace falta reconstruir nada nativo.
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+
+# Comprime más que el ajuste por defecto: la descarga es lo que sufre el usuario,
+# y el coste de compresión se paga una vez en la máquina de compilación.
+compression: maximum
+
+# De las ~50 traducciones que trae Electron se conservan las dos que la
+# aplicación usa. Cada una pesa varios megas en el instalador.
+electronLanguages:
+  - es
+  - en-US
+
+# El nombre del artefacto se escribe explícitamente en ASCII: `productName` lleva
+# tilde y algunos gestores de descarga y el propio `winget` tropiezan con ella.
+artifactName: ${name}-${version}-${os}-${arch}.${ext}
+
+linux:
+  target:
+    - AppImage
+  category: Office
+  icon: empaquetado/recursos/icono.png
+  # El nombre del archivo `.desktop` se deriva de `desktopName` (package.json),
+  # que es de donde Electron saca su `app_id`. Sin esto, el escritorio no
+  # relaciona la ventana abierta con su lanzador y la barra de tareas muestra
+  # el icono genérico en vez del logo.
+  syncDesktopName: true
+  synopsis: Gestión documental cifrada
+  description: >-
+    DatenJäger digitaliza, cifra, organiza y consulta documentos PDF de forma
+    segura para pequeñas y medianas empresas del sector minero.
+  desktop:
+    entry:
+      Name: DatenJäger
+      Comment: Gestión documental cifrada
+      Categories: Office;Finance;
+
+win:
+  target:
+    - nsis
+  icon: empaquetado/recursos/icono.ico
+
+nsis:
+  # Instalador con asistente, no de un clic: deja elegir dónde instalar y no
+  # arranca la aplicación sin avisar.
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DatenJäger
+  # El `.exe` va **sin firmar** (firmar cuesta dinero). Windows mostrará el
+  # aviso de SmartScreen: es esperado y está documentado en `docs/instalacion.md`.
+  deleteAppDataOnUninstall: false
+
+# Destino de publicación. El flujo de GitHub Actions construye con
+# `--publish never` y sube los artefactos con `gh release create`, que es el
+# comando oficial; esto queda declarado para que `electron-builder --publish`
+# también funcione a mano y para que el actualizador tenga su manifiesto.
+publish:
+  provider: github
+  owner: RavenCore99
+  repo: DatenJ-ger

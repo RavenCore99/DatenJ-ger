@@ -58,9 +58,43 @@ function puertosCandidatos(preferido) {
 const RAIZ = path.join(__dirname, '..')
 
 /**
+ * Binario del servicio cuando la aplicación está empaquetada.
+ *
+ * El paquete de Electron lleva el backend congelado en `extraResources`
+ * (`electron-builder.yml`), que en tiempo de ejecución vive bajo
+ * `process.resourcesPath`. Si ese binario está, se usa **en lugar** del
+ * intérprete de Python: es toda la diferencia entre una instalación que
+ * funciona sola y una que exige tener Python con dependencias.
+ *
+ * @returns la ruta del binario, o `null` si no hay paquete (desarrollo).
+ */
+function binarioEmpaquetado() {
+  const recursos = process.resourcesPath
+  if (!recursos) return null
+
+  const nombre = process.platform === 'win32' ? 'datenjager-servidor.exe' : 'datenjager-servidor'
+  const ruta = path.join(recursos, 'servidor', nombre)
+  return fs.existsSync(ruta) ? ruta : null
+}
+
+/**
+ * Directorio de datos de la aplicación (base, `.env`, almacenes cifrados).
+ *
+ * La aplicación instalada escribe su estado aquí, nunca junto al programa:
+ * el directorio de instalación puede ser de solo lectura y, sobre todo, el
+ * instalador lleva **programa, no estado**. `interprete()` de abajo no lo
+ * decide; lo decide este directorio, que `electron/main.js` fija con
+ * `app.getPath('userData')`.
+ */
+function directorioDeDatos(raiz = RAIZ) {
+  return process.env.DATENJAGER_DATOS || raiz
+}
+
+/**
  * Intérprete de Python a usar.
  *
  * Prioridad: variable de entorno, entorno virtual del proyecto, `python3`.
+ * Solo aplica cuando **no** hay binario empaquetado.
  */
 function interprete(raiz = RAIZ) {
   if (process.env.DATENJAGER_PYTHON) return process.env.DATENJAGER_PYTHON
@@ -81,17 +115,55 @@ function generarToken() {
  * Servicio Python local: encapsula el proceso hijo y su configuración.
  */
 class ServicioPython {
-  constructor({ raiz = RAIZ, puerto = 8756, dbPath = process.env.DATENJAGER_DB ?? null } = {}) {
+  constructor({
+    raiz = RAIZ,
+    puerto = 8756,
+    dbPath = process.env.DATENJAGER_DB ?? null,
+    datos = directorioDeDatos(raiz),
+    binario = binarioEmpaquetado(),
+  } = {}) {
     this.raiz = raiz
     this.puerto = puerto
     // Base alternativa: pruebas y desarrollo no deben escribir sobre la base
     // de trabajo del usuario.
     this.dbPath = dbPath
+    // Dónde vive el estado de la aplicación. En desarrollo es el proyecto; en
+    // la aplicación instalada, el directorio de datos del usuario.
+    this.datos = datos
+    // Binario congelado del backend, si la aplicación viene empaquetada.
+    this.binario = binario
     this.token = generarToken()
     this.proceso = null
     this.puertoReal = null
     this.error = null
     this.bitacora = []
+  }
+
+  /** Programa y argumentos del servicio, según esté congelado o no. */
+  ordenDeArranque(puerto) {
+    // Congelado, el binario **es** `backend.server`: no admite `-m`.
+    const comunes = ['--host', '127.0.0.1', '--puerto', String(puerto), '--token', this.token]
+    const orden = this.binario
+      ? [this.binario, ...comunes]
+      : [interprete(this.raiz), '-m', 'backend.server', ...comunes]
+
+    if (this.dbPath) orden.push('--db', this.dbPath)
+    return orden
+  }
+
+  /** Entorno del servicio: dónde quedan la base, los tokens y el `.env`. */
+  entornoDeArranque() {
+    return {
+      ...process.env,
+      PYTHONUNBUFFERED: '1',
+      // El directorio de datos manda sobre la base y el almacén de tokens
+      // cifrado. El guion de entrada (`scripts/servidor_entry.py`) lee esta
+      // misma variable, así que el binario y el guion coinciden. Un
+      // `DATENJAGER_TOKENS` puesto a mano se respeta: es el que usan las
+      // pruebas y las sondas para no tocar los datos reales.
+      DATENJAGER_DATOS: this.datos,
+      DATENJAGER_TOKENS: process.env.DATENJAGER_TOKENS || this.datos,
+    }
   }
 
   /** Configuración que consume el renderer. */
@@ -108,6 +180,16 @@ class ServicioPython {
   /** Arranca el servicio y espera su anuncio. Nunca lanza: registra el fallo. */
   async arrancar() {
     if (this.proceso) return this.configuracion
+
+    // `spawn` falla con ENOENT si el directorio de trabajo no existe, y el
+    // error no diría por qué. En la aplicación instalada lo crea Electron, pero
+    // aquí no cuesta nada asegurarlo.
+    try {
+      fs.mkdirSync(this.datos, { recursive: true })
+    } catch (error) {
+      this.error = `No se pudo preparar el directorio de datos (${this.datos}): ${error.message}`
+      return this.configuracion
+    }
 
     for (const puerto of puertosCandidatos(this.puerto)) {
       this.puertoIntento = puerto
@@ -128,30 +210,25 @@ class ServicioPython {
    *   otro puerto (el proceso fallido se descarta antes de devolver).
    */
   async intentarEn(puerto) {
-    const orden = [
-      '-m', 'backend.server',
-      '--host', '127.0.0.1',
-      '--puerto', String(puerto),
-      '--token', this.token,
-    ]
-
-    if (this.dbPath) orden.push('--db', this.dbPath)
+    const orden = this.ordenDeArranque(puerto)
 
     try {
-      this.proceso = spawn(interprete(this.raiz), orden, {
-        cwd: this.raiz,
-        env: { ...process.env, PYTHONUNBUFFERED: '1' },
+      this.proceso = spawn(orden[0], orden.slice(1), {
+        // La aplicación instalada trabaja desde su directorio de datos: es
+        // donde el backend crea la base, el `.env` y `config.json`.
+        cwd: this.datos,
+        env: this.entornoDeArranque(),
         stdio: ['ignore', 'pipe', 'pipe'],
       })
     } catch (error) {
-      this.error = `No se pudo lanzar Python: ${error.message}`
+      this.error = `No se pudo lanzar el servicio local: ${error.message}`
       return false
     }
 
     VIVOS.add(this.proceso)
 
     this.proceso.on('error', (error) => {
-      this.error = `No se pudo lanzar Python: ${error.message}`
+      this.error = `No se pudo lanzar el servicio local: ${error.message}`
     })
 
     this.proceso.on('exit', (codigo, senal) => {
@@ -282,4 +359,4 @@ class ServicioPython {
   }
 }
 
-module.exports = { ServicioPython, interprete, generarToken }
+module.exports = { ServicioPython, interprete, generarToken, binarioEmpaquetado, directorioDeDatos }

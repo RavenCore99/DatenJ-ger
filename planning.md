@@ -780,6 +780,8 @@ Packages» y «GitHub Releases» no son lo mismo:
   Tiene sentido si publicamos además el paquete npm del proyecto —útil para
   instalar por `npm`, no para el usuario final— o una imagen de contenedor.
   Se usará para eso, y para llevar el control de versiones del paquete.
+  
+  en casos practicos conviene usar **GitHub Releases** con los comandos propios cuando se haya empaquetado
 
 Un flujo de GitHub Actions que, al empujar una etiqueta `vX.Y.Z`, compile en
 Windows y en Linux, adjunte los instaladores al Release y publique el paquete
@@ -787,7 +789,7 @@ npm en Packages. La versión sale de `package.json`; no se escribe a mano en dos
 sitios.
 
 **La web que ofrece Raven.** Una página con el instalador para descargar y, para
-Linux, una línea de consola del estilo
+Linux, una línea de consola del estilo (La web se encargar **Raven** una vez este empaquetado y probado el instalador)
 `curl -fsSL https://…/install.sh | sh`, que descarga el AppImage, lo deja en
 `~/.local/bin` y crea el acceso directo. Para Windows, el `.exe` y —si el
 tiempo alcanza— un manifiesto para `winget`. La web es el escaparate; los

@@ -1,0 +1,199 @@
+# Copyright (c) 2024 DatenJäger. All rights reserved.
+# .github/workflows/release.yml — instaladores y Release desde una etiqueta
+# Trazabilidad Jira: SCRUM-54 (DatenJäger — Electron) y SCRUM-65 (Documentación / Release).
+#
+# Empujar una etiqueta `vX.Y.Z` compila el instalador en Windows y en Linux, y
+# publica un Release de GitHub con los dos adjuntos.
+#
+# La versión sale **de `package.json`**, no de la etiqueta: el trabajo `version`
+# comprueba que coinciden y aborta si no. Escribir la versión en dos sitios es
+# cómo se acaba publicando un `1.0.0` que dice ser `1.0.1`.
+#
+# Publicar es cosa de `gh release create` —el comando oficial de GitHub— y no de
+# electron-builder: construir y publicar quedan separados, y los dos trabajos de
+# compilación solo suben artefactos.
+#
+# **La etiqueta se valida antes de usarla.** Un nombre de etiqueta entra en el
+# flujo por dos vías que son superficie de inyección si se interpolan crudas:
+# `ref:` del checkout y cualquier `run:`. Por eso la primera acción del trabajo
+# `version` comprueba que la etiqueta es exactamente `v<dígitos>.<dígitos>.<dígitos>`
+# —sin depender del repositorio— y solo ese valor validado se usa después, siempre
+# por `env:` y nunca con `${{ }}` dentro de un `run:`.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  # Permite rehacer un Release sin volver a etiquetar (por ejemplo, si un
+  # adjunto se subió a medias).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Etiqueta a publicar (vX.Y.Z)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  # Electron y electron-builder descargan binarios grandes; que no vuelvan a
+  # bajarse en cada trabajo.
+  ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+
+jobs:
+  version:
+    name: Comprobar la versión
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.leer.outputs.version }}
+      tag: ${{ steps.etiqueta.outputs.tag }}
+    steps:
+      # Sin `uses: actions/checkout` todavía: este paso no necesita el
+      # repositorio, y tiene que correr **antes** de que la etiqueta llegue a
+      # un `ref:`.
+      - name: Validar la etiqueta
+        id: etiqueta
+        env:
+          ETIQUETA_ENTRADA: ${{ github.event.inputs.tag }}
+          REF: ${{ github.ref_name }}
+        run: |
+          TAG="${ETIQUETA_ENTRADA:-$REF}"
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Etiqueta no válida: '$TAG'. Se espera vX.Y.Z."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.etiqueta.outputs.tag }}
+
+      - name: Leer la versión de package.json
+        id: leer
+        env:
+          TAG: ${{ steps.etiqueta.outputs.tag }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::La etiqueta $TAG no coincide con la versión $VERSION de package.json."
+            echo "Sube la versión en package.json y vuelve a etiquetar, o corrige la etiqueta."
+            exit 1
+          fi
+          echo "Versión $VERSION confirmada por la etiqueta $TAG."
+
+  compilar:
+    name: Instalador para ${{ matrix.nombre }}
+    needs: version
+    runs-on: ${{ matrix.sistema }}
+    strategy:
+      # Si Windows falla, Linux debe terminar igual: así se ve qué plataforma
+      # rompió en vez de perder las dos.
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: Linux
+            sistema: ubuntu-latest
+            bandera: --linux
+            adjuntos: |
+              release/${{ needs.version.outputs.version }}/*.AppImage
+              release/${{ needs.version.outputs.version }}/*.yml
+          - nombre: Windows
+            sistema: windows-latest
+            bandera: --win
+            adjuntos: |
+              release/${{ needs.version.outputs.version }}/*.exe
+              release/${{ needs.version.outputs.version }}/*.yml
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # La misma versión que el desarrollo local: el backend congelado en
+      # Windows y en Linux debe salir del mismo intérprete que se probó.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+
+      - name: Dependencias de Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Dependencias de Node
+        run: npm ci
+
+      - name: Cachés de Electron
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ELECTRON_CACHE }}
+            ${{ env.ELECTRON_BUILDER_CACHE }}
+          key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+
+      - name: Empaquetar (backend congelado + instalador)
+        run: node scripts/empaquetar.mjs ${{ matrix.bandera }}
+
+      - name: Resumen del paquete
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          NOMBRE: ${{ matrix.nombre }}
+        run: |
+          echo "### Instalador de $NOMBRE" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh "release/$VERSION/" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-${{ matrix.nombre }}
+          if-no-files-found: error
+          path: ${{ matrix.adjuntos }}
+
+  publicar:
+    name: Publicar el Release
+    needs: [version, compilar]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: adjuntos
+          merge-multiple: true
+
+      - name: Publicar en GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          echo "Adjuntos que se van a publicar:"
+          find adjuntos -type f -printf '  %p (%s bytes)\n'
+
+          # `--generate-notes` deja el registro de cambios; `--verify-tag`
+          # confirma que la etiqueta existe antes de crear nada.
+          gh release create "$TAG" \
+            --title "DatenJäger $VERSION" \
+            --generate-notes \
+            --verify-tag \
+            adjuntos/*
+
+      - name: Comprobar el Release publicado
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          echo "### Release $TAG" >> "$GITHUB_STEP_SUMMARY"
+          gh release view "$TAG" >> "$GITHUB_STEP_SUMMARY"
