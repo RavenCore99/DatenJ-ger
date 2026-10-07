@@ -1,7 +1,7 @@
 {
   "name": "datenj-ger",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.1.0",
   "desktopName": "datenjager.desktop",
   "description": "DatenJäger - gestión documental cifrada (Electron + React + Tailwind)",
   "main": "electron/main.js",
