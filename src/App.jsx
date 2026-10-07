@@ -21,6 +21,7 @@ import Registro from './pages/Registro.jsx'
 import Chatbot from './pages/Chatbot.jsx'
 import Reportes from './pages/Reportes.jsx'
 import Estadisticas from './pages/Estadisticas.jsx'
+import siluetaAsistente from '../assets/chatbot/nousresearch_backcontrast.png'
 
 /**
  * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
@@ -284,6 +285,10 @@ function AccesoRapido({ icono, titulo, onPulsar }) {
  * Se oculta en Ajustes, donde el botón flotaría sobre formularios de seguridad
  * y estorbaría. Dentro del propio asistente no navega —ya se está ahí—, sino
  * que lleva el foco al compositor, para que el botón nunca sea un no-op.
+ *
+ * **Lleva la imagen del asistente** (petición de Raven): el mismo archivo de
+ * `assets/chatbot/` que el avatar del panel. Se usa la versión de trazo blanco
+ * porque el fondo del botón es el azul primario, oscuro en los dos temas.
  */
 function BotonAsistente({ onAbrir, enElAsistente }) {
   const boton = useRef(null)
@@ -298,9 +303,9 @@ function BotonAsistente({ onAbrir, enElAsistente }) {
       }}
       title={enElAsistente ? 'Escribir en el asistente' : 'Abrir el asistente'}
       aria-label={enElAsistente ? 'Escribir en el asistente' : 'Abrir el asistente'}
-      className="absolute bottom-12 right-6 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-primario text-sobre-primario shadow-flotante transition-colors hover:bg-primario-enfasis"
+      className="absolute bottom-12 right-6 z-20 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-primario shadow-flotante transition-colors hover:bg-primario-enfasis"
     >
-      <Icono nombre="chatbot" tamano={20} />
+      <img src={siluetaAsistente} alt="" aria-hidden="true" className="h-full w-full object-cover" />
     </button>
   )
 }
