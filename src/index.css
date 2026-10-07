@@ -98,6 +98,23 @@ body {
     animation: entrada-anillo 900ms ease-out both;
   }
 
+  /* Intro de arranque (hallazgo de Raven): el nombre entra desde un punto
+   * desplazado y se asienta antes de que la cortina se desvanezca. */
+  @keyframes entrada-nombre {
+    from {
+      opacity: 0;
+      transform: scale(0.94);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .entrada-nombre {
+    animation: entrada-nombre 900ms ease-out both;
+  }
+
   @keyframes asistente-rebote {
     0%,
     80%,

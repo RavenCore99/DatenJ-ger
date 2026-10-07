@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
 
-import logo from '../../assets/logo/logo.png'
 import { useApp } from '../estado/ProveedorApp.jsx'
+import Particulas from './Particulas.jsx'
 
 /**
- * Animación de entrada (SCRUM-67): una cortina mínima con la marca que se
- * desvanece al arrancar la aplicación, en la línea sobria de Hermes Desktop.
+ * Intro de arranque (SCRUM-67; reelaborada por hallazgo de Raven).
  *
- * Es puramente decorativa y no bloquea nada: se retira sola, no captura el
- * puntero —de modo que un clic durante el desvanecido llega a la interfaz de
- * debajo— y con el movimiento desactivado no llega a aparecer.
+ * Antes era una cortina mínima con el logo que se desvanecía. Ahora **el propio
+ * fondo es el protagonista**: el campo de partículas del sistema se superpone a
+ * pantalla completa con el nombre **DATENJÄGER** en grande, y al cabo de un
+ * instante todo se desvanece con un fundido fluido, dejando ver el fondo del
+ * portal y, sobre él, las secciones de acceso y registro.
+ *
+ * Funciona igual en tema claro y oscuro: los colores salen de los tokens
+ * (`bg-fondo`, `text-primario`) y las partículas releen la paleta del tema. Es
+ * puramente decorativa —no captura el puntero, así que un clic durante el
+ * fundido llega a la interfaz de debajo— y con el movimiento desactivado no
+ * llega a aparecer.
  */
 export default function Entrada() {
   const { animaciones } = useApp()
@@ -22,8 +29,8 @@ export default function Entrada() {
       return undefined
     }
 
-    const salida = setTimeout(() => setSaliendo(true), 620)
-    const fin = setTimeout(() => setVisible(false), 960)
+    const salida = setTimeout(() => setSaliendo(true), 1000)
+    const fin = setTimeout(() => setVisible(false), 1420)
     return () => {
       clearTimeout(salida)
       clearTimeout(fin)
@@ -36,16 +43,15 @@ export default function Entrada() {
     <div
       aria-hidden="true"
       className={[
-        'pointer-events-none fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-fondo',
+        'pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-fondo',
         saliendo ? 'entrada-salida' : '',
       ].join(' ')}
     >
-      <span className="relative flex h-20 w-20 items-center justify-center">
-        <span className="entrada-anillo absolute inset-0 rounded-full ring-1 ring-primario/30" />
-        <img src={logo} alt="" className="h-16 w-16 rounded-full object-contain" />
-      </span>
+      <Particulas className="absolute inset-0 h-full w-full" />
 
-      <p className="font-marca text-titulo-sm tracking-tight text-primario">DatenJäger</p>
+      <span className="entrada-nombre relative select-none px-6 text-center font-marca text-[13vw] font-bold tracking-tighter text-primario">
+        DATENJÄGER
+      </span>
     </div>
   )
 }

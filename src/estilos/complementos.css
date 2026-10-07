@@ -134,3 +134,68 @@
   background-color: rgb(var(--dj-borde));
   border-radius: 9999px;
 }
+
+/* ------------------------------------------------------------------ */
+/* Asistente: shimmer y aura (hallazgos de Raven)                      */
+/* ------------------------------------------------------------------ */
+
+/* Barrido de las barras esqueleto mientras el asistente prepara la respuesta.
+ * El componente ya pedía `.asistente-shimmer-barra`, pero la clase no estaba
+ * definida en ninguna hoja: las barras quedaban quietas. Se define aquí, con el
+ * primario del sistema. */
+@keyframes asistente-shimmer-barra {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.asistente-shimmer-barra {
+  animation: asistente-shimmer-barra 1.6s ease-in-out infinite;
+}
+
+/* Texto shimmer del estado real («Razonando…», «Analizando…»): un barrido de
+ * luz que recorre el texto mientras el modelo trabaja. Usa el primario y el
+ * tenue del sistema, no los colores ajenos de la referencia. */
+@keyframes asistente-shimmer-texto {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.asistente-shimmer-texto {
+  background-image: linear-gradient(
+    90deg,
+    rgb(var(--dj-tenue)) 0%,
+    rgb(var(--dj-primario)) 50%,
+    rgb(var(--dj-tenue)) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: asistente-shimmer-texto 2.5s linear infinite;
+}
+
+/* Aura del avatar del asistente mientras piensa: un halo difuso que late, con
+ * el primario y el acento del sistema. */
+@keyframes asistente-aura {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+.asistente-aura {
+  animation: asistente-aura 2.2s ease-in-out infinite;
+}

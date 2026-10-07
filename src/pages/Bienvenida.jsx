@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { useApp } from '../estado/ProveedorApp.jsx'
 import MarcoAcceso from '../components/MarcoAcceso.jsx'
@@ -7,23 +7,34 @@ import logo from '../../assets/logo/logo.png'
 import { entradaEscalonada, pulso } from '../lib/movimiento.js'
 
 /**
- * Pantalla de bienvenida (SCRUM-29): portal previo al acceso, con la marca, el
- * estado del servicio y las dos rutas del sistema —entrar a la bóveda o
- * registrar un operador—.
+ * Pantalla de bienvenida (SCRUM-29): portal previo al acceso, con la marca y
+ * las dos rutas del sistema —entrar a la bóveda o registrar un operador—.
  *
- * El registro ya está disponible (SCRUM-57): la segunda tarjeta lleva al alta
- * de operador, que encadena la configuración del segundo factor (SCRUM-58).
+ * **Un solo botón, dos caminos** (hallazgo de Raven): la portada ya no muestra
+ * las dos tarjetas abiertas de golpe, sino un único botón **Ingresar** con la
+ * misma lectura biométrica de «Iniciar sesión». Al pulsarlo, las dos secciones
+ * —acceso con bóveda existente y registro de operador— se despliegan con una
+ * transición fluida. La funcionalidad y las rutas de cada sección no cambian:
+ * son las mismas tarjetas de antes, con sus botones intactos.
  *
- * **Movimiento (calidad de vida)**: la marca, el título y las dos tarjetas
- * entran escalonadas, y cada tarjeta late al pulsarla. Las secuencias usan
+ * **Apariencia más limpia** (hallazgo de Raven): fuera el subtítulo del marco
+ * («Entorno de seguridad minera», que ahora vive en el propio marco como marca
+ * opcional), fuera las dos líneas de descripción que competían con el nombre y
+ * fuera la nota de «los documentos no salen de este equipo». El cifrado y el
+ * estado real del servicio se movieron al pie del marco, donde son datos y no
+ * decoración.
+ *
+ * **Movimiento (calidad de vida)**: la marca, el título y el botón entran
+ * escalonados, y cada tarjeta late al pulsarla. Las secuencias usan
  * `lib/movimiento.js`, que respeta la preferencia del usuario y deja la pantalla
  * en su estado final si el movimiento está desactivado. El fondo de marca
- * —partículas y nombre— vive ahora en `MarcoAcceso`, así que también acompaña
- * al acceso y al registro.
+ * —partículas y nombre— vive en `MarcoAcceso`, así que también acompaña al
+ * acceso y al registro.
  */
 export default function Bienvenida({ onEntrar, onRegistrar }) {
   const { conectado, aviso, recargarSalud, limpiarAviso } = useApp()
   const escena = useRef(null)
+  const [desplegado, setDesplegado] = useState(false)
 
   useEffect(() => {
     const piezas = escena.current?.querySelectorAll('[data-entrada]')
@@ -31,7 +42,7 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
   }, [])
 
   return (
-    <MarcoAcceso titulo="Entorno de seguridad minera">
+    <MarcoAcceso>
       <main className="aparecer relative flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8">
         <div ref={escena} className="relative flex w-full max-w-3xl flex-col items-center gap-8">
           <header className="flex flex-col items-center gap-3 text-center">
@@ -44,13 +55,6 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
             <h1 data-entrada className="font-marca text-titulo-lg tracking-tight text-primario">
               DatenJäger
             </h1>
-            <p data-entrada className="text-cuerpo-lg text-texto-2">
-              Sistema de Gestión Documental Seguro · Bóveda criptográfica AES-256-GCM
-            </p>
-            <p data-entrada className="max-w-xl text-cuerpo-sm text-tenue">
-              Digitalización, cifrado y consulta de documentos del sector minero de la
-              Villa de San Diego de Ubaté, con todo el procesamiento en este equipo.
-            </p>
           </header>
 
           {/* El motivo real, no solo «sin conexión»: el proceso principal sabe
@@ -79,33 +83,49 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
             </div>
           )}
 
-          <div className="grid w-full gap-4 sm:grid-cols-2">
-            <Tarjeta
-              etiqueta="PBKDF2-SHA256"
-              titulo="Acceso con bóveda existente"
-              descripcion="Ingresa con tu usuario y contraseña. Si tu cuenta tiene doble factor, se pedirá el código del autenticador."
-              accion="Iniciar sesión"
-              onAccion={onEntrar}
-            />
-
-            <Tarjeta
-              etiqueta="2FA · TOTP"
-              titulo="Registro de operador"
-              descripcion="Crea una cuenta nueva y configura el doble factor con su código QR y los códigos de respaldo, sin salir de la aplicación."
-              accion="Registrar operador"
-              onAccion={onRegistrar}
-            />
+          <div data-entrada className="flex flex-col items-center gap-2">
+            <BotonBiometrico
+              onCompletar={() => setDesplegado(true)}
+              desactivado={!conectado || desplegado}
+              className="px-10 py-3 text-cuerpo-lg"
+            >
+              Ingresar
+            </BotonBiometrico>
+            <span className="text-cuerpo-sm text-tenue">
+              Acceso con bóveda existente o registro de un operador nuevo
+            </span>
           </div>
 
-          <p data-entrada className="flex items-center gap-2 text-cuerpo-sm text-tenue">
-            <span
-              aria-hidden="true"
-              className={`inline-block h-1.5 w-1.5 rounded-full ${conectado ? 'bg-exito' : 'bg-peligro'}`}
-            />
-            {conectado
-              ? 'Servicio local conectado · la llave no abandona este equipo'
-              : 'Servicio local no disponible: no es posible iniciar sesión'}
-          </p>
+          {/* Las dos secciones del portal se despliegan con una transición de
+              rejilla (0fr → 1fr): sin alturas mágicas ni medidas en píxeles.
+              Mientras están recogidas quedan fuera del foco (`inert`). */}
+          <div
+            aria-hidden={!desplegado}
+            inert={!desplegado || undefined}
+            className={`grid w-full transition-all duration-500 ease-out ${
+              desplegado ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div className="grid gap-4 pt-1 sm:grid-cols-2">
+                <Tarjeta
+                  etiqueta="PBKDF2-SHA256"
+                  titulo="Acceso con bóveda existente"
+                  descripcion="Ingresa con tu usuario y contraseña. Si tu cuenta tiene doble factor, se pedirá el código del autenticador."
+                  accion="Iniciar sesión"
+                  onAccion={onEntrar}
+                />
+
+                <Tarjeta
+                  etiqueta="2FA · TOTP"
+                  titulo="Registro de operador"
+                  descripcion="Crea una cuenta nueva y configura el doble factor con su código QR y los códigos de respaldo, sin salir de la aplicación."
+                  accion="Registrar operador"
+                  onAccion={onRegistrar}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </MarcoAcceso>
