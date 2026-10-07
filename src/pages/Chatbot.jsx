@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import Panel, { CabeceraPagina, EstadoError, EstadoVacio, Pill } from '../components/Panel.jsx'
 import Icono from '../components/Icono.jsx'
+import AIAvatar from '../components/AIAvatar.jsx'
 import PensandoAsistente from '../components/PensandoAsistente.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
@@ -49,6 +50,34 @@ const ACCIONES = [
     descripcion: 'Códigos y respaldo',
     icono: 'llave',
     mensaje: '¿Cómo funciona el doble factor y para qué sirven los códigos de respaldo?',
+  },
+  {
+    clave: 'cifrado',
+    titulo: 'Cifrado de documentos',
+    descripcion: 'Cómo se guardan los PDFs',
+    icono: 'documentos',
+    mensaje: 'Explícame cómo se cifran y almacenan los documentos PDF dentro de DatenJäger.',
+  },
+  {
+    clave: 'empresas',
+    titulo: 'Personas y empresas',
+    descripcion: 'Titulares del archivo',
+    icono: 'edificio',
+    mensaje: '¿Cómo registro una empresa y le asocio sus titulares o su personal?',
+  },
+  {
+    clave: 'auditoria',
+    titulo: 'Auditoría y Ley 1581',
+    descripcion: 'Qué queda registrado',
+    icono: 'auditoria',
+    mensaje: '¿Qué acciones quedan registradas en la auditoría y cómo se relaciona con la Ley 1581?',
+  },
+  {
+    clave: 'reportes',
+    titulo: 'Reportes y estadísticas',
+    descripcion: 'Inventario y tendencias',
+    icono: 'lista',
+    mensaje: '¿Qué reportes y estadísticas puedo generar con los documentos del archivo?',
   },
 ]
 
@@ -211,11 +240,14 @@ export default function Chatbot({ onNavegar }) {
         </Panel>
       )}
 
-      <div className="flex min-h-[28rem] items-stretch gap-4">
+      {/* Paneles más altos (hallazgo de Raven): la conversación y la barra de
+          consultas rápidas ganan altura vertical, y las sugerencias del
+          asistente crecen en número para cubrir las áreas reales del proyecto. */}
+      <div className="flex min-h-[36rem] items-stretch gap-4 lg:min-h-[40rem]">
         {/* Barra lateral por botones (SCRUM-59): atajos, no decoración. */}
         <nav
           aria-label="Acciones del asistente"
-          className="flex w-64 shrink-0 flex-col gap-1.5 rounded-panel border border-borde bg-superficie p-2"
+          className="cajon-scroll flex w-64 shrink-0 flex-col gap-1.5 overflow-y-auto rounded-panel border border-borde bg-superficie p-2"
         >
           <p className="px-2 py-1 text-etiqueta-sm uppercase tracking-wider text-tenue">
             Consultas rápidas
@@ -241,9 +273,7 @@ export default function Chatbot({ onNavegar }) {
 
         <section className="flex min-w-0 flex-1 flex-col rounded-panel border border-borde bg-superficie">
           <header className="flex items-center gap-2 border-b border-borde px-4 py-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full border border-primario/40 bg-primario/5 text-primario">
-              <Icono nombre="chatbot" tamano={15} />
-            </span>
+            <AIAvatar />
             <div className="min-w-0 leading-tight">
               <p className="text-etiqueta-md font-medium">Hermes IA</p>
               <p className="text-cuerpo-sm text-tenue">
@@ -315,21 +345,27 @@ export default function Chatbot({ onNavegar }) {
 function Burbuja({ mensaje }) {
   const esUsuario = mensaje.autor === 'usuario'
 
+  if (esUsuario) {
+    return (
+      <div className="animar-entrada flex justify-end">
+        <div className="max-w-[46rem] whitespace-pre-wrap rounded-panel bg-primario px-3.5 py-2.5 text-cuerpo-md text-sobre-primario">
+          {mensaje.texto}
+        </div>
+      </div>
+    )
+  }
+
+  // La respuesta del asistente va en **texto plano** (hallazgo de Raven): fuera
+  // la caja con borde que encajonaba la respuesta. El avatar de IA la precede y
+  // su aura late mientras el modelo piensa.
+  const pensando = Boolean(mensaje.enCurso) && !mensaje.texto
+
   return (
-    <div className={`animar-entrada flex ${esUsuario ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={[
-          'max-w-[46rem] rounded-panel px-3.5 py-2.5 text-cuerpo-md',
-          esUsuario
-            ? 'whitespace-pre-wrap bg-primario text-sobre-primario'
-            : 'min-w-[12rem] border border-borde bg-fondo text-texto',
-        ].join(' ')}
-      >
-        {esUsuario ? (
-          mensaje.texto
-        ) : (
-          <PensandoAsistente texto={mensaje.texto} enCurso={Boolean(mensaje.enCurso)} />
-        )}
+    <div className="animar-entrada flex items-start gap-2.5">
+      <AIAvatar pensando={pensando} />
+
+      <div className="min-w-0 flex-1 pt-1 text-cuerpo-md text-texto">
+        <PensandoAsistente texto={mensaje.texto} enCurso={Boolean(mensaje.enCurso)} />
       </div>
     </div>
   )

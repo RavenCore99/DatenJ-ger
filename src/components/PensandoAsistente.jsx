@@ -48,8 +48,8 @@ function EsperaConShimmer() {
       <span className="sr-only">El asistente está preparando la respuesta</span>
 
       <span className="flex items-center gap-2.5">
-        <Puntos />
-        <span className="text-etiqueta-md font-medium text-primario">{FASES[fase]}…</span>
+        <PuntoPulso />
+        <span className="asistente-shimmer-texto text-etiqueta-md font-medium">{FASES[fase]}…</span>
       </span>
 
       <span aria-hidden="true" className="flex flex-col gap-2">
@@ -58,6 +58,20 @@ function EsperaConShimmer() {
         <BarraShimmer clase="w-52" retardo="320ms" />
       </span>
     </div>
+  )
+}
+
+/**
+ * Punto en pulso (hallazgo de Raven): la señal viva de que el asistente está
+ * trabajando, junto al texto shimmer. Es el `animate-ping` de Tailwind sobre el
+ * primario del sistema.
+ */
+function PuntoPulso() {
+  return (
+    <span aria-hidden="true" className="relative flex h-2.5 w-2.5">
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primario opacity-60" />
+      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primario" />
+    </span>
   )
 }
 
