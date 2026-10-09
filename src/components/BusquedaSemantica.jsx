@@ -53,6 +53,7 @@ export default function BusquedaSemantica({ onVerDocumento }) {
   // Busca con retardo: evita una petición por pulsación.
   useEffect(() => {
     if (!(indice?.indexado) || !consulta.trim()) {
+      setConsultando(false)
       setResultados(null)
       return undefined
     }
@@ -103,11 +104,15 @@ export default function BusquedaSemantica({ onVerDocumento }) {
         )}
 
         {indice && !indice.indexado && (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-cuerpo-sm text-tenue">
-              Aún no hay índice semántico. Se construye una sola vez a partir de
-              tus documentos cifrados y queda en tu equipo.
-            </p>
+          <div className="flex flex-col items-start gap-3">
+            {indexando ? (
+              <Cargando mensaje="Indexando documentos…" />
+            ) : (
+              <p className="text-cuerpo-sm text-tenue">
+                Aún no hay índice semántico. Se construye una sola vez a partir
+                de tus documentos cifrados y queda en tu equipo.
+              </p>
+            )}
             <button
               type="button"
               onClick={indexar}
@@ -131,12 +136,11 @@ export default function BusquedaSemantica({ onVerDocumento }) {
                 aria-label="Búsqueda semántica"
                 className="min-w-0 flex-1 rounded-lg border border-borde bg-fondo-2 px-3 py-2 text-cuerpo-md outline-none transition-colors focus:border-primario"
               />
-              {consultando && (
-                <span className="shrink-0 text-etiqueta-sm text-tenue">Buscando…</span>
-              )}
             </div>
 
-            {resultados !== null && (
+            {consultando && <Cargando mensaje="Buscando…" />}
+
+            {!consultando && resultados !== null && (
               <ul className="flex flex-col gap-2">
                 {resultados.length === 0 && (
                   <li className="text-cuerpo-sm text-tenue">
@@ -189,5 +193,20 @@ export default function BusquedaSemantica({ onVerDocumento }) {
         )}
       </div>
     </section>
+  )
+}
+
+/** Indicador de carga con el pulso y el shimmer del asistente: la misma señal
+ *  visual que usa el chatbot mientras responde, para no desorientar al usuario
+ *  durante el indexado o la consulta semántica. */
+function Cargando({ mensaje }) {
+  return (
+    <div role="status" aria-live="polite" className="flex items-center gap-2.5 py-0.5">
+      <span aria-hidden="true" className="relative flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primario opacity-60" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primario" />
+      </span>
+      <span className="asistente-shimmer-texto text-etiqueta-md font-medium">{mensaje}</span>
+    </div>
   )
 }
