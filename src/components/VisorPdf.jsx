@@ -143,7 +143,7 @@ export default function VisorPdf({ documento, onCerrar }) {
 
         {estado === 'listo' && url && (
           <iframe
-            src={url}
+            src={`${url}#zoom=page-width`}
             title={`Documento ${documento.nombre}`}
             className="min-h-0 flex-1 w-full border-0 bg-white"
           />
