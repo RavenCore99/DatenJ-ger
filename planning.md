@@ -722,10 +722,11 @@ la fase.
 
 ## Fase 5 — La app, instalable y publicada (GitHub Packages)
 
-Estado: **en curso** — empaquetado, CI/CD y Release **hechos y publicados**
-(2026-10-03, `v1.0.0`). Falta: documentación de instalación, público del paquete
-npm en GitHub Packages y retirada de CustomTkinter (que depende de que la Fase 3
-cierre todas las pantallas). Reordena lo que antes era la Fase 7: se adelanta
+Estado: **en curso** — empaquetado, CI/CD y Releases **hechos y publicados**
+(`v1.0.0` el 2026-10-03 y `v2.1.0` el 2026-10-07). Falta: documentación de
+instalación, público del paquete npm en GitHub Packages y retirada de
+CustomTkinter (que depende de que la Fase 3 cierre todas las pantallas).
+Reordena lo que antes era la Fase 7: se adelanta
 porque es lo que convierte el proyecto en algo entregable, y porque las fases de
 evaluación (Fase 6) no bloquean nada y pueden ir después sin coste.
 
@@ -832,6 +833,17 @@ lleve estado del desarrollador es un defecto de la fase.
    sistema en el primer arranque y dónde quedan los datos.
 6. **Retirada de CustomTkinter** — **pendiente**, bloqueada por el cierre de la
    Fase 3.
+
+### Releases publicados
+
+Cada Release lleva **solo los dos instaladores** (`.exe` de Windows y
+`.AppImage` de Linux); los manifiestos `.yml` de auto-actualización no se
+adjuntan.
+
+| Etiqueta | Fecha | Qué entra |
+| --- | --- | --- |
+| `v1.0.0` | 2026-10-03 | Empaquetado y CI/CD (cierre de la Fase 4). |
+| `v2.1.0` | 2026-10-07 | Mejoras de frontend del portal, la telemetría y el asistente (PR #21). |
 
 Criterio de cierre: existe un instalador que funciona en Windows y Linux, se
 publica con su versión, y una persona ajena al proyecto lo instala y lo usa
