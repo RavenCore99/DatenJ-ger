@@ -26,7 +26,7 @@ Uso (a través del guion, que además fija las carpetas):
     ./venv/bin/python scripts/empaquetar_backend.py
 """
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_submodules
 
 #: `SPECPATH` lo inyecta PyInstaller: es el directorio de esta receta. Con él la
 #: receta se puede invocar desde cualquier directorio de trabajo, que es lo que
@@ -60,6 +60,31 @@ OCULTOS_UVICORN = [
     "uvicorn.lifespan",
     "uvicorn.lifespan.on",
 ]
+
+# --------------------------------------------------------------------------- #
+# Búsqueda semántica (Fase 6)
+# --------------------------------------------------------------------------- #
+
+# `fastembed` se importa de forma perezosa dentro de
+# `backend/services/semantica.py` (`_obtener_modelo`), así que el análisis
+# estático de PyInstaller no lo sigue por el grafo de imports: se declara
+# explícitamente junto con sus dependencias nativas.
+#
+# El modelo de embeddings (~220 MB) **no** se empaqueta: se descarga del hub de
+# Hugging Face al primer uso (`~/.cache/huggingface`), que es lo que mantiene el
+# instalador ligero y sin estado del equipo del desarrollador.
+OCULTOS_SEMANTICA = [
+    "fastembed",
+    "onnxruntime",
+    "tokenizers",
+    "huggingface_hub",
+]
+
+# `onnxruntime` tiene su propio hook en pyinstaller-hooks-contrib (recoge los
+# binarios de `capi/`); `tokenizers` exporta un binario Rust
+# (`tokenizers.abi3.so`) que conviene recoger a mano para no depender solo del
+# análisis de binarios.
+BINARIOS_SEMANTICA = collect_dynamic_libs("tokenizers")
 
 #: Distribuciones cuyos metadatos hacen falta en tiempo de ejecución.
 #: FastAPI, Starlette y Uvicorn se inspeccionan a sí mismos con
@@ -97,9 +122,9 @@ DATOS = CON_METADATOS + [
 análisis = Analysis(
     [ENTRADA],
     pathex=[RAIZ, AQUI],
-    binaries=[],
+    binaries=BINARIOS_SEMANTICA,
     datas=DATOS,
-    hiddenimports=OCULTOS_UVICORN + collect_submodules("backend"),
+    hiddenimports=OCULTOS_UVICORN + OCULTOS_SEMANTICA + collect_submodules("backend"),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
