@@ -44,6 +44,7 @@ from backend.services import documentos as _documentos
 from backend.services import empresas as _empresas
 from backend.services import personas as _personas
 from backend.services import reportes as _reportes
+from backend.services import semantica as _semantica
 from chatbot import ChatbotService, crear_servicio
 
 #: Operaciones que todavía viven en la interfaz y su motivo.
@@ -52,6 +53,32 @@ from chatbot import ChatbotService, crear_servicio
 #: catálogo para que cualquier trabajo futuro que vuelva a quedarse en la
 #: interfaz se declare aquí en vez de quedar implícito.
 OPERACIONES_PENDIENTES: dict[str, str] = {}
+
+
+def _metadatos_documento(cursor, documento_id: int) -> dict:
+    """Metadatos de un documento (nombre, cédula, titular y empresa).
+
+    Auxiliar de ``ComandosDatenJager.buscar_semantica``: se llama bajo el lock
+    de la conexión compartida, solo sobre la cola corta de resultados.
+    """
+    cursor.execute(
+        """
+        SELECT p.nombre, pe.cedula, pe.nombres, pe.empresa
+        FROM PDFs p
+        LEFT JOIN Personas pe ON p.persona_id = pe.id
+        WHERE p.id = ?
+        """,
+        (documento_id,),
+    )
+    fila = cursor.fetchone()
+    if not fila:
+        return {"nombre": "", "cedula": "", "titular": "", "empresa": ""}
+    return {
+        "nombre": fila[0],
+        "cedula": fila[1] or "",
+        "titular": fila[2] or "",
+        "empresa": fila[3] or "",
+    }
 
 
 class ComandosDatenJager:
@@ -841,6 +868,108 @@ class ComandosDatenJager:
         """
         self._exigir_sesion()
         return _modelos.identificar(clave)
+
+    # ------------------------------------------------------------------ #
+    # Búsqueda semántica (Fase 6)
+    # ------------------------------------------------------------------ #
+
+    def _ruta_base(self) -> str:
+        """Ruta real del archivo SQLite principal (la resuelve el propio SQLite).
+
+        Ser robusto aquí importa porque el índice debe vivir al lado de la base
+        que esté en uso, sea cual sea la forma en que se abrió (ruta explícita,
+        `DATENJAGER_DB` o el directorio de datos de la instalación).
+        """
+        with self.state.db_lock:
+            try:
+                self.state.cursor.execute("PRAGMA database_list")
+                for _secuencia, nombre, archivo in self.state.cursor.fetchall():
+                    if nombre == "main" and archivo:
+                        return archivo
+            except Exception:  # noqa: BLE001 — lecturas de arranque, no operación
+                pass
+        return os.path.join(os.getcwd(), "base_datos_pdfs.db")
+
+    def _ruta_indice_semantico(self) -> str:
+        """Ruta del índice semántico, al lado de la base activa."""
+        return _semantica.ruta_indice(self._ruta_base())
+
+    def estado_busqueda_semantica(self) -> dict:
+        """Estado del índice semántico del usuario en sesión.
+
+        Lectura ligera (sin cargar el modelo) para que el frontend decida entre
+        «índice vacío, pulsa para indexar» y «índice listo».
+        """
+        usuario_id = self._exigir_sesion()
+        indice = _semantica.conectar_indice(self._ruta_indice_semantico())
+        try:
+            return _semantica.estado_indice(indice, usuario_id)
+        finally:
+            indice.close()
+
+    def indexar_busqueda_semantica(self) -> dict:
+        """Construye el índice semántico de los documentos del usuario.
+
+        Descifra cada documento, extrae el texto, lo trocea y guarda fragmento
+        cifrado + embedding. Es lento (decenas de segundos o minutos con cientos
+        de documentos), así que:
+
+        * abre una **conexión de solo lectura** a la base, propia y separada de
+          la conexión compartida del servidor, para no bloquearla durante el
+          indexado ni congelar el bucle de eventos;
+        * el índice es un archivo SQLite distinto, escrito por esta conexión.
+        """
+        usuario_id = self._exigir_sesion()
+        usuario_nombre = self._usuario_nombre
+
+        import sqlite3
+
+        conn_lectura = sqlite3.connect(
+            f"file:{self._ruta_base()}?mode=ro", uri=True, check_same_thread=False)
+        try:
+            indice = _semantica.conectar_indice(self._ruta_indice_semantico())
+            try:
+                return _semantica.indexar_corpus(
+                    conn_lectura,
+                    conn_lectura.cursor(),
+                    usuario_id=usuario_id,
+                    usuario_nombre=usuario_nombre,
+                    indice_conn=indice,
+                )
+            finally:
+                indice.close()
+        finally:
+            conn_lectura.close()
+
+    def buscar_semantica(self, consulta: str, k: int = 5) -> dict:
+        """Busca por significado y devuelve los fragmentos más parecidos.
+
+        El texto de cada resultado se descifra del índice y se enriquece con los
+        metadatos del documento (nombre, titular, empresa). Carga el modelo bajo
+        demanda en la primera consulta; no toca la conexión compartida salvo en
+        la lectura breve de metadatos al final.
+        """
+        usuario_id = self._exigir_sesion()
+        indice = _semantica.conectar_indice(self._ruta_indice_semantico())
+        try:
+            resultados = _semantica.buscar(
+                indice,
+                consulta=consulta,
+                usuario_id=usuario_id,
+                usuario_nombre=self._usuario_nombre,
+                k=k,
+            )
+        finally:
+            indice.close()
+
+        enriquecidos: list[dict] = []
+        with self.state.db_lock:
+            for resultado in resultados:
+                enriquecidos.append({
+                    **resultado,
+                    **_metadatos_documento(self.state.cursor, resultado["documento_id"]),
+                })
+        return {"consulta": consulta, "resultados": enriquecidos}
 
     # ------------------------------------------------------------------ #
     # Catálogo

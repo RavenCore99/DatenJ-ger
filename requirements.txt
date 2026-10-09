@@ -34,6 +34,11 @@ matplotlib>=3.7.0
 fastapi>=0.115
 uvicorn>=0.30
 
+# Búsqueda semántica y clasificación (Fase 6) - embeddings multilingües en CPU
+# (ONNX Runtime, sin PyTorch); el modelo se descarga al cache del usuario en el
+# primer uso y no viaja en el instalador.
+fastembed>=0.9.0
+
 # DEVELOPMENT/OPTIONAL 
 
 # Testing framework 

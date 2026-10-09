@@ -690,6 +690,41 @@ def crear_app(
         return {"destino": destino}
 
     # ---------------------------------------------------------------- #
+    # Búsqueda semántica (Fase 6)
+    # ---------------------------------------------------------------- #
+
+    @app.get("/api/busqueda", dependencies=protegido)
+    async def estado_busqueda() -> dict[str, Any]:
+        """Estado del índice semántico del usuario (sin cargar el modelo).
+
+        Lectura ligera para que el frontend muestre «índice vacío / listo» y el
+        número de fragmentos, sin coste de RAM ni calentamiento del modelo.
+        """
+        return comandos.estado_busqueda_semantica()
+
+    @app.post("/api/busqueda/indexar", dependencies=protegido)
+    def indexar_busqueda() -> dict[str, Any]:
+        """Construye el índice semántico del usuario en sesión.
+
+        ``def``, no ``async def``, a propósito: es una tarea larga (descifra y
+        embebe cada documento) y FastAPI ejecuta los manejadores síncronos en
+        un hilo aparte, de modo que no congela el bucle de eventos mientras
+        indexa. La conexión de lectura es propia (ver ``commands``), así que
+        tampoco bloquea la conexión compartida.
+        """
+        return comandos.indexar_busqueda_semantica()
+
+    @app.get("/api/busqueda/consultar", dependencies=protegido)
+    def consultar_busqueda(q: str = "", k: int = 5) -> dict[str, Any]:
+        """Busca por significado y devuelve los fragmentos más parecidos.
+
+        ``def`` por el mismo motivo que indexar: la primera consulta carga el
+        modelo (unos segundos), y las siguientes son rápidas; ejecutarse en un
+        hilo aparte evita congelar el servicio.
+        """
+        return comandos.buscar_semantica(q.strip(), k=k)
+
+    # ---------------------------------------------------------------- #
     # Asistente
     # ---------------------------------------------------------------- #
 
