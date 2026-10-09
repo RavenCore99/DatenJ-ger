@@ -323,6 +323,18 @@ export const backend = {
       solicitar('/api/reportes/exportar', { metodo: 'POST', cuerpo: { destino, formato } }),
   },
 
+  // Búsqueda semántica (Fase 6): busca por significado entre los documentos,
+  // no por coincidencia exacta. El modelo de embeddings corre local (CPU) y el
+  // índice se construye sobre demanda; no depende de ninguna API externa.
+  busqueda: {
+    estado: () => solicitar('/api/busqueda'),
+    // Indexa (descifra + embebe) los documentos del usuario. Tarda, y carga el
+    // modelo la primera vez; se ejecuta en un hilo aparte en el backend.
+    indexar: () => solicitar('/api/busqueda/indexar', { metodo: 'POST' }),
+    consultar: (q, k = 5) =>
+      solicitar(`/api/busqueda/consultar?q=${encodeURIComponent(q)}&k=${k}`),
+  },
+
   // Conexión de modelos de IA (SCRUM-64). El servicio nunca devuelve la clave:
   // solo informa de si está configurada y de dónde sale.
   modelos: {

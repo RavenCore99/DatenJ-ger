@@ -7,6 +7,9 @@ config.json
 base_datos_pdfs.db
 *.db-wal
 *.db-shm
+# Índice semántico (Fase 6): se genera en local a partir de los documentos del
+# usuario, igual que la base. Nunca se versiona.
+*.semantico.db
 .claude
 .directory
 improvements datenjager.md

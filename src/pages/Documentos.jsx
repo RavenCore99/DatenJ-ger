@@ -5,6 +5,7 @@ import AltaDocumento from '../components/AltaDocumento.jsx'
 import { ModalDetalle, ModalEditar } from '../components/ModalDocumento.jsx'
 import Icono from '../components/Icono.jsx'
 import VisorPdf from '../components/VisorPdf.jsx'
+import BusquedaSemantica from '../components/BusquedaSemantica.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { guardarArchivo } from '../lib/escritorio.js'
@@ -49,6 +50,8 @@ export default function Documentos() {
   const [detalle, setDetalle] = useState(null)
   const [editar, setEditar] = useState(null)
   const [errorEditar, setErrorEditar] = useState(null)
+  // Búsqueda semántica (Fase 6): panel de búsqueda por significado.
+  const [semantica, setSemantica] = useState(false)
 
   const cargar = useCallback(async (texto) => {
     setEstado('cargando')
@@ -171,6 +174,16 @@ export default function Documentos() {
       return Boolean(resultado)
     },
     [ejecutar],
+  )
+
+  /** Abre en el visor interno un documento localizado por la búsqueda semántica. */
+  const verDocumentoSemantico = useCallback(
+    (documentoId) => {
+      const fila = filas.find((candidata) => candidata.id === documentoId)
+      if (fila) setVisor(fila)
+      else notificar('El documento ya no está en la lista actual', 'peligro')
+    },
+    [filas, notificar],
   )
 
   /**
@@ -297,7 +310,24 @@ export default function Documentos() {
         >
           {estado === 'cargando' ? 'Actualizando…' : 'Refrescar'}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setSemantica((visible) => !visible)}
+          aria-pressed={semantica}
+          className={[
+            'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-etiqueta-md transition-colors',
+            semantica
+              ? 'border-primario bg-primario-suave/40 text-primario'
+              : 'border-borde text-tenue hover:border-primario hover:text-primario',
+          ].join(' ')}
+        >
+          <Icono nombre="chispa" tamano={14} />
+          Búsqueda semántica
+        </button>
       </div>
+
+      {semantica && <BusquedaSemantica onVerDocumento={verDocumentoSemantico} />}
 
       <div className="flex items-start gap-4">
         <section className="min-w-0 flex-1 overflow-hidden rounded-panel border border-borde bg-superficie">

@@ -124,24 +124,28 @@ export default function VisorPdf({ documento, onCerrar }) {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 p-4">
+      {/* El área del visor ocupa todo el alto restante. El `<iframe>` es un
+          elemento flex (`flex-1`) en lugar de depender de `height: 100 %`, que
+          en ciertas cadenas flex puede colapsar al alto por defecto del
+          elemento y dejar la página en blanco o en una franja corta. */}
+      <div className="flex min-h-0 flex-1 flex-col">
         {estado === 'cargando' && (
-          <div className="h-full rounded-panel border border-borde bg-superficie p-5">
+          <div className="m-4 flex flex-1 items-center justify-center rounded-panel border border-borde bg-superficie p-6">
             <Esqueleto variante="texto" filas={8} />
           </div>
         )}
 
         {estado === 'error' && (
-          <div className="mx-auto mt-10 max-w-xl">
+          <div className="m-4">
             <EstadoError mensaje={error} onReintentar={onCerrar} />
           </div>
         )}
 
         {estado === 'listo' && url && (
           <iframe
-            src={url}
+            src={`${url}#zoom=page-width`}
             title={`Documento ${documento.nombre}`}
-            className="h-full w-full rounded-panel border border-borde bg-white"
+            className="min-h-0 flex-1 w-full border-0 bg-white"
           />
         )}
       </div>
