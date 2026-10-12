@@ -225,6 +225,12 @@ const GLIFOS = {
       <path d="M8 9h8M8 12h5" />
     </>
   ),
+  'cerrar-sesion': (
+    <>
+      <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+      <path d="M14 8l4 4-4 4M18 12H9" />
+    </>
+  ),
   terminal: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2" />

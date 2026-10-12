@@ -41,3 +41,17 @@ test('la barra global tiene zonas de arrastre y controles accesibles', () => {
   assert.match(css, /-webkit-app-region: drag/)
   assert.match(css, /-webkit-app-region: no-drag/)
 })
+
+test('la barra sin marca conecta los accesos con el marco autenticado', () => {
+  const barra = leer('src/components/BarraVentana.jsx')
+  const app = leer('src/App.jsx')
+  const iconos = leer('src/components/Icono.jsx')
+  assert.doesNotMatch(barra, /logo|Gesti[oó]n documental|<span[^>]*>DatenJäger<\/span>/i)
+  for (const accion of ['Abrir ajustes', 'Abrir asistente', 'Cerrar sesión']) {
+    assert.match(barra, new RegExp(`aria-label="${accion}"`))
+  }
+  assert.match(app, /onAbrirAjustes=\{mostrarAccesos \? \(\) => setSeccion\('cuenta'\) : undefined\}/)
+  assert.match(app, /onCerrarSesion=\{mostrarAccesos \? cerrarSesion : undefined\}/)
+  assert.match(iconos, /'cerrar-sesion':/)
+  assert.doesNotMatch(app, /<AccesoRapido icono="tuerca"/)
+})
