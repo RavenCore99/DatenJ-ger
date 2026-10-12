@@ -82,8 +82,8 @@ function aplicarPoliticaDeSeguridad() {
   if (enDesarrollo) return
 
   session.defaultSession.webRequest.onHeadersReceived((detalles, responder) => {
-    // El puerto se lee en cada respuesta, no al registrar: el servicio puede
-    // haber resuelto un puerto distinto al configurado cuando llegue la carga.
+    // El puerto se lee en cada respuesta; si cambia tras cargar index.html,
+    // se recarga la página para que la política inicial use el puerto real.
     const puerto = servicio.configuracion.puertoBackend
 
     const politica = [
@@ -227,6 +227,14 @@ app.whenReady().then(async () => {
       ? `[datenjager] servicio local en ${configuracionServicio.urlBackend}`
       : `[datenjager] servicio local no disponible: ${configuracionServicio.error}`,
   )
+  // La CSP del documento ya se fijó cuando empezó a cargar. Si el puerto
+  // preferido estaba ocupado, una sola recarga instala la política correcta;
+  // sin ella la UI queda «sin conexión» aunque el servicio esté sano.
+  if (configuracionServicio.disponible &&
+      configuracionServicio.puertoBackend !== PUERTO_BACKEND &&
+      ventana && !ventana.isDestroyed()) {
+    ventana.webContents.reload()
+  }
   ventana?.webContents.send('app:servicio', configuracionServicio)
 
   app.on('activate', () => {
