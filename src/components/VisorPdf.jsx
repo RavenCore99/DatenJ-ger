@@ -1,11 +1,12 @@
 // Trazabilidad Jira: SCRUM-59 (DatenJäger — UI / UX).
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import Icono from './Icono.jsx'
 import { EstadoError, Esqueleto } from './Panel.jsx'
 import { backend } from '../lib/api.js'
-import { guardarArchivo } from '../lib/escritorio.js'
+import { enEscritorio, guardarArchivo } from '../lib/escritorio.js'
 
 /**
  * Visor de PDF dentro de la aplicación (SCRUM-60).
@@ -81,12 +82,12 @@ export default function VisorPdf({ documento, onCerrar }) {
     }
   }
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Visor de ${documento.nombre}`}
-      className="aparecer fixed inset-0 z-40 flex flex-col bg-fondo/95 backdrop-blur-sm"
+      className={`fixed inset-x-0 bottom-0 z-40 flex flex-col bg-fondo/95 backdrop-blur-sm ${enEscritorio() ? 'top-11' : 'top-0'}`}
     >
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-5 py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -149,7 +150,8 @@ export default function VisorPdf({ documento, onCerrar }) {
           />
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
