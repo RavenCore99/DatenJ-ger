@@ -1,22 +1,14 @@
-import logo from '../../assets/logo/logo.png'
 import Icono from './Icono.jsx'
 import Particulas from './Particulas.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 
 /**
- * Marco de las pantallas de acceso (SCRUM-29): cabecera de ventana con la marca
+ * Marco de las pantallas de acceso (SCRUM-29): cabecera de navegación
  * y franja de telemetría al pie, con las mismas densidades que el marco del
  * sistema (48px y 32px).
  *
- * Los mockups dibujan un semáforo de ventana estilo macOS; aquí no se imita
- * porque la ventana de Electron conserva su marco nativo en Linux y Windows, y
- * unos botones que no harían nada serían decoración engañosa.
- *
- * **La marca de la cabecera es opcional.** La pantalla de bienvenida ya muestra
- * el nombre en grande en su propio contenido, así que repetirlo arriba era
- * redundante (hallazgo de Raven): cuando no se pasa `titulo`, la cabecera deja
- * solo el logo. Acceso y registro sí lo pasan, porque su título no aparece en
- * ningún otro sitio.
+ * El marco de Electron ya tiene su propia barra. Bienvenida no necesita una
+ * segunda cabecera; acceso y registro conservan el título y la vuelta, sin logo.
  *
  * **El fondo de marca es del marco, no de una pantalla** (calidad de vida): la
  * marca de agua con el nombre y el campo de partículas vivían dentro de la
@@ -32,10 +24,8 @@ import { useApp } from '../estado/ProveedorApp.jsx'
 export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
   return (
     <div className="flex h-full w-full flex-col bg-fondo text-texto">
-      <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <img src={logo} alt="" className="h-7 w-7 shrink-0 rounded-full object-contain" />
-
+      {(titulo || onVolver) && (
+        <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-4">
           {titulo && (
             <div className="flex min-w-0 items-baseline gap-2">
               <span className="truncate font-marca text-etiqueta-md font-semibold tracking-tight">
@@ -47,7 +37,6 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
               <span className="truncate text-etiqueta-sm text-tenue">{titulo}</span>
             </div>
           )}
-        </div>
 
         {onVolver && (
           <button
@@ -59,7 +48,8 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
             {subtitulo ?? 'Volver'}
           </button>
         )}
-      </header>
+        </header>
+      )}
 
       {/* El fondo vive aquí para que las tres pantallas del portal lo compartan;
           va detrás del contenido y no captura el puntero. */}

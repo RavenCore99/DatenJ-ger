@@ -55,3 +55,28 @@ test('la barra sin marca conecta los accesos con el marco autenticado', () => {
   assert.match(iconos, /'cerrar-sesion':/)
   assert.doesNotMatch(app, /<AccesoRapido icono="tuerca"/)
 })
+
+test('el marco compartido del portal no repite el logo bajo la barra', () => {
+  const marco = leer('src/components/MarcoAcceso.jsx')
+  assert.doesNotMatch(marco, /assets\/logo\/logo\.png|<img\s+src=\{logo\}/)
+  assert.match(marco, /onVolver/)
+})
+
+test('el cierre de sesión usa un diálogo temático compartido con el atajo', () => {
+  const app = leer('src/App.jsx')
+  const dialogo = leer('src/components/ConfirmarCierreSesion.jsx')
+  assert.doesNotMatch(app, /globalThis\.confirm/)
+  assert.match(app, /<ConfirmarCierreSesion/)
+  assert.match(app, /if \(conModificador && tecla === 'q'\)/)
+  assert.match(dialogo, /role="dialog"/)
+  assert.match(dialogo, /aria-modal="true"/)
+  assert.match(dialogo, /superficie-cristal|bg-superficie/)
+  assert.match(dialogo, /font-marca/)
+  assert.match(dialogo, /Cancelar/)
+})
+
+test('la política de red se renueva si el backend cambia de puerto al arrancar', () => {
+  const main = leer('electron/main.js')
+  assert.match(main, /configuracionServicio\.puertoBackend !== PUERTO_BACKEND/)
+  assert.match(main, /webContents\.reload\(\)/)
+})

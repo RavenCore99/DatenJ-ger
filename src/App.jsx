@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
 import BarraVentana from './components/BarraVentana.jsx'
+import ConfirmarCierreSesion from './components/ConfirmarCierreSesion.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
 import BusquedaGlobal from './components/BusquedaGlobal.jsx'
 import Entrada from './components/Entrada.jsx'
@@ -74,6 +75,7 @@ function Marco() {
   // recuerda entre arranques, porque la bienvenida es la presentación de la
   // aplicación.
   const [portal, setPortal] = useState('bienvenida')
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false)
 
   useEffect(() => {
     try {
@@ -83,17 +85,19 @@ function Marco() {
     }
   }, [tema])
 
-  /** Cierra la sesión abierta (`Ctrl / ⌘ + Q`), con confirmación. */
-  const cerrarSesion = useCallback(async () => {
-    if (!autenticado) return
-    if (!globalThis.confirm('¿Cerrar la sesión abierta?')) return
+  /** La barra y Ctrl+Q abren la misma confirmación temática. */
+  const cerrarSesion = useCallback(() => {
+    if (autenticado) setConfirmandoSalida(true)
+  }, [autenticado])
 
+  const confirmarCierreSesion = async () => {
     try {
       await backend.sesion.salir()
     } finally {
       await recargarSalud()
     }
-  }, [autenticado, recargarSalud])
+    setConfirmandoSalida(false)
+  }
 
   const abrirAsistente = () => {
     if (seccion === 'chatbot') document.querySelector('main textarea')?.focus()
@@ -109,6 +113,12 @@ function Marco() {
         onCerrarSesion={mostrarAccesos ? cerrarSesion : undefined}
       />
       <div className="min-h-0 flex-1">{contenido}</div>
+      {mostrarAccesos && confirmandoSalida && (
+        <ConfirmarCierreSesion
+          onCancelar={() => setConfirmandoSalida(false)}
+          onConfirmar={confirmarCierreSesion}
+        />
+      )}
     </div>
   )
 
@@ -144,7 +154,7 @@ function Marco() {
 
       if (conModificador && tecla === 'q') {
         evento.preventDefault()
-        cerrarSesion()
+        if (!capaAbierta()) cerrarSesion()
         return
       }
 
