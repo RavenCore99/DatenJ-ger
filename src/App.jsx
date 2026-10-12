@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
+import BarraVentana from './components/BarraVentana.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
 import BusquedaGlobal from './components/BusquedaGlobal.jsx'
 import Entrada from './components/Entrada.jsx'
@@ -50,7 +51,12 @@ export function App() {
   return (
     <ProveedorApp>
       <Entrada />
-      <Marco />
+      <div className="flex h-full min-h-0 flex-col">
+        <BarraVentana />
+        <div className="min-h-0 flex-1">
+          <Marco />
+        </div>
+      </div>
       {/* Notificaciones del sistema (SCRUM-87): viven fuera del marco para que
           también se vean en el portal de acceso y en el registro. */}
       <Notificaciones />

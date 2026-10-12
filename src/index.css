@@ -26,6 +26,17 @@ body {
   overflow: hidden; /* el scroll vive en el área de contenido */
 }
 
+/* Solo la zona libre del chrome arrastra la ventana; los botones siguen siendo
+ * interactivos incluso si el puntero pasa por sus iconos o su contenido. */
+.region-arrastrable {
+  -webkit-app-region: drag;
+}
+
+.region-no-arrastrable,
+.region-no-arrastrable * {
+  -webkit-app-region: no-drag;
+}
+
 /* La marca y los títulos usan Space Grotesk (ver el DESIGN.md). */
 @layer base {
   h1,

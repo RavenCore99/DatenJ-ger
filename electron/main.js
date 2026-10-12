@@ -90,6 +90,9 @@ function aplicarPoliticaDeSeguridad() {
       "default-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
+      // El visor interno usa una URL blob: creada a partir del PDF descifrado.
+      // Solo ese esquema puede alojarse como iframe; no se abren orígenes web.
+      "frame-src blob:",
       "font-src 'self' data:",
       `connect-src 'self' http://127.0.0.1:${puerto}`,
       "object-src 'none'",
@@ -113,6 +116,7 @@ function crearVentana() {
     minWidth: 1024,
     minHeight: 680,
     show: false,
+    frame: false,
     // Fondo del tema claro del sistema de diseño: evita el destello oscuro
     // antes de que el renderer pinte (el tema por defecto es el claro).
     backgroundColor: '#f8f9ff',
@@ -127,6 +131,19 @@ function crearVentana() {
   })
 
   ventana.once('ready-to-show', () => ventana.show())
+
+  const informarEstado = () => {
+    if (!ventana?.isDestroyed()) {
+      ventana.webContents.send('ventana:estado', {
+        maximizada: ventana.isMaximized(),
+        pantallaCompleta: ventana.isFullScreen(),
+      })
+    }
+  }
+  ventana.on('maximize', informarEstado)
+  ventana.on('unmaximize', informarEstado)
+  ventana.on('enter-full-screen', informarEstado)
+  ventana.on('leave-full-screen', informarEstado)
 
   // Los enlaces externos se abren en el navegador, nunca dentro de la app.
   ventana.webContents.setWindowOpenHandler(({ url }) => {
@@ -162,6 +179,30 @@ ipcMain.handle('archivo:elegir', () => elegirDocumento(ventana))
 ipcMain.handle('archivo:guardar', (_evento, datos) => guardarDocumento(ventana, datos))
 // Solo devuelve la ruta elegida: el reporte lo escribe el servicio de Python.
 ipcMain.handle('archivo:destino', (_evento, datos) => elegirDestino(ventana, datos))
+
+// Cada petición se limita a la ventana que originó el IPC. El renderer no
+// recibe acceso a BrowserWindow ni a acciones arbitrarias del proceso principal.
+function ventanaDe(evento) {
+  const origen = BrowserWindow.fromWebContents(evento.sender)
+  return origen && !origen.isDestroyed() ? origen : null
+}
+
+ipcMain.handle('ventana:estado', (evento) => {
+  const origen = ventanaDe(evento)
+  return {
+    maximizada: Boolean(origen?.isMaximized()),
+    pantallaCompleta: Boolean(origen?.isFullScreen()),
+  }
+})
+ipcMain.handle('ventana:minimizar', (evento) => ventanaDe(evento)?.minimize())
+ipcMain.handle('ventana:maximizar', (evento) => {
+  const origen = ventanaDe(evento)
+  if (!origen) return false
+  if (origen.isMaximized()) origen.unmaximize()
+  else origen.maximize()
+  return origen.isMaximized()
+})
+ipcMain.handle('ventana:cerrar', (evento) => ventanaDe(evento)?.close())
 
 /**
  * Alterna la pantalla completa de la ventana (SCRUM-85, atajo `F11`).
