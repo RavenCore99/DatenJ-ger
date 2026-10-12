@@ -934,6 +934,16 @@ La barra propia deja libre la zona de arrastre: no repite el logo ni el nombre
 del dashboard. Con sesión abierta incorpora Ajustes, Asistente y Cerrar sesión;
 este último comparte la confirmación del atajo `Ctrl+Q`. Los accesos se ocultan
 en bienvenida y acceso, y heredan los colores del tema claro u oscuro.
+El portal ya no repite el logo pequeño bajo el marco de ventana: la bienvenida
+conserva su marca central; acceso y registro mantienen título y navegación.
+La confirmación de salida usa un diálogo propio con tipografía, superficies y
+colores del tema, tanto desde la barra como desde `Ctrl+Q`. El lanzamiento
+`v2.1.2` usa la versión de tres partes exigida por la CI y publica solo `.exe`
+y `.AppImage` con una descripción breve.
+La sonda del instalador detectó además que, si el puerto preferido del backend
+está ocupado, la CSP inicial conserva el puerto antiguo. El proceso principal
+recarga una sola vez al conocer el puerto real; la prueba del AppImage valida el
+recorrido con puerto alternativo y el estado aislado en `userData`.
 
 ### 2. Orden del repositorio: los `.py` de la raíz
 
