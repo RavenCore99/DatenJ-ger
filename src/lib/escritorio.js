@@ -8,6 +8,13 @@
 
 export const enEscritorio = () => Boolean(globalThis.datenjager?.elegirArchivo)
 
+/** El navegador web no tiene marco propio: sus controles siguen siendo nativos. */
+export const estadoVentana = () => globalThis.datenjager?.estadoVentana?.() ?? Promise.resolve({ maximizada: false, pantallaCompleta: false })
+export const minimizarVentana = () => globalThis.datenjager?.minimizarVentana?.()
+export const maximizarVentana = () => globalThis.datenjager?.maximizarVentana?.()
+export const cerrarVentana = () => globalThis.datenjager?.cerrarVentana?.()
+export const alCambiarVentana = (escucha) => globalThis.datenjager?.alCambiarVentana?.(escucha) ?? (() => {})
+
 /** Lee un PDF. Devuelve `{cancelado}` o `{nombre, tamano, contenido_b64}`. */
 export async function elegirArchivo() {
   if (enEscritorio()) return globalThis.datenjager.elegirArchivo()

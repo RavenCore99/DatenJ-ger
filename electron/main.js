@@ -82,8 +82,8 @@ function aplicarPoliticaDeSeguridad() {
   if (enDesarrollo) return
 
   session.defaultSession.webRequest.onHeadersReceived((detalles, responder) => {
-    // El puerto se lee en cada respuesta, no al registrar: el servicio puede
-    // haber resuelto un puerto distinto al configurado cuando llegue la carga.
+    // El puerto se lee en cada respuesta; si cambia tras cargar index.html,
+    // se recarga la página para que la política inicial use el puerto real.
     const puerto = servicio.configuracion.puertoBackend
 
     const politica = [
@@ -113,6 +113,7 @@ function crearVentana() {
     minWidth: 1024,
     minHeight: 680,
     show: false,
+    frame: false,
     // Fondo del tema claro del sistema de diseño: evita el destello oscuro
     // antes de que el renderer pinte (el tema por defecto es el claro).
     backgroundColor: '#f8f9ff',
@@ -127,6 +128,19 @@ function crearVentana() {
   })
 
   ventana.once('ready-to-show', () => ventana.show())
+
+  const informarEstado = () => {
+    if (!ventana?.isDestroyed()) {
+      ventana.webContents.send('ventana:estado', {
+        maximizada: ventana.isMaximized(),
+        pantallaCompleta: ventana.isFullScreen(),
+      })
+    }
+  }
+  ventana.on('maximize', informarEstado)
+  ventana.on('unmaximize', informarEstado)
+  ventana.on('enter-full-screen', informarEstado)
+  ventana.on('leave-full-screen', informarEstado)
 
   // Los enlaces externos se abren en el navegador, nunca dentro de la app.
   ventana.webContents.setWindowOpenHandler(({ url }) => {
@@ -163,6 +177,30 @@ ipcMain.handle('archivo:guardar', (_evento, datos) => guardarDocumento(ventana, 
 // Solo devuelve la ruta elegida: el reporte lo escribe el servicio de Python.
 ipcMain.handle('archivo:destino', (_evento, datos) => elegirDestino(ventana, datos))
 
+// Cada petición se limita a la ventana que originó el IPC. El renderer no
+// recibe acceso a BrowserWindow ni a acciones arbitrarias del proceso principal.
+function ventanaDe(evento) {
+  const origen = BrowserWindow.fromWebContents(evento.sender)
+  return origen && !origen.isDestroyed() ? origen : null
+}
+
+ipcMain.handle('ventana:estado', (evento) => {
+  const origen = ventanaDe(evento)
+  return {
+    maximizada: Boolean(origen?.isMaximized()),
+    pantallaCompleta: Boolean(origen?.isFullScreen()),
+  }
+})
+ipcMain.handle('ventana:minimizar', (evento) => ventanaDe(evento)?.minimize())
+ipcMain.handle('ventana:maximizar', (evento) => {
+  const origen = ventanaDe(evento)
+  if (!origen) return false
+  if (origen.isMaximized()) origen.unmaximize()
+  else origen.maximize()
+  return origen.isMaximized()
+})
+ipcMain.handle('ventana:cerrar', (evento) => ventanaDe(evento)?.close())
+
 /**
  * Alterna la pantalla completa de la ventana (SCRUM-85, atajo `F11`).
  *
@@ -189,6 +227,14 @@ app.whenReady().then(async () => {
       ? `[datenjager] servicio local en ${configuracionServicio.urlBackend}`
       : `[datenjager] servicio local no disponible: ${configuracionServicio.error}`,
   )
+  // La CSP del documento ya se fijó cuando empezó a cargar. Si el puerto
+  // preferido estaba ocupado, una sola recarga instala la política correcta;
+  // sin ella la UI queda «sin conexión» aunque el servicio esté sano.
+  if (configuracionServicio.disponible &&
+      configuracionServicio.puertoBackend !== PUERTO_BACKEND &&
+      ventana && !ventana.isDestroyed()) {
+    ventana.webContents.reload()
+  }
   ventana?.webContents.send('app:servicio', configuracionServicio)
 
   app.on('activate', () => {

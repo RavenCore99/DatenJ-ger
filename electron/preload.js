@@ -42,6 +42,17 @@ contextBridge.exposeInMainWorld('datenjager', {
   /** Alterna la ventana entre pantalla completa y tamaño normal (SCRUM-85). */
   alternarPantallaCompleta: () => ipcRenderer.invoke('ventana:pantalla-completa'),
 
+  /** Controles limitados del marco propio (SCRUM-60). */
+  estadoVentana: () => ipcRenderer.invoke('ventana:estado'),
+  minimizarVentana: () => ipcRenderer.invoke('ventana:minimizar'),
+  maximizarVentana: () => ipcRenderer.invoke('ventana:maximizar'),
+  cerrarVentana: () => ipcRenderer.invoke('ventana:cerrar'),
+  alCambiarVentana: (escucha) => {
+    const manejador = (_evento, estado) => escucha(estado)
+    ipcRenderer.on('ventana:estado', manejador)
+    return () => ipcRenderer.removeListener('ventana:estado', manejador)
+  },
+
   /** Solo lectura, sin IPC: datos del entorno de Electron. */
   versionElectron: process.versions.electron,
   versionNode: process.versions.node,

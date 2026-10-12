@@ -182,11 +182,10 @@ jobs:
           echo "Adjuntos que se van a publicar:"
           find adjuntos -type f -printf '  %p (%s bytes)\n'
 
-          # `--generate-notes` deja el registro de cambios; `--verify-tag`
-          # confirma que la etiqueta existe antes de crear nada.
+          # Resumen breve del pulido; `--verify-tag` exige la etiqueta publicada.
           gh release create "$TAG" \
             --title "DatenJäger $VERSION" \
-            --generate-notes \
+            --notes "Visor PDF a pantalla completa, ventana sin marco con accesos rápidos y confirmación de cierre de sesión adaptada a los temas claro y oscuro. Cabecera del portal simplificada. Instaladores Windows y Linux." \
             --verify-tag \
             adjuntos/*
 

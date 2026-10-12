@@ -278,9 +278,11 @@ async def comprobar(argumentos) -> None:
     appimage = buscar_appimage()
     trabajo = Path(tempfile.mkdtemp(prefix="dj-instalador-"))
     configuracion = trabajo / "config"
-    datos = trabajo / "datos"
+    # `app.getPath('userData')` de Electron vive bajo XDG_CONFIG_HOME en Linux,
+    # no bajo XDG_DATA_HOME; el servicio congelado recibe esa misma ruta.
+    datos = configuracion / "DatenJäger"
     cache = trabajo / "cache"
-    for directorio in (configuracion, datos, cache):
+    for directorio in (configuracion, cache):
         directorio.mkdir(parents=True, exist_ok=True)
 
     print(f"[sonda] instalador: {appimage.name} ({appimage.stat().st_size / 1024 / 1024:.1f} MB)")
@@ -289,7 +291,7 @@ async def comprobar(argumentos) -> None:
     entorno = {
         **os.environ,
         "XDG_CONFIG_HOME": str(configuracion),
-        "XDG_DATA_HOME": str(datos),
+        "XDG_DATA_HOME": str(trabajo / "datos"),
         "XDG_CACHE_HOME": str(cache),
         # Sin esto, Electron busca el llavero del escritorio y puede quedarse
         # esperando una ventana de desbloqueo que nadie va a ver.
@@ -439,10 +441,29 @@ async def comprobaciones(sesion: Sesion, datos: Path) -> None:
         f"(puerto real {config['puertoBackend']})"
     )
 
-    salud = await sesion.evaluar(
-        "fetch('%s/api/salud', { headers: { 'X-DatenJager-Token': %s } })"
-        ".then((r) => r.text())" % (config["urlBackend"], js_texto(config["token"]))
-    )
+    # La configuración IPC puede adelantarse unos instantes al bind del socket;
+    # esperar la primera respuesta real antes de juzgar el instalador.
+    salud = None
+    ultimo_error = None
+    for _ in range(40):
+        try:
+            salud = await sesion.evaluar(
+                "fetch('%s/api/salud', { headers: { 'X-DatenJager-Token': %s } })"
+                ".then((r) => r.text())" % (config["urlBackend"], js_texto(config["token"]))
+            )
+            break
+        except Fallo as error:
+            ultimo_error = error
+            await asyncio.sleep(0.5)
+    if salud is None:
+        vista = await sesion.evaluar("document.body.innerText.slice(0,400)")
+        politica = await sesion.evaluar("document.querySelector('meta[http-equiv=\"Content-Security-Policy\"]')?.content || ''")
+        try:
+            with urllib.request.urlopen(config["urlBackend"] + "/api/salud", timeout=3) as respuesta:
+                diagnostico = f"HTTP directo {respuesta.status}"
+        except Exception as error:
+            diagnostico = f"HTTP directo {type(error).__name__}: {error}"
+        raise Fallo(f"No respondió la salud del servicio: {ultimo_error}; {diagnostico}; vista: {vista!r}; CSP meta: {politica!r}; consola: {sesion.consola[-8:]}")
     datos_salud = json.loads(salud)
     if datos_salud.get("base_datos") != "ok":
         raise Fallo(f"La base de datos no está sana según el servicio: {salud}")

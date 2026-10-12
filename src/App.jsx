@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ProveedorApp, useApp } from './estado/ProveedorApp.jsx'
 import BarraLateral from './components/BarraLateral.jsx'
+import BarraVentana from './components/BarraVentana.jsx'
+import ConfirmarCierreSesion from './components/ConfirmarCierreSesion.jsx'
 import BarraEstado from './components/BarraEstado.jsx'
 import BusquedaGlobal from './components/BusquedaGlobal.jsx'
 import Entrada from './components/Entrada.jsx'
-import Icono from './components/Icono.jsx'
 import Notificaciones from './components/Notificaciones.jsx'
 import { capaAbierta, escribiendoEn } from './lib/atajos.js'
 import { alternarPantallaCompleta } from './lib/escritorio.js'
@@ -74,6 +75,7 @@ function Marco() {
   // recuerda entre arranques, porque la bienvenida es la presentación de la
   // aplicación.
   const [portal, setPortal] = useState('bienvenida')
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false)
 
   useEffect(() => {
     try {
@@ -83,17 +85,42 @@ function Marco() {
     }
   }, [tema])
 
-  /** Cierra la sesión abierta (`Ctrl / ⌘ + Q`), con confirmación. */
-  const cerrarSesion = useCallback(async () => {
-    if (!autenticado) return
-    if (!globalThis.confirm('¿Cerrar la sesión abierta?')) return
+  /** La barra y Ctrl+Q abren la misma confirmación temática. */
+  const cerrarSesion = useCallback(() => {
+    if (autenticado) setConfirmandoSalida(true)
+  }, [autenticado])
 
+  const confirmarCierreSesion = async () => {
     try {
       await backend.sesion.salir()
     } finally {
       await recargarSalud()
     }
-  }, [autenticado, recargarSalud])
+    setConfirmandoSalida(false)
+  }
+
+  const abrirAsistente = () => {
+    if (seccion === 'chatbot') document.querySelector('main textarea')?.focus()
+    else setSeccion('chatbot')
+  }
+
+  // Los accesos se montan únicamente junto al contenido autenticado.
+  const conBarra = (contenido, mostrarAccesos = false) => (
+    <div className="flex h-full min-h-0 flex-col">
+      <BarraVentana
+        onAbrirAjustes={mostrarAccesos ? () => setSeccion('cuenta') : undefined}
+        onAbrirAsistente={mostrarAccesos ? abrirAsistente : undefined}
+        onCerrarSesion={mostrarAccesos ? cerrarSesion : undefined}
+      />
+      <div className="min-h-0 flex-1">{contenido}</div>
+      {mostrarAccesos && confirmandoSalida && (
+        <ConfirmarCierreSesion
+          onCancelar={() => setConfirmandoSalida(false)}
+          onConfirmar={confirmarCierreSesion}
+        />
+      )}
+    </div>
+  )
 
   // Atajos globales (SCRUM-85). La tabla que se anuncia en Ajustes vive en
   // `src/lib/atajos.js`; aquí está el manejador que los hace funcionar.
@@ -127,7 +154,7 @@ function Marco() {
 
       if (conModificador && tecla === 'q') {
         evento.preventDefault()
-        cerrarSesion()
+        if (!capaAbierta()) cerrarSesion()
         return
       }
 
@@ -158,35 +185,35 @@ function Marco() {
   // sesión en el backend de inmediato, así que hay que seguir mostrando el paso
   // del segundo factor aunque `autenticado` ya sea cierto (SCRUM-57/58).
   if (portal === 'bienvenida') {
-    return (
+    return conBarra(
       <Bienvenida
         onEntrar={() => setPortal('acceso')}
         onRegistrar={() => setPortal('registro')}
-      />
+      />,
     )
   }
 
   if (portal === 'registro') {
-    return (
+    return conBarra(
       <Registro
         onVolver={() => setPortal('bienvenida')}
         onTerminar={async () => {
           await recargarSalud()
           setPortal('sistema')
         }}
-      />
+      />,
     )
   }
 
   // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
   if (!autenticado) {
-    return <Acceso onVolver={() => setPortal('bienvenida')} />
+    return conBarra(<Acceso onVolver={() => setPortal('bienvenida')} />)
   }
 
   const activa = SECCIONES.find(({ clave }) => clave === seccion) ?? SECCIONES[0]
   const { Componente } = activa
 
-  return (
+  return conBarra(
     <div className="flex h-full w-full bg-fondo text-texto">
       <BarraLateral
         seccion={seccion}
@@ -196,7 +223,7 @@ function Marco() {
       />
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <SubCabecera seccion={activa} onAbrirAjustes={() => setSeccion('cuenta')} />
+        <SubCabecera seccion={activa} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
           {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
@@ -210,18 +237,7 @@ function Marco() {
         {/* Asistente flotante: se oculta en Ajustes, donde estorbaría sobre los
             formularios de seguridad. */}
         {seccion !== 'cuenta' && (
-          <BotonAsistente
-            enElAsistente={seccion === 'chatbot'}
-            onAbrir={() => {
-              if (seccion === 'chatbot') {
-                // Ya estamos aquí: el botón lleva el foco al compositor en vez
-                // de navegar a donde ya se está.
-                document.querySelector('main textarea')?.focus()
-                return
-              }
-              setSeccion('chatbot')
-            }}
-          />
+          <BotonAsistente enElAsistente={seccion === 'chatbot'} onAbrir={abrirAsistente} />
         )}
 
         <BarraEstado />
@@ -231,22 +247,23 @@ function Marco() {
       {buscando && (
         <BusquedaGlobal onNavegar={setSeccion} onCerrar={() => setBuscando(false)} />
       )}
-    </div>
+    </div>,
+    true,
   )
 }
 
 /**
- * Sub-cabecera fija: migas de pan y accesos rápidos.
+ * Sub-cabecera fija: migas de pan.
  *
  * El control de la barra lateral vive en el propio logo (ver `BarraLateral`),
  * así que aquí no se repite. La insignia de cifrado se retiró de este extremo
  * porque competía con el contenido de cada panel: el cifrado en uso ya se
  * informa donde importa —la franja de telemetría, el detalle de cada
- * expediente y la sección «Acerca de»— y aquí ocupaba el sitio de los accesos.
+ * expediente y la sección «Acerca de»—. Los accesos viven en la barra de ventana.
  */
-function SubCabecera({ seccion, onAbrirAjustes }) {
+function SubCabecera({ seccion }) {
   return (
-    <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-6">
+    <header className="flex h-cabecera shrink-0 items-center gap-4 border-b border-borde bg-superficie px-6">
       <nav aria-label="Ubicación" className="flex min-w-0 items-center gap-2 text-etiqueta-md">
         <span className="font-marca text-tenue">DatenJäger</span>
         <span aria-hidden="true" className="text-borde-fuerte">
@@ -255,26 +272,7 @@ function SubCabecera({ seccion, onAbrirAjustes }) {
         <span className="truncate font-medium">{seccion.titulo}</span>
         <span className="hidden truncate text-tenue sm:inline">· {seccion.descripcion}</span>
       </nav>
-
-      <div className="flex shrink-0 items-center gap-1">
-        <AccesoRapido icono="tuerca" titulo="Ajustes" onPulsar={onAbrirAjustes} />
-      </div>
     </header>
-  )
-}
-
-/** Acceso rápido de la sub-cabecera: mismo aspecto en todas las secciones. */
-function AccesoRapido({ icono, titulo, onPulsar }) {
-  return (
-    <button
-      type="button"
-      onClick={onPulsar}
-      title={titulo}
-      aria-label={titulo}
-      className="flex h-8 w-8 items-center justify-center rounded-md border border-borde text-tenue transition-colors hover:border-primario hover:text-primario"
-    >
-      <Icono nombre={icono} tamano={16} />
-    </button>
   )
 }
 

@@ -914,8 +914,8 @@ contempla.
 
 ## Fase 7 — Pulido final: diseño, animaciones y orden del repositorio
 
-Estado: **por hacer** — es la última fase, y la más fácil de posponer sin coste
-porque no bloquea nada.
+Estado: **en curso (pulido visual)** — Raven activó esta fase para corregir el
+visor PDF y la barra de ventana; el orden de los módulos Python sigue pendiente.
 
 ### 1. Diseño, animaciones y retoques de interfaz
 
@@ -924,6 +924,26 @@ temas, micro-interacciones que falten, revisión de los estados de carga y de
 error pantalla por pantalla, y los cambios ligeros de interfaz que aparezcan al
 usarla de verdad. **Se hace al final a propósito**: pulir antes de que la app
 sea instalable es pulir algo que quizá haya que mover.
+
+En esta iteración (`SCRUM-59` / `SCRUM-60`), el visor pasa a un portal sobre la
+raíz de la ventana para no quedar limitado por la animación del panel documental.
+La ventana Electron usa un marco propio de 44 px con controles y zona arrastrable;
+el visor de PDF reserva ese espacio y ocupa el resto de alto. PDF.js pinta las
+páginas descifradas en canvas: el visor nativo de Electron quedaba en blanco.
+La barra propia deja libre la zona de arrastre: no repite el logo ni el nombre
+del dashboard. Con sesión abierta incorpora Ajustes, Asistente y Cerrar sesión;
+este último comparte la confirmación del atajo `Ctrl+Q`. Los accesos se ocultan
+en bienvenida y acceso, y heredan los colores del tema claro u oscuro.
+El portal ya no repite el logo pequeño bajo el marco de ventana: la bienvenida
+conserva su marca central; acceso y registro mantienen título y navegación.
+La confirmación de salida usa un diálogo propio con tipografía, superficies y
+colores del tema, tanto desde la barra como desde `Ctrl+Q`. El lanzamiento
+`v2.1.2` usa la versión de tres partes exigida por la CI y publica solo `.exe`
+y `.AppImage` con una descripción breve.
+La sonda del instalador detectó además que, si el puerto preferido del backend
+está ocupado, la CSP inicial conserva el puerto antiguo. El proceso principal
+recarga una sola vez al conocer el puerto real; la prueba del AppImage valida el
+recorrido con puerto alternativo y el estado aislado en `userData`.
 
 ### 2. Orden del repositorio: los `.py` de la raíz
 
@@ -1019,7 +1039,7 @@ fase, el proyecto se considera entregable cuando:
 | 4. Integración de APIs y modelos locales | **hecho, solo API** — `SCRUM-34` (streaming), `35` (tiempos y reintentos), `36` (continuidad), `SCRUM-61` (asistente anclado al proyecto con datos reales en vivo) y `SCRUM-43` (SQLite con WAL, decisión en `docs/decision-persistencia.md`). El panel de conexión permite cargar la credencial, probarla y probar la generación. Los modelos locales quedan omitidos por decisión de Raven | 2026-10-01 |
 | 5. App instalable y publicada (GitHub Packages) | **por hacer** — adelantada desde el final (ver «Reordenación» abajo). Arranca por la **prueba de viabilidad** del backend empaquetado | 2026-10-01 |
 | 6. Búsqueda semántica + clasificación (evaluación) | evaluación — las dos juntas: comparten extracción de texto y embeddings | 2026-10-01 |
-| 7. Pulido final: diseño, animaciones y orden del repositorio | por hacer — la retirada de CustomTkinter depende de que la Fase 5 cubra todo | 2026-10-01 |
+| 7. Pulido final: diseño, animaciones y orden del repositorio | en curso — visor PDF y ventana sin marco; orden de los módulos Python pendiente | 2026-10-12 |
 
 ### Reordenación de fases (2026-10-01, decisión de Raven)
 
