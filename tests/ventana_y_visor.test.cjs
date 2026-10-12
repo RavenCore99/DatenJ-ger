@@ -10,8 +10,11 @@ test('el visor se monta en la raíz y no queda recortado por el panel animado', 
   const visor = leer('src/components/VisorPdf.jsx')
   assert.match(visor, /createPortal\(/)
   assert.match(visor, /document\.body\s*,/)
-  assert.match(visor, /flex-1 w-full border-0/)
-  assert.match(visor, /URL\.revokeObjectURL\(creada\)/)
+  assert.match(visor, /<LectorPdf bytes=\{bytes\}/)
+  const lector = leer('src/components/LectorPdf.jsx')
+  assert.match(lector, /getDocument\(\{ data: bytes \}\)/)
+  assert.match(lector, /ResizeObserver/)
+  assert.match(lector, /min-h-0 flex-1 overflow-auto/)
 })
 
 test('la ventana sin marco expone solo controles acotados al renderer', () => {
@@ -23,7 +26,6 @@ test('la ventana sin marco expone solo controles acotados al renderer', () => {
     assert.match(preload, new RegExp(`ventana:${accion}`))
   }
   assert.match(main, /BrowserWindow\.fromWebContents\(evento\.sender\)/)
-  assert.match(main, /frame-src blob:/)
 })
 
 test('la barra global tiene zonas de arrastre y controles accesibles', () => {

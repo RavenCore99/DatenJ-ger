@@ -1,6 +1,6 @@
 // Trazabilidad Jira: SCRUM-59 (DatenJäger — UI / UX).
 
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import Icono from './Icono.jsx'
@@ -8,35 +8,31 @@ import { EstadoError, Esqueleto } from './Panel.jsx'
 import { backend } from '../lib/api.js'
 import { enEscritorio, guardarArchivo } from '../lib/escritorio.js'
 
+const LectorPdf = lazy(() => import('./LectorPdf.jsx'))
+
 /**
- * Visor de PDF dentro de la aplicación (SCRUM-60).
+ * Visor de PDF dentro de la aplicación (SCRUM-59).
  *
  * Hasta ahora los documentos se descifraban en el backend y se abrían por
  * fuera, con el programa de PDF del sistema. Aquí se descifran igual —el
  * servicio entrega los bytes— y se pintan dentro de la ventana.
  *
- * **Sin dependencias nuevas**: el PDF se convierte en un `Blob` y se entrega a
- * un `<iframe>`, que el motor de Chromium —el de Electron y el del navegador de
- * desarrollo— ya sabe renderizar. Traer `pdf.js` habría añadido una librería
- * entera para algo que la plataforma hace sola.
- *
- * El objeto URL se revoca al cerrar: los bytes descifrados no deben quedarse
- * vivos en memoria más de lo necesario.
+ * Los bytes descifrados se entregan a PDF.js, porque el visor PDF nativo de
+ * Electron puede abrir el iframe sin llegar a pintar ninguna página.
  */
 export default function VisorPdf({ documento, onCerrar }) {
   const [estado, setEstado] = useState('cargando')
   const [error, setError] = useState(null)
-  const [url, setUrl] = useState(null)
+  const [bytes, setBytes] = useState(null)
   const [descargando, setDescargando] = useState(false)
 
   // El PDF se pide una vez por documento abierto.
   useEffect(() => {
     let vigente = true
-    let creada = null
 
     setEstado('cargando')
     setError(null)
-    setUrl(null)
+    setBytes(null)
 
     backend.documentos
       .descargar(documento.id)
@@ -44,8 +40,7 @@ export default function VisorPdf({ documento, onCerrar }) {
         if (!vigente) return
 
         const binario = base64ABytes(descarga.contenido_b64)
-        creada = URL.createObjectURL(new Blob([binario], { type: 'application/pdf' }))
-        setUrl(creada)
+        setBytes(binario)
         setEstado('listo')
       })
       .catch((fallo) => {
@@ -56,7 +51,6 @@ export default function VisorPdf({ documento, onCerrar }) {
 
     return () => {
       vigente = false
-      if (creada) URL.revokeObjectURL(creada)
     }
   }, [documento.id])
 
@@ -125,10 +119,7 @@ export default function VisorPdf({ documento, onCerrar }) {
         </div>
       </header>
 
-      {/* El área del visor ocupa todo el alto restante. El `<iframe>` es un
-          elemento flex (`flex-1`) en lugar de depender de `height: 100 %`, que
-          en ciertas cadenas flex puede colapsar al alto por defecto del
-          elemento y dejar la página en blanco o en una franja corta. */}
+      {/* El área del visor ocupa todo el alto restante, fuera del panel animado. */}
       <div className="flex min-h-0 flex-1 flex-col">
         {estado === 'cargando' && (
           <div className="m-4 flex flex-1 items-center justify-center rounded-panel border border-borde bg-superficie p-6">
@@ -142,12 +133,10 @@ export default function VisorPdf({ documento, onCerrar }) {
           </div>
         )}
 
-        {estado === 'listo' && url && (
-          <iframe
-            src={`${url}#zoom=page-width`}
-            title={`Documento ${documento.nombre}`}
-            className="min-h-0 flex-1 w-full border-0 bg-white"
-          />
+        {estado === 'listo' && bytes && (
+          <Suspense fallback={<p className="p-6 text-tenue">Preparando visor…</p>}>
+            <LectorPdf bytes={bytes} />
+          </Suspense>
         )}
       </div>
     </div>,

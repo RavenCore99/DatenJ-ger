@@ -90,9 +90,6 @@ function aplicarPoliticaDeSeguridad() {
       "default-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
-      // El visor interno usa una URL blob: creada a partir del PDF descifrado.
-      // Solo ese esquema puede alojarse como iframe; no se abren orígenes web.
-      "frame-src blob:",
       "font-src 'self' data:",
       `connect-src 'self' http://127.0.0.1:${puerto}`,
       "object-src 'none'",
