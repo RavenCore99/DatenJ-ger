@@ -928,8 +928,8 @@ sea instalable es pulir algo que quizá haya que mover.
 En esta iteración (`SCRUM-59` / `SCRUM-60`), el visor pasa a un portal sobre la
 raíz de la ventana para no quedar limitado por la animación del panel documental.
 La ventana Electron usa un marco propio de 44 px con controles y zona arrastrable;
-el visor de PDF reserva ese espacio y ocupa el resto de alto. La CSP permite
-únicamente `blob:` como origen de iframe para el documento descifrado.
+el visor de PDF reserva ese espacio y ocupa el resto de alto. PDF.js pinta las
+páginas descifradas en canvas: el visor nativo de Electron quedaba en blanco.
 
 ### 2. Orden del repositorio: los `.py` de la raíz
 
