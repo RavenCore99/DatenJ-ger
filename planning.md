@@ -930,6 +930,10 @@ raíz de la ventana para no quedar limitado por la animación del panel document
 La ventana Electron usa un marco propio de 44 px con controles y zona arrastrable;
 el visor de PDF reserva ese espacio y ocupa el resto de alto. PDF.js pinta las
 páginas descifradas en canvas: el visor nativo de Electron quedaba en blanco.
+La barra propia deja libre la zona de arrastre: no repite el logo ni el nombre
+del dashboard. Con sesión abierta incorpora Ajustes, Asistente y Cerrar sesión;
+este último comparte la confirmación del atajo `Ctrl+Q`. Los accesos se ocultan
+en bienvenida y acceso, y heredan los colores del tema claro u oscuro.
 
 ### 2. Orden del repositorio: los `.py` de la raíz
 
