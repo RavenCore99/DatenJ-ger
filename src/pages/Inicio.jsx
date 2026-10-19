@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import Panel, { Esqueleto, EstadoError, EstadoVacio, Tarjeta } from '../components/Panel.jsx'
+import { CabeceraPagina, Esqueleto, EstadoError, EstadoVacio } from '../components/Panel.jsx'
 import Icono from '../components/Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
@@ -43,40 +43,42 @@ export default function Inicio({ onNavegar }) {
 
   if (estado === 'sin_servicio') {
     return (
-      <Panel titulo="Resumen documental" descripcion="Métricas del archivo cifrado">
+      <section className="space-y-5">
+        <CabeceraPagina titulo="Inicio" descripcion="Resumen documental · archivo cifrado" />
         <EstadoVacio
           titulo="Sin conexión con el servicio local"
           mensaje="Inicia el backend de Python para consultar el inventario. La barra inferior indica el estado."
         />
-      </Panel>
+      </section>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <Panel titulo="Resumen documental" descripcion="Métricas del archivo cifrado">
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+      <CabeceraPagina titulo="Inicio" descripcion="Resumen documental · archivo cifrado" />
+      <section aria-label="Resumen documental" className="border-t border-borde pt-5">
         {estado === 'cargando' && <Esqueleto filas={4} variante="tarjetas" />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={() => cargar()} />}
         {estado === 'listo' && (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <div className="animar-entrada">
-              <Tarjeta etiqueta="Documentos" valor={metricas.total_pdfs} acento="primario" />
-            </div>
-            <div className="animar-entrada" style={{ animationDelay: '40ms' }}>
-              <Tarjeta etiqueta="Personas" valor={metricas.total_personas} />
-            </div>
-            <div className="animar-entrada" style={{ animationDelay: '80ms' }}>
-              <Tarjeta etiqueta="Empresas" valor={metricas.total_empresas} />
-            </div>
-            <div className="animar-entrada" style={{ animationDelay: '120ms' }}>
-              <Tarjeta etiqueta="Almacenamiento" valor={metricas.total_size_str} acento="exito" />
-            </div>
+          <div className="grid grid-cols-2 gap-y-6 pb-5 lg:grid-cols-4">
+            {[
+              ['Documentos', metricas.total_pdfs],
+              ['Personas', metricas.total_personas],
+              ['Empresas', metricas.total_empresas],
+              ['Almacenamiento', metricas.total_size_str],
+            ].map(([etiqueta, valor], indice) => (
+              <div key={etiqueta} className="animar-entrada border-l border-borde pl-4" style={{ animationDelay: `${indice * 40}ms` }}>
+                <p className="text-etiqueta-sm uppercase tracking-wider text-tenue">{etiqueta}</p>
+                <p className="mt-1 font-mono text-titulo-md text-texto">{valor ?? '—'}</p>
+              </div>
+            ))}
           </div>
         )}
-      </Panel>
+      </section>
 
-      <Panel titulo="Accesos" descripcion="Secciones del sistema">
-        <div className="flex flex-wrap gap-2">
+      <section aria-label="Accesos" className="space-y-3">
+        <h2 className="text-titulo-sm">Accesos</h2>
+        <div className="grid gap-1 sm:grid-cols-2">
           {[
             ['documentos', 'Ver documentos', 'documentos'],
             ['personas', 'Ver personas', 'personas'],
@@ -87,14 +89,14 @@ export default function Inicio({ onNavegar }) {
               key={clave}
               type="button"
               onClick={() => onNavegar?.(clave)}
-              className="flex items-center gap-2 rounded-lg border border-borde px-3 py-1.5 text-xs font-medium transition-colors hover:border-primario hover:text-primario"
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-etiqueta-md font-medium transition-colors hover:bg-superficie-2 hover:text-primario focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario"
             >
               <Icono nombre={icono} tamano={14} />
               {etiqueta}
             </button>
           ))}
         </div>
-      </Panel>
+      </section>
     </div>
   )
 }

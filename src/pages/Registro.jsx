@@ -66,11 +66,6 @@ export default function Registro({ onVolver, onTerminar }) {
     >
       <main className="aparecer flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-8">
         <div className="w-full max-w-[32rem] overflow-hidden rounded-panel border border-borde bg-superficie shadow-flotante">
-          <div
-            aria-hidden="true"
-            className="h-1 bg-gradient-to-r from-primario-enfasis via-primario to-acento"
-          />
-
           <div className="flex flex-col gap-5 p-7">
             <header className="flex flex-col items-center gap-3 text-center">
               <img
