@@ -295,7 +295,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       )}
 
       {!estado && !error && (
-        <Panel titulo="Conexión">
+        <Panel plano titulo="Conexión">
           <Esqueleto variante="texto" filas={5} />
         </Panel>
       )}
@@ -303,6 +303,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       {estado && (
         <>
           <Panel
+            plano
             titulo="Credencial de API"
             descripcion="Pega solo la clave: el proveedor y la URL base se deducen"
           >
@@ -335,7 +336,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                       }
                     }}
                     aria-pressed={id === estado.proveedor}
-                    className="rounded-md border border-borde px-3 py-1.5 text-etiqueta-sm text-texto transition-colors hover:border-primario disabled:border-primario disabled:text-primario"
+                    className="rounded-md px-3 py-1.5 text-etiqueta-sm text-texto transition-colors hover:bg-fondo-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario disabled:bg-primario/10 disabled:text-primario"
                   >
                     {nombre}{id === estado.proveedor ? ' · activa' : ''}
                   </button>
@@ -598,7 +599,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
             </form>
           </Panel>
 
-          <Panel titulo="Estado de la conexión" descripcion="Lo que muestra la franja de telemetría">
+          <Panel plano titulo="Estado de la conexión" descripcion="Lo que muestra la franja de telemetría">
             <div className="flex flex-col gap-3 text-cuerpo-sm">
               <p className="flex items-start gap-2 text-texto-2">
                 <span
@@ -629,7 +630,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
             </div>
           </Panel>
 
-          <Panel titulo="Cómo se aplica" descripcion="Activación sin reiniciar">
+          <Panel plano titulo="Cómo se aplica" descripcion="Activación sin reiniciar">
             <ul className="flex flex-col gap-2 text-cuerpo-sm text-texto-2">
               <li className="flex items-start gap-2">
                 <Icono nombre="guardar" tamano={14} />

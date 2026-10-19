@@ -107,7 +107,7 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
             }`}
           >
             <div className="overflow-hidden">
-              <div className="grid gap-4 pt-1 sm:grid-cols-2">
+              <div className="grid overflow-hidden rounded-panel bg-superficie shadow-flotante ring-1 ring-borde/50 sm:grid-cols-2">
                 <Tarjeta
                   etiqueta="PBKDF2-SHA256"
                   titulo="Acceso con bóveda existente"
@@ -117,6 +117,7 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
                 />
 
                 <Tarjeta
+                  separada
                   etiqueta="2FA · TOTP"
                   titulo="Registro de operador"
                   descripcion="Crea una cuenta nueva y configura el doble factor con su código QR y los códigos de respaldo, sin salir de la aplicación."
@@ -132,7 +133,7 @@ export default function Bienvenida({ onEntrar, onRegistrar }) {
   )
 }
 
-function Tarjeta({ etiqueta, titulo, descripcion, accion, onAccion, desactivada }) {
+function Tarjeta({ etiqueta, titulo, descripcion, accion, onAccion, desactivada, separada = false }) {
   const tarjeta = useRef(null)
 
   return (
@@ -141,11 +142,12 @@ function Tarjeta({ etiqueta, titulo, descripcion, accion, onAccion, desactivada 
       data-entrada
       onPointerDown={() => pulso(tarjeta.current)}
       className={[
-        'flex flex-col gap-3 rounded-panel border bg-superficie p-5 text-left shadow-flotante',
-        desactivada ? 'border-borde opacity-70' : 'border-borde transition-colors hover:border-primario',
+        'flex flex-col gap-3 p-6 text-left transition-colors',
+        separada ? 'border-t border-borde/50 sm:border-l sm:border-t-0' : '',
+        desactivada ? 'opacity-70' : 'hover:bg-fondo-2/60 focus-within:bg-fondo-2/60',
       ].join(' ')}
     >
-      <span className="w-fit rounded border border-borde bg-fondo px-2 py-0.5 font-mono text-telemetria text-primario">
+      <span className="font-mono text-telemetria text-primario">
         {etiqueta}
       </span>
 

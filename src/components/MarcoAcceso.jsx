@@ -25,21 +25,18 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
       {(titulo || onVolver) && (
         <header className="pointer-events-none absolute inset-x-0 top-11 z-20 flex items-center justify-end px-5 py-2">
           {titulo && (
-            <div className="sr-only">
-              {titulo}
-            </div>
+            <span className="sr-only">{titulo}</span>
           )}
-
-        {onVolver && (
-          <button
-            type="button"
-            onClick={onVolver}
-            className="pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario"
-          >
-            <Icono nombre="flecha-izquierda" tamano={14} />
-            {subtitulo ?? 'Volver'}
-          </button>
-        )}
+          {onVolver && (
+            <button
+              type="button"
+              onClick={onVolver}
+              className="pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario"
+            >
+              <Icono nombre="flecha-izquierda" tamano={14} />
+              {subtitulo ?? 'Volver'}
+            </button>
+          )}
         </header>
       )}
 
