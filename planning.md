@@ -72,9 +72,10 @@ Estado: **hecho en lo técnico**, y los **mockups ya están en el repositorio**:
   `assets/icons/` y cinco complementos de interfaz en `assets/assets/`.
 
 Con esto la Fase 3 deja de estar bloqueada. **Los assets ya están versionados**
-(`ee40d51` incorporó `assets/mockups/` con las 15 pantallas, su `code.html`, los
+(`ee40d51` incorporó `assets/mockups/` con las 15 pantallas, sus `code.html`, los
 dos `DESIGN.md` y el inventario; `19a6cde` retiró las 24 copias antiguas tras
-comprobar una por una que eran byte a byte idénticas).
+comprobar una por una que eran byte a byte idénticas). Los 15 `code.html` ya no
+están en el árbol actual: usados como referencia, permanecen recuperables en Git.
 
 - [x] Revisar el contenido de `/assets/mockups` disponible hasta ahora
       (5 pantallas: Configuración/Appearance, Auditoría Ley 1581 en modo
@@ -84,8 +85,9 @@ comprobar una por una que eran byte a byte idénticas).
       **Confirmado con Raven**: estos mockups son **inspiración de
       estilo** (muy influenciados por "Hermes Desktop"), no una
       especificación 1:1 a replicar.
-- [x] Mockups recibidos y revisados (2026-09-30): **15 pantallas** con su
-      `code.html` real, en `assets/mockups/tema claro/` y `tema oscuro/`.
+- [x] Mockups recibidos y revisados (2026-09-30): **15 pantallas** en
+      `assets/mockups/tema claro/` y `tema oscuro/`; sus `code.html` originales
+      se consultan en el historial de Git, no en el árbol actual.
       Cubren login, bienvenida/intro, menú de inicio con registro y setup 2FA,
       registro con QR, suite principal, suite con el chatbot en la barra
       lateral, auditoría, ajustes y asistente conversacional. **Sigue sin
@@ -222,7 +224,7 @@ Comprobado antes de abrir la Fase 3, para que lo anterior quede al día:
 | Fase | Comprobación | Resultado |
 | --- | --- | --- |
 | 0 | Mecanismo Python↔Electron definido y construido | `backend/server.py` (FastAPI + uvicorn, token por proceso) — verificado punta a punta |
-| 0 | Material de diseño disponible y versionado | 15 mockups + `code.html` + 2 `DESIGN.md` + inventario, en git |
+| 0 | Material de diseño disponible y versionado | 15 capturas + 2 `DESIGN.md` + inventario en el árbol; `code.html` recuperables en Git |
 | 0 | `.claudeignore` vigente | creado |
 | 1 | Pruebas del backend sin Tkinter | `./venv/bin/python -m unittest discover -s tests -t .` → **121 pruebas, OK** (hoy 142; ver el cierre de la Fase 3) |
 | 1 | La capa backend no arrastra interfaz | importar `backend.*` sin `DISPLAY` → *modulos de interfaz cargados: ninguno* |
