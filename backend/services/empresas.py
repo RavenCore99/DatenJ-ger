@@ -1,24 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/empresas.py - catálogo de empresas (calidad de vida)
 
-"""Servicio de empresas: el catálogo al que se asocian las personas.
-
-Antes, la empresa de un titular era **texto libre** en `Personas.empresa`, así
-que «Minera del Norte S.A.S.», «minera del norte» y «Minera  del Norte» eran tres
-empresas distintas para la base: imposible contar el personal por empresa y
-fácil sembrar duplicados. Ahora hay un catálogo propio y `Personas.empresa_id`
-apunta a él.
-
-**Cómo se evita el duplicado.** Cada empresa guarda dos cosas: `nombre` —lo que
-escribió el usuario, tal cual— y `nombre_normalizado`, la clave de comparación
-que produce `database.normalizar_empresa` (sin acentos, sin puntuación, sin la
-forma societaria final). La clave es `UNIQUE`: si alguien vuelve a escribir la
-misma empresa con otra grafía, se resuelve a la ficha que ya existe.
-
-La columna de texto `Personas.empresa` se conserva y se mantiene en sincronía:
-es lo que el usuario escribió y sirve de respaldo, y el inventario de documentos
-la sigue mostrando sin tener que recorrer el catálogo.
-"""
+"""Gestiona el catálogo de empresas y evita duplicados por nombre normalizado."""
 
 from __future__ import annotations
 

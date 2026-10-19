@@ -1,38 +1,10 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# backend/services/semantica.py - búsqueda semántica y clasificación (Fase 6)
+# Búsqueda semántica y clasificación de documentos.
 
-"""Servicio de búsqueda semántica y clasificación automática (evaluación).
+"""Extrae y fragmenta PDFs para búsqueda semántica y clasificación.
 
-Backend-only, sin Tkinter. Cubre los dos usos de la Fase 6 (buscar por
-significado y clasificar por tipo) que comparten la misma tubería: extraer
-texto del PDF, trocearlo y calcular embeddings.
-
-Decisiones:
-
-* **Modelo**: ``sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2``
-  vía `fastembed` (ONNX Runtime, CPU, sin PyTorch). Se importa **de forma
-  perezosa** para no cargar el modelo en el arranque ni exigirlo como
-  dependencia del resto de la aplicación.
-
-* **Índice**: un archivo SQLite **propio** (no la base principal) con los
-  fragmentos, su texto cifrado y su embedding. No se toca el esquema de
-  `database.py`.
-
-* **Privacidad (opción B)**: el texto del fragmento se guarda **cifrado en
-  reposo** con AES-256-GCM usando una clave de 256 bits derivada del
-  ``usuario_nombre`` con el mismo PBKDF2-600k que los documentos, pero
-  **derivada una sola vez por usuario** (salt fijo del índice) y reutilizada
-  con nonce aleatorio por fragmento. Es la misma fuerza criptográfica que usa
-  el sistema, sin repetir el costoso KDF por cada fragmento. El embedding
-  (vector float32) se guarda en claro porque la búsqueda lo necesita en bloque
-  y no es reversible a texto completo.
-
-* **Almacén vectorial**: los vectores se comparan con coseno en numpy. Para
-  cientos de documentos (miles de fragmentos) esto es milisegundos, así que no
-  hace falta ChromaDB.
-
-Funciones públicas: :func:`trocear`, :func:`indexar_corpus`,
-:func:`buscar`, y el clasificador por reglas :func:`clasificar_texto`.
+Guarda el texto cifrado en un índice SQLite separado y compara embeddings
+localmente. El modelo se carga bajo demanda.
 """
 
 from __future__ import annotations

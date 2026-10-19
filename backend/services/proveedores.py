@@ -1,24 +1,6 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/proveedores.py - catálogo y detección de proveedores de IA
-# Trazabilidad Jira: SCRUM-62 (DatenJäger — API / Servicios).
-
-"""Catálogo de proveedores de modelos y detección por la forma de la clave.
-
-La idea es que el usuario **solo pegue su credencial**: de su forma se deduce el
-proveedor, y del proveedor, la URL base y la variable de entorno donde se
-guarda. Nadie tiene que saber que NVIDIA vive en `integrate.api.nvidia.com/v1` ni
-que Gemini usa `generativelanguage.googleapis.com`.
-
-**Sobre la detección.** No es adivinación: cada proveedor publica sus claves con
-un prefijo o sufijo reconocible, y aquí se declara cuál. Si una clave no encaja
-con ninguno, se dice tal cual y se pide elegir el proveedor a mano; no se prueba
-a ciegas contra varias APIs.
-
-**Dos estilos de API.** Gemini habla su propio dialecto (`generateContent`,
-cabecera `X-goog-api-key`). NVIDIA, OpenAI y OpenRouter comparten el estilo de
-OpenAI (`chat/completions`, `Authorization: Bearer`), que aquí se llama
-`compatible`. El servicio del asistente sabe hablar los dos.
-"""
+"""Identifica proveedores por la clave y define sus endpoints y modelos."""
 
 from __future__ import annotations
 

@@ -1,23 +1,8 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/contexto.py - contexto del proyecto para el asistente
-# Trazabilidad Jira: SCRUM-61 (DatenJäger — Chatbot).
+"""Construye el contexto del asistente con agregados actuales del sistema.
 
-"""Contexto del proyecto que se le entrega al asistente (``SCRUM-61``).
-
-El asistente debe responder **solo** sobre DatenJäger y con las cifras reales
-del sistema, no con lo que el modelo recuerde o imagine. Este módulo arma ese
-contexto a partir de las consultas que ya existen.
-
-**Qué entra y qué no.** Solo **agregados**: cuántos documentos hay, cuánto
-ocupan, cómo se reparten por empresa, cuántos titulares y empresas hay, y qué
-acciones registra la auditoría. No entra ni un dato personal —cédulas, nombres
-de titulares, nombres de archivo, contenido de los documentos— ni un secreto
-—claves, hashes, tokens, rutas del disco—. Esa es la protección de verdad: el
-modelo no puede filtrar lo que nunca recibe, y el prompt lo dice además por
-escrito para que no invente lo que no tiene.
-
-El contexto se recalcula en cada turno: si el archivo cambia mientras se
-conversa, las cifras que da el asistente son las de ahora.
+Excluye datos personales, contenido de documentos y secretos.
 """
 
 from __future__ import annotations

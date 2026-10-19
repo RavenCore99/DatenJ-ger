@@ -1,28 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/tokens.py - almacén cifrado de tokens de confianza
 
-"""Almacén de tokens de confianza cifrado en disco (SCRUM-25).
+"""Cifra y gestiona tokens locales de dispositivos de confianza.
 
-Los tokens de confianza permiten omitir el segundo factor en un equipo de
-confianza. Antes vivían en claro dentro de `config.json`, mezclados con las
-preferencias de la aplicación.
-
-Ahora cada token se guarda cifrado con AES-256-GCM en `tokens_confianza/`:
-
-* un archivo por cuenta, nombrado con un resumen del nombre del usuario, así
-  que el nombre no queda expuesto en el listado del directorio;
-* la clave del almacén vive en `tokens_confianza/llave.bin` con permisos 0600;
-  el directorio se crea con 0700.
-
-**Alcance real de esta protección.** Cifrar en disco evita que el token se lea
-al copiar `config.json`, al sincronizarlo con la nube, en un respaldo o al
-inspeccionar el directorio del proyecto. No protege frente a quien pueda leer
-todo el directorio personal del usuario: si puede leer `llave.bin`, puede
-descifrar los tokens. Para eso haría falta el llavero del sistema operativo.
-
-El token en claro nunca se entrega al frontend: el servicio lo guarda y lo
-recupera por su cuenta. El frontend solo ve si hay un dispositivo de confianza
-y puede pedir que se revoque.
+El frontend solo consulta su existencia o solicita su revocación.
 """
 
 from __future__ import annotations

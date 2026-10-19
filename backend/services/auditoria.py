@@ -1,17 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/auditoria.py - registro y consulta de auditoría
 
-"""Servicio de auditoría: registro de eventos, consulta del historial y
-composición del log del sistema.
+"""Registra eventos, consulta el historial y compone el log del sistema.
 
-Extraído de ``audit.py``, que conserva únicamente el visor (ventana,
-tabla y filtros). Todas las funciones de este módulo son invocables sin
-Tkinter.
-
-Cumplimiento: el registro de cada acción es obligatorio para la
-trazabilidad (Ley 1581). ``registrar_evento`` nunca levanta excepción: un
-fallo de auditoría no debe romper la operación de negocio que lo origina,
-pero sí reporta ``False`` para que el llamador pueda decidir.
+Un fallo al registrar devuelve ``False`` sin interrumpir la operación.
 """
 
 from __future__ import annotations

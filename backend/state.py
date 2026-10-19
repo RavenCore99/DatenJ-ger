@@ -1,19 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/state.py - estado de aplicación consultable
 
-"""Capa de estado de aplicación.
-
-Hasta ahora la sesión, el tema, la configuración y la temporización de
-inactividad vivían como atributos implícitos de la clase principal de
-``main.py`` (``self.usuario_actual``, ``self._session_key``,
-``self.config``...). Este módulo los vuelve explícitos en un objeto único
-que la interfaz y el servidor local consultan de la misma forma.
-
-La clase **no** importa Tkinter: el tema se guarda como dato, y es la
-interfaz la que lo aplica a CustomTkinter. La conexión de base de datos se
-recibe ya creada (``database.conectar_db``) para no cambiar el ciclo de
-vida actual.
-"""
+"""Estado compartido de sesión, configuración y conexión de base de datos."""
 
 from __future__ import annotations
 

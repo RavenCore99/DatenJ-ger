@@ -1,16 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/documentos.py - CRUD de documentos (PDFs)
 
-"""Servicio de documentos: CRUD de PDFs cifrados.
+"""Gestiona documentos PDF cifrados y sus metadatos.
 
-Extraído de ``pdf_manager.py`` (que conserva solo la construcción de la
-interfaz). Todas las funciones de este módulo son invocables sin Tkinter:
-reciben ``conn``/``cursor`` y el usuario explícitamente, y retornan datos
-o levantan una excepción tipada.
-
-Contrato de cifrado: el PDF se guarda cifrado con AES-256-GCM usando como
-clave el nombre del usuario (``usuario_nombre``), tal como hacía el panel
-original. El servicio no cambia el esquema ni el algoritmo.
+Recibe conexión y usuario explícitos; devuelve datos o errores tipados.
 """
 
 from __future__ import annotations

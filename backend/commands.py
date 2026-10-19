@@ -1,26 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/commands.py - punto de entrada único de operaciones
 
-"""Capa de comandos: punto de entrada único del backend.
+"""Fachada de operaciones con control de sesión y acceso serializado a SQLite.
 
-Agrupa las operaciones de todos los paneles (documentos, personas,
-auditoría, reportes, chatbot y sesión) detrás de una sola clase, de modo
-que cualquier cliente —la interfaz CustomTkinter hoy, el servidor local
-FastAPI mañana— invoque las mismas funciones sin conocer los servicios por
-dentro.
-
-Contrato:
-    - Todos los comandos verifican que exista sesión activa y levantan
-      ``NoAutenticadoError`` si no la hay (salvo los de sesión).
-    - Los comandos de escritura y lectura usan ``AppState.db_lock`` para
-      serializar el acceso a la conexión SQLite compartida.
-    - Los comandos retornan datos simples (``dict``/``list``/``bytes``),
-      nunca widgets.
-
-La verificación de credenciales, el bloqueo por intentos, el segundo
-factor (TOTP o código de respaldo) y el **alta de usuario** forman ya parte
-de esta capa (SCRUM-22, SCRUM-25 y SCRUM-57). La clave de sesión se retiene
-aquí: nunca se entrega al cliente.
+Devuelve datos simples y mantiene la clave de sesión dentro del backend.
 """
 
 from __future__ import annotations
@@ -47,11 +30,7 @@ from backend.services import reportes as _reportes
 from backend.services import semantica as _semantica
 from chatbot import ChatbotService, ConfiguracionChatbotError, crear_servicio
 
-#: Operaciones que todavía viven en la interfaz y su motivo.
-#:
-#: Vacío desde SCRUM-57: el alta de usuario era la última. Se conserva el
-#: catálogo para que cualquier trabajo futuro que vuelva a quedarse en la
-#: interfaz se declare aquí en vez de quedar implícito.
+#: Operaciones aún pendientes de trasladar al backend.
 OPERACIONES_PENDIENTES: dict[str, str] = {}
 
 
