@@ -1,37 +1,8 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/verificar_instalador.py — conduce la aplicación empaquetada
-# Trazabilidad Jira: SCRUM-54 (DatenJäger — Electron).
+"""Conduce el instalador Linux y comprueba ventana, servicio y registro.
 
-"""Verifica el instalador conduciendo la aplicación de verdad (Fase 5).
-
-Comprobar que el instalador *existe* no dice nada: lo que hay que probar es que
-alguien que no tiene Python pueda abrirlo y usarlo. Esta sonda abre el
-`.AppImage` como lo haría esa persona —sin el entorno del proyecto— y conduce la
-ventana por el protocolo de depuración de Chromium para leer el DOM real.
-
-Por qué no basta con comprobar los archivos:
-
-* El renderer arranca en Electron y hace `fetch` al servicio local. Un servicio
-  que no arranca deja una ventana en blanco o «sin conexión», y el `.AppImage`
-  sigue ahí, impecable.
-* `vite build` compila sin quejarse un identificador que no existe (lección de
-  `SCRUM-89`), así que el build no prueba que la pantalla monte.
-
-Qué se comprueba, en orden:
-
-1. El `.AppImage` arranca y el renderer monta (sin excepciones de JavaScript).
-2. El servicio local **congelado** responde y su base de datos está sana.
-3. El **estado no viaja en el instalador**: la base y los almacenes se crean en
-   el directorio de datos del usuario, y el árbol de la aplicación queda limpio.
-4. El recorrido de una persona nueva: bienvenida → registro → cuenta creada.
-
-El entorno se aísla con `XDG_*` en directorios temporales, así que la sonda no
-toca la configuración real de quien la ejecuta.
-
-    ./venv/bin/python scripts/verificar_instalador.py
-    ./venv/bin/python scripts/verificar_instalador.py --mantener   # no borra
-
-Sale con 0 si todo pasa y con 1 si algo falla.
+Aísla el estado de la aplicación para no tocar los datos del usuario.
 """
 
 from __future__ import annotations

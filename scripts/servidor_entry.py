@@ -1,34 +1,6 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/servidor_entry.py — punto de entrada del backend congelado
-# Trazabilidad Jira: SCRUM-54 (DatenJäger — Electron).
-
-"""Punto de entrada del servicio local cuando se empaqueta (Fase 5).
-
-PyInstaller necesita un guion de arranque; no puede tomar `backend/server.py`
-como entrada porque ese módulo importa `backend.commands` y solo funcionaría si
-el directorio **padre** del paquete estuviera en `sys.path`.
-
-Además, el binario congelado no tiene un directorio de proyecto alrededor: el
-programa va dentro del paquete y el estado —base de datos, `.env`, almacenes
-cifrados y `config.json`— no puede escribirse ahí. Este guion resuelve las dos
-cosas:
-
-* **Datos locales.** Se decide un directorio de datos por usuario y se trabaja
-  desde él, de modo que la instalación cree su propio estado y no dependa de
-  que el lanzador (Electron) lo pase. `DATENJAGER_DATOS` manda si está definido;
-  `electron/backend.js` lo define con el directorio de datos de la aplicación.
-* **Base de datos, sin tocar `database.py`.** `conectar_db()` cae en
-  `sys.MEIPASS` (atributo del PyInstaller antiguo, hoy inexistente) cuando corre
-  congelado y nadie le pasa `--db`: eso revienta con `AttributeError` y además
-  apuntaría al directorio temporal de extracción, donde los datos se pierden al
-  cerrar. Aquí se inyecta un `--db` por defecto dentro del directorio de datos
-  **antes** de delegar en `main()`, así que el camino congelado nunca lo pisa.
-  `DATENJAGER_DB` y un `--db` explícito siguen teniendo prioridad.
-
-Ejecución manual del binario:
-
-    ./datenjager-servidor --puerto 8756
-"""
+"""Inicia el backend congelado con los datos en el perfil del usuario."""
 
 from __future__ import annotations
 

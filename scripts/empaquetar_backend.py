@@ -1,24 +1,6 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/empaquetar_backend.py — congela el backend para el instalador
-# Trazabilidad Jira: SCRUM-54 (DatenJäger — Electron).
-
-"""Congela el backend Python con PyInstaller (Fase 5).
-
-Deja el servicio local como un programa autónomo en
-``empaquetado/servidor/datenjager-servidor/``, que es lo que
-``electron-builder.yml`` mete en el instalador como recurso del paquete.
-
-El objetivo de este guion es que empaquetar sea **una orden** y siempre igual:
-las carpetas, la receta y la limpieza viven aquí, no en la cabeza de quien lo
-lanza. Por eso existe en vez de documentar la línea de PyInstaller.
-
-    ./venv/bin/python scripts/empaquetar_backend.py
-
-Opciones:
-
-    --sin-limpiar   conserva los archivos intermedios de PyInstaller (para
-                    depurar por qué falta un módulo)
-"""
+"""Congela el backend Python y prepara su binario para el instalador."""
 
 from __future__ import annotations
 
