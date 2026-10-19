@@ -146,10 +146,11 @@ Atajos principales: `Ctrl/⌘+F` búsqueda global; `Ctrl/⌘+N` alta de document
 
 ```bash
 ./venv/bin/python -m unittest discover -s tests -t . -q
+node --test tests/*.test.cjs
 npm run build
 ```
 
-La suite contiene **264 pruebas**. Ejecuta las pruebas con el entorno de proveedores aislado: `config.py` carga el `.env` del directorio de trabajo y las credenciales exportadas alteran los resultados de algunos casos. Además se recorrió Electron compilado con datos aislados para generar y verificar las capturas; el build por sí solo no comprueba el DOM ni el flujo de acceso. El PR puede no tener checks automáticos de GitHub: el resultado local no equivale a una ejecución de CI. Los instaladores de una release anterior tampoco contienen automáticamente los cambios de `v2.1` que aún no se hayan integrado y publicado.
+La suite contiene **264 pruebas Python y 8 pruebas Node**. Los casos de modelos aíslan las credenciales exportadas o cargadas desde el `.env` local, sin usar claves reales; se verificaron tanto desde la raíz como desde un directorio temporal con una clave sintética de NVIDIA. Además se recorrió Electron compilado con datos aislados para generar y verificar las capturas; el build por sí solo no comprueba el DOM ni el flujo de acceso. El PR puede no tener checks automáticos de GitHub: el resultado local no equivale a una ejecución de CI. Los instaladores de una release anterior tampoco contienen automáticamente los cambios de `v2.1` que aún no se hayan integrado y publicado.
 
 ## Equipo y agradecimientos
 
