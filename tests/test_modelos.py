@@ -439,6 +439,36 @@ class DeteccionDeProveedorTest(unittest.TestCase):
 
 
 class VariasConexionesTest(BaseModelosTest):
+    def test_todos_los_proveedores_conservan_credenciales_y_perfil_independientes(self):
+        perfiles = (
+            ("gemini", "AIza-ejemplo-local", "gemini-flash-latest", None),
+            ("nvidia", "nvapi-ejemplo-local", "meta/llama-3.3-70b-instruct", None),
+            ("openrouter", "sk-or-ejemplo-local", "openai/gpt-4o-mini", None),
+            ("openai", "sk-ejemplo-local", "gpt-4o-mini", None),
+            ("compatible", "formato-no-reconocido-local", "modelo-local", "https://example.invalid/v1"),
+        )
+        for proveedor, clave, modelo, endpoint in perfiles:
+            actual = modelos.guardar(
+                self.raiz, proveedor=proveedor, api_key=clave,
+                modelo=modelo, endpoint=endpoint,
+            )
+            self.assertEqual(actual["proveedor"], proveedor)
+            self.assertEqual(modelos.clave(self.raiz), clave)
+            self.assertNotIn(clave, repr(actual))
+
+        env = self.leer_env()
+        self.assertEqual(stat.S_IMODE((self.raiz / modelos.NOMBRE_ENV).stat().st_mode), 0o600)
+        self.assertIn("OTRA_VARIABLE=se-conserva", env)
+        for proveedor, clave, modelo, endpoint in perfiles:
+            variable = proveedores.variable_de(proveedor)
+            self.assertEqual(env.count(f"{variable}="), 1)
+            self.assertIn(f"{variable}={clave}", env)
+            actual = modelos.guardar(self.raiz, proveedor=proveedor)
+            self.assertEqual(actual["modelo"], modelo)
+            self.assertEqual(actual["endpoint"], endpoint or proveedores.endpoint_de(proveedor))
+            self.assertEqual(modelos.clave(self.raiz), clave)
+            self.assertEqual(len(actual["conexiones_guardadas"]), len(perfiles))
+
     def test_no_admite_inyectar_otra_variable_en_el_env(self):
         from backend.errors import DatosInvalidosError
 
@@ -456,6 +486,10 @@ class VariasConexionesTest(BaseModelosTest):
         self.assertEqual(nvidia["salud"], modelos.SALUD_SIN_VERIFICAR)
         self.assertEqual(modelos.clave(self.raiz), "nvapi-sintetica")
         self.assertEqual({c["proveedor"] for c in nvidia["conexiones_guardadas"]}, {"gemini", "nvidia"})
+        self.assertEqual(
+            {c["proveedor"]: c["modelo"] for c in nvidia["conexiones_guardadas"]},
+            {"gemini": "gemini-flash-latest", "nvidia": "meta/llama-3.3-70b-instruct"},
+        )
         self.assertEqual(self.leer_env().count("GEMINI_API_KEY="), 1)
         self.assertEqual(self.leer_env().count("NVIDIA_API_KEY="), 1)
         self.assertNotIn("sintetica", repr(nvidia))

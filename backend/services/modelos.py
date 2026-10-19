@@ -528,7 +528,20 @@ def estado(raiz: str | os.PathLike) -> dict[str, Any]:
         "origen_clave": origen,
         "proveedores": proveedores.catalogo(),
         "conexiones_guardadas": [
-            {"proveedor": ficha["clave"], "nombre": ficha["nombre"]}
+            {
+                "proveedor": ficha["clave"],
+                "nombre": ficha["nombre"],
+                "modelo": (
+                    datos.get("conexiones", {}).get(ficha["clave"], {}).get("modelo")
+                    or (datos.get("modelo") if proveedor == ficha["clave"] else None)
+                    or modelo_por_defecto(ficha["clave"])
+                ),
+                "endpoint": (
+                    datos.get("conexiones", {}).get(ficha["clave"], {}).get("endpoint")
+                    or (datos.get("endpoint") if proveedor == ficha["clave"] else None)
+                    or ficha["endpoint"]
+                ),
+            }
             for ficha in proveedores.catalogo()
             if _clave_del_entorno(raiz, ficha["variable_entorno"])
             or bool(datos.get("conexiones", {}).get(ficha["clave"], {}).get("api_key"))
