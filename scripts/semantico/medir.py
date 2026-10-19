@@ -1,18 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/semantico/medir.py - consumo de hardware (latencia, RAM, tiempo)
 
-"""Mide el consumo real de hardware del índice semántico.
-
-Reporta lo que el anteproyecto pide evaluar («consumo de hardware»): tiempo de
-carga del modelo, RAM pico del proceso, tiempo de indexado por documento y
-latencia de consulta. La RAM pico se lee con `resource.getrusage` (Linux/macOS);
-en Windows se omite.
-
-Uso:
-
-    ./venv/bin/python scripts/semantico/medir.py --db /tmp/corpus.db --usuario semantica-test \\
-        --consulta "contratos de trabajo en altura"
-"""
+"""Mide tiempos y memoria del índice semántico."""
 
 from __future__ import annotations
 

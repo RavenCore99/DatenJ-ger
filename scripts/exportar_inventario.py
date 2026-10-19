@@ -1,28 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/exportar_inventario.py - reporte de inventario sin abrir la aplicación
 
-"""Genera el reporte de inventario documental desde la línea de comandos.
+"""Exporta el inventario documental a PDF o CSV desde la consola.
 
-Uso:
-
-    ./venv/bin/python scripts/exportar_inventario.py --listar
-    ./venv/bin/python scripts/exportar_inventario.py --usuario Raven
-    ./venv/bin/python scripts/exportar_inventario.py --usuario Raven --formato csv
-    ./venv/bin/python scripts/exportar_inventario.py --usuario Raven --destino /tmp/inv.pdf
-
-El PDF sale con la identidad del proyecto —portada con el logo, tarjetas de
-resumen, distribución por empresa, tabla de inventario y gráfico por empresa—,
-reutilizando `reporter.ReporteInventario`, que es el mismo generador que usa la
-aplicación. No hay una segunda plantilla que se desincronice.
-
-**Alcance y honestidad sobre el acceso.** El script corre en el mismo equipo y
-sobre el mismo archivo SQLite que la aplicación, así que adopta la sesión del
-usuario indicado en lugar de pedir credenciales: quien puede leer el archivo
-puede ejecutarlo, y exigir la contraseña aquí daría una sensación de control que
-no aporta nada. Lo que **no** hace es descifrar documentos: el reporte solo usa
-metadatos (nombre, tamaño, fecha, titular y empresa), que no están cifrados.
-Abrir un PDF sigue exigiendo la contraseña del usuario y el flujo de la
-aplicación.
+Usa metadatos locales; no descifra el contenido de los documentos.
 """
 
 from __future__ import annotations
