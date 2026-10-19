@@ -1,7 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_tokens.py - almacén cifrado de tokens de confianza
 
-"""Pruebas del almacén de tokens de confianza (SCRUM-25)."""
+"""Prueba el almacén de tokens de confianza."""
 
 from __future__ import annotations
 

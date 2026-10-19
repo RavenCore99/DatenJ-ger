@@ -1,7 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_cuenta.py - gestión de la propia cuenta
 
-"""Pruebas de contraseña, 2FA, códigos de respaldo y confianza (SCRUM-25)."""
+"""Prueba contraseña, 2FA, códigos de respaldo y confianza."""
 
 from __future__ import annotations
 

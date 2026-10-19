@@ -1,17 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/semantico/indexar.py - construir el índice semántico
 
-"""Construye (o reconstruye) el índice semántico de una cuenta.
-
-Descifra cada documento, extrae el texto, lo trocea y guarda fragmento cifrado
-+ embedding en el índice SQLite. Es idempotente: vuelve a indexar al usuario
-indicado desde cero.
-
-Uso:
-
-    ./venv/bin/python scripts/semantico/indexar.py --db /tmp/corpus.db --usuario semantica-test
-    ./venv/bin/python scripts/semantico/indexar.py --db /tmp/corpus.db --usuario semantica-test --indice /tmp/indice.db
-"""
+"""Reconstruye el índice semántico cifrado de una cuenta."""
 
 from __future__ import annotations
 

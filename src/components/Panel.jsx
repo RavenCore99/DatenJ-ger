@@ -1,13 +1,6 @@
 import Icono from './Icono.jsx'
 
-/**
- * Piezas de interfaz compartidas por las pantallas del sistema (Fase 3).
- *
- * `Panel` es el contenedor con cabecera y cuerpo; el resto son los estados
- * canónicos y las piezas recurrentes del sistema de diseño (tarjetas de
- * métrica, pills de estado, cabecera de página) que varias pantallas comparten
- * en lugar de reimplementar cada una.
- */
+/** Contenedores, estados y piezas visuales compartidas entre pantallas. */
 
 /** Contenedor de contenido; plano agrupa con aire y un único filete. */
 export default function Panel({ titulo, descripcion, acciones, children, className = '', plano = false }) {

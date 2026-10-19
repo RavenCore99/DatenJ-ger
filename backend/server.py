@@ -1,47 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/server.py - servidor local que expone la capa de comandos por HTTP
-# Trazabilidad Jira: SCRUM-62 (DatenJäger — API / Servicios).
+"""Expone la fachada de comandos mediante HTTP local con token de proceso.
 
-"""Puente Python <-> Electron (SCRUM-21).
-
-Expone `backend/commands.py` por HTTP en la interfaz de bucle local, para
-que el renderer de Electron consuma el backend de Python sin conocer su
-implementación. Es el mecanismo decidido en la Fase 0 de `planning.md`.
-
-Decisiones de diseño:
-
-* **Solo bucle local.** Escucha en `127.0.0.1`; no se publica en la red.
-* **Token de proceso.** Cada arranque genera un token aleatorio que el
-  proceso que lanza el servidor (Electron o la app de escritorio) conoce y
-  el renderer reenvía en la cabecera ``X-DatenJager-Token``. Sin él, otro
-  programa local o una página web no puede operar sobre los documentos.
-* **Errores tipados -> códigos HTTP.** Las excepciones de
-  `backend/errors.py` se traducen al formato ``{"detail": {"tipo",
-  "mensaje"}}`` que espera `src/lib/api.js`.
-* **La sesión se crea aquí.** ``POST /api/sesion`` valida credenciales y
-  aplica el bloqueo por intentos; ``POST /api/sesion/2fa`` y
-  ``/api/sesion/respaldo`` completan el segundo factor. La clave de sesión
-  nunca viaja en la respuesta: permanece en el proceso Python.
-* ``POST /api/sesion/heredar`` se conserva para que la aplicación de
-  escritorio pueda entregar una sesión ya autenticada durante la transición.
-* ``POST /api/registro`` da de alta una cuenta nueva (SCRUM-57): es el único
-  acceso que no exige sesión previa.
-* ``GET /api/salud`` informa también del estado de la base de datos, porque
-  un servicio vivo con la base caída fallaba al iniciar sesión sin decirlo.
-* **CORS por petición del lanzador.** En `npm run dev` el renderer se sirve
-  desde el servidor de Vite y su origen deja de ser `file://`, así que las
-  peticiones al servicio son de otro origen. La variable
-  ``DATENJAGER_CORS_ORIGENES`` (orígenes separados por comas, nunca ``*``) las
-  habilita; `electron/main.js` solo la define en modo desarrollo. Sin ella el
-  navegador bloquea las peticiones y la interfaz dice «sin conexión» aunque el
-  servicio esté levantado.
-
-Arranque:
-
-    python -m backend.server --puerto 8756 [--token TOKEN] [--db RUTA]
-
-Si la base no se puede abrir, el proceso lo anuncia como
-``DATENJAGER_ERROR base de datos: …`` y termina con código 2.
+Gestiona sesión, errores tipados y salud de la base sin exponer la clave
+de sesión al cliente. CORS solo se habilita para orígenes configurados.
 """
 
 from __future__ import annotations

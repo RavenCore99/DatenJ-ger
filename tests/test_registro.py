@@ -1,12 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_registro.py - alta de usuario y conexión de modelos sin Tkinter
 
-"""Pruebas del alta de cuentas (SCRUM-57) y de la conexión de modelos (SCRUM-64).
-
-El alta era la última operación que vivía en `main.py`; aquí se comprueba que
-el servicio repite sus reglas y que el comando deja la sesión abierta para
-configurar el segundo factor encima.
-"""
+"""Prueba el alta de cuentas y la conexión de modelos."""
 
 from __future__ import annotations
 
@@ -174,12 +169,7 @@ class TestConexionDeModelos(unittest.TestCase):
             modelos.guardar(self.tmpdir, proveedor="inventado")
 
     def test_el_env_manda_sobre_el_entorno_del_proceso(self):
-        """Contrato nuevo: la credencial del panel surte efecto sin reiniciar.
-
-        `config.py` carga el `.env` en `os.environ` al arrancar, así que si el
-        entorno del proceso mandara, una clave guardada desde el panel no se
-        aplicaría hasta reiniciar —y «Quitar la credencial» no quitaría nada.
-        """
+        """Prioriza la credencial guardada sin reiniciar el proceso."""
         modelos.guardar(self.tmpdir, api_key="clave-del-panel")
         os.environ[modelos.VARIABLE_ENTORNO] = "clave-cargada-al-arrancar"
         try:

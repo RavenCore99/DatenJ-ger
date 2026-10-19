@@ -6,31 +6,7 @@ import BotonBiometrico from '../components/BotonBiometrico.jsx'
 import logo from '../../assets/logo/logo.png'
 import { entradaEscalonada, pulso } from '../lib/movimiento.js'
 
-/**
- * Pantalla de bienvenida (SCRUM-29): portal previo al acceso, con la marca y
- * las dos rutas del sistema —entrar a la bóveda o registrar un operador—.
- *
- * **Un solo botón, dos caminos** (hallazgo de Raven): la portada ya no muestra
- * las dos tarjetas abiertas de golpe, sino un único botón **Ingresar** con la
- * misma lectura biométrica de «Iniciar sesión». Al pulsarlo, las dos secciones
- * —acceso con bóveda existente y registro de operador— se despliegan con una
- * transición fluida. La funcionalidad y las rutas de cada sección no cambian:
- * son las mismas tarjetas de antes, con sus botones intactos.
- *
- * **Apariencia más limpia** (hallazgo de Raven): fuera el subtítulo del marco
- * («Entorno de seguridad minera», que ahora vive en el propio marco como marca
- * opcional), fuera las dos líneas de descripción que competían con el nombre y
- * fuera la nota de «los documentos no salen de este equipo». El cifrado y el
- * estado real del servicio se movieron al pie del marco, donde son datos y no
- * decoración.
- *
- * **Movimiento (calidad de vida)**: la marca, el título y el botón entran
- * escalonados, y cada tarjeta late al pulsarla. Las secuencias usan
- * `lib/movimiento.js`, que respeta la preferencia del usuario y deja la pantalla
- * en su estado final si el movimiento está desactivado. El fondo de marca
- * —partículas y nombre— vive en `MarcoAcceso`, así que también acompaña al
- * acceso y al registro.
- */
+/** Presenta las opciones de acceso y registro del portal. */
 export default function Bienvenida({ onEntrar, onRegistrar }) {
   const { conectado, aviso, recargarSalud, limpiarAviso } = useApp()
   const escena = useRef(null)

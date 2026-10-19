@@ -1,19 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/semantico/clasificar.py - evaluación de la clasificación por reglas
 
-"""Evalúa la línea base de clasificación automática (Uso B) sobre un corpus.
-
-A cada documento se le extrae el texto (descifrando), se clasifica con las
-reglas de palabras clave y se compara contra las etiquetas de referencia
-(`corpus_etiquetas.json`). Reporta exactitud global, y precisión/exhaustividad
-por categoría, más la matriz de confusión.
-
-Uso:
-
-    ./venv/bin/python scripts/semantico/clasificar.py \\
-        --db /tmp/corpus_semantico.db --usu semantica-test \\
-        --etiquetas /tmp/corpus_semantico.etiquetas.json
-"""
+"""Evalúa la clasificación por reglas frente a etiquetas de referencia."""
 
 from __future__ import annotations
 

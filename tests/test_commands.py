@@ -138,16 +138,15 @@ class TestFlujoCompleto(BaseBackendTest):
     def test_catalogo_de_operaciones_pendientes(self):
         pendientes = self.comandos.operaciones_pendientes()
 
-        # El acceso y el segundo factor ya viven en esta capa (SCRUM-22)...
+        # El acceso y el segundo factor no son operaciones pendientes.
         self.assertNotIn("login", pendientes)
         self.assertNotIn("login_2fa", pendientes)
 
-        # ...y la gestión de cuenta tampoco sigue pendiente (SCRUM-25).
+        # La gestión de cuenta tampoco queda pendiente.
         for operacion in ("setup_2fa", "cambio_contrasena", "confianza_dispositivo"):
             self.assertNotIn(operacion, pendientes)
 
-        # Desde SCRUM-57 el alta de usuario también vive aquí: no queda nada
-        # declarado como pendiente en la interfaz.
+        # El alta de usuarios completa el catálogo de operaciones.
         self.assertEqual(pendientes, {})
 
 

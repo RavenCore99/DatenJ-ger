@@ -5,17 +5,7 @@ import { animar } from '../lib/movimiento.js'
 import { fechaCorta, tamanoLegible, titular } from '../lib/formato.js'
 import { useCerrarConEscape } from '../lib/modal.js'
 
-/**
- * Modales de documento (SCRUM-88): **detalles** y **editar**.
- *
- * La aplicación anterior abría cada uno en su propia ventana (`CTkToplevel`:
- * «Detalles PDF», «Editar PDF»). Aquí son capas modales sobre el panel, con el
- * sistema de diseño, igual que el alta y el visor: una sola forma de abrir algo
- * encima de la pantalla, no tres.
- *
- * `MarcoModal` concentra lo común —velo, tarjeta, `Esc`, foco y animación de
- * entrada— para que los dos modales solo se ocupen de su contenido.
- */
+/** Capas modales para consultar y editar los datos de un documento. */
 
 /** Cáscara compartida: velo, tarjeta, cierre con `Esc` y animación de entrada. */
 function MarcoModal({ id, titulo, descripcion, onCerrar, children, ancho = 'max-w-xl' }) {

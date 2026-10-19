@@ -1,4 +1,3 @@
-// Trazabilidad Jira: SCRUM-61 (DatenJäger — Chatbot).
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -9,19 +8,7 @@ import PensandoAsistente from '../components/PensandoAsistente.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
-/**
- * Panel del asistente (SCRUM-59), con la barra lateral de botones del mockup.
- *
- * El servicio del chatbot ya existía (`chatbot.py`, expuesto por el puente en
- * SCRUM-21) y el backend recuerda la conversación por sesión: esta pantalla es
- * la que faltaba para poder usarlo. Las acciones de la izquierda son atajos que
- * escriben el mensaje por ti; la conversación vive a la derecha.
- *
- * La respuesta sigue siendo **bloqueante** —el streaming es RF-16 y llega en
- * la Fase 4—, así que se muestra un estado de espera explícito mientras el
- * modelo contesta. El chatbot funciona **solo por API**: si no hay credencial
- * configurada, se dice con esas palabras y se enlaza al panel de conexión.
- */
+/** Conversación con el asistente y accesos rápidos a consultas. */
 const ACCIONES = [
   {
     clave: 'resumen',

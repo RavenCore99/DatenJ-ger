@@ -1,19 +1,7 @@
 // Copyright (c) 2024 DatenJäger. All rights reserved.
 // electron/main.js - proceso principal de Electron
 
-/**
- * Proceso principal.
- *
- * Responsabilidades:
- *   1. Crear la ventana del renderer (React).
- *   2. En modo desarrollo apuntar al servidor de Vite; en producción cargar
- *      `dist/index.html` desde el disco.
- *   3. Resolver y publicar la configuración que el renderer necesita
- *      (puerto del backend local, versión, modo).
- *   4. Aplicar una política de seguridad de contenido estricta en producción.
- *
- * El arranque del backend Python se conecta aquí en SCRUM-21.
- */
+/** Crea la ventana, inicia el backend y expone su configuración al renderer. */
 
 const path = require('node:path')
 const { app, BrowserWindow, ipcMain, session, shell } = require('electron')

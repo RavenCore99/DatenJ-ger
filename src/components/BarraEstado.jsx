@@ -1,26 +1,6 @@
 import { useApp } from '../estado/ProveedorApp.jsx'
 
-/**
- * Franja de telemetría inferior (SCRUM-28; iconos en SCRUM-65; estado con color
- * de las piezas del sistema en SCRUM-68).
- *
- * **Simplificada por hallazgo de Raven.** Antes cargaba con la dirección del
- * servicio (`http://127.0.0.1:8756`), el `servicio v1.0` del backend, la
- * insignia de cifrado y el texto «Servicio local conectado»: datos de depuración
- * que no aportan nada en el pie y competían con lo importante. Aquí quedan solo
- * las tres piezas cuyo estado importa —**BD**, **APIs** y **Chatbot**, cada una
- * con su punto de color— y, a la derecha, la versión del proyecto con el hash
- * del build. La versión sale de `package.json` (v2.1, la rama vigente).
- *
- * **Tres colores, un solo significado** (hallazgo de Raven): el punto no decora,
- * informa de la conexión **real**. Verde es óptimo (una comprobación real pasó),
- * amarillo es una conexión por confirmar —credencial guardada sin probar, o
- * comprobación en curso— y rojo es no conectado o fallando. El gris queda para
- * lo que todavía no tiene credencial: pintarlo de rojo alarmaría sin motivo.
- *
- * El detalle de **qué** se está midiendo viaja en el `title`, no en el texto del
- * pie: un punto de color con la etiqueta basta.
- */
+/** Muestra la salud de los servicios y la versión de la aplicación. */
 export default function BarraEstado() {
   const { sesion, autenticado, componentes } = useApp()
 
@@ -65,13 +45,7 @@ export default function BarraEstado() {
   )
 }
 
-/**
- * Punto de color por estado de una pieza del sistema (SCRUM-68).
- *
- * `ok` verde · `sin_verificar`/`verificando` amarillo · `error` rojo ·
- * `sin_configurar` gris neutro. Los estados desconocidos caen en gris para no
- * inventar una alarma.
- */
+/** Asigna un color al estado de un servicio; lo desconocido queda neutro. */
 const PUNTO = {
   ok: 'bg-exito',
   verificando: 'bg-alerta',

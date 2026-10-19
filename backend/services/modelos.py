@@ -1,28 +1,9 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# backend/services/modelos.py - conexión de modelos de IA (SCRUM-64)
+# Conexión de modelos de IA.
 
-"""Configuración del proveedor de modelos que usa el asistente.
+"""Guarda proveedores, modelos y credenciales cifradas del asistente.
 
-El panel de conexión del frontend necesita tres datos —proveedor, modelo y
-punto de conexión— y, opcionalmente, una clave de API. Los tres primeros no
-son secretos; la clave sí.
-
-**Dónde vive la clave.** Nunca en el renderer y nunca en claro en disco: se
-guarda cifrada con AES-256-GCM en `modelos/config.json`, dentro de un
-directorio con permisos `0700`, y la clave del almacén vive en
-`modelos/llave.bin` con permisos `0600` — el mismo patrón que ya usa
-`backend/tokens.py` para los tokens de confianza. El servicio solo informa de
-*si* hay clave configurada, jamás la devuelve.
-
-**Alcance real de esta protección.** Cifrar en disco evita que la clave quede
-en un respaldo, en el historial de git o al copiar el proyecto. No protege
-frente a quien pueda leer todo el directorio personal del usuario: si puede
-leer `llave.bin`, puede descifrar la clave. Para eso haría falta el llavero
-del sistema operativo.
-
-**Alcance funcional.** Cada proveedor conserva su propia credencial, modelo y
-prueba; el perfil activo determina qué dialecto consume el chatbot. Los modelos
-locales siguen aparcados (`SCRUM-37` a `SCRUM-39`).
+Expone el estado de la conexión sin devolver la credencial al cliente.
 """
 
 from __future__ import annotations

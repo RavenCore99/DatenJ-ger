@@ -1,19 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/reportes.py - métricas y exportación de reportes
 
-"""Servicio de reportes y métricas.
-
-Reúne las consultas que estaban repartidas entre ``main.py`` (datos del
-reporte del dashboard) y ``ui_components.DashboardWidget`` (tarjetas KPI,
-documentos por empresa y tendencia temporal), más la exportación a PDF/CSV.
-Sin dependencias de Tkinter.
-
-Nota sobre ``total_empresas``: el reporte de ``main.py`` lo cuenta como el
-número de filas del agrupamiento por ``COALESCE(empresa,'Sin empresa')``,
-mientras el dashboard lo cuenta como ``COUNT(DISTINCT COALESCE(empresa,''))``
-—son definiciones distintas y se conservan tal cual para no alterar las
-cifras que ya mostraba cada pantalla.
-"""
+"""Calcula métricas documentales y exporta reportes en PDF o CSV."""
 
 from __future__ import annotations
 

@@ -1,19 +1,6 @@
 // Copyright (c) 2024 DatenJäger. All rights reserved.
 // electron/backend.js - ciclo de vida del servicio Python local
-// Trazabilidad Jira: SCRUM-60 (DatenJäger — Electron).
-
-/**
- * Arranca y detiene `backend/server.py` (SCRUM-21).
- *
- * El servidor se anuncia en su primera línea de salida estándar:
- *
- *     DATENJAGER_LISTO puerto=8756 token=<secreto>
- *
- * De ahí salen el puerto real (por si se pidió 0 y lo eligió el sistema) y el
- * token que el renderer reenvía en `X-DatenJager-Token`. Si el servicio no
- * arranca, la aplicación sigue funcionando y la interfaz muestra el estado
- * «sin conexión» en lugar de fallar en silencio.
- */
+/** Gestiona el servicio Python local y comunica su puerto y token. */
 
 const fs = require('node:fs')
 const path = require('node:path')
@@ -42,32 +29,14 @@ const { randomBytes } = require('node:crypto')
 /** Tiempo máximo de espera del anuncio de arranque. */
 const ESPERA_ARRANQUE_MS = 25000
 
-/**
- * Puertos que se prueban, en orden, hasta que uno quede libre.
- *
- * Si el puerto preferido está ocupado (una instancia anterior que no se cerró
- * bien, o el `main.py` antiguo), antes la aplicación se quedaba **sin servicio**
- * y la interfaz decía «sin conexión» sin más. Probando el siguiente puerto, y
- * dejando el último en manos del sistema (`0`), arrancar deja de depender de que
- * nadie tenga ocupado el 8756.
- */
+/** Ofrece puertos alternativos si el preferido está ocupado. */
 function puertosCandidatos(preferido) {
   return [preferido, preferido + 1, preferido + 2, preferido + 3, 0]
 }
 
 const RAIZ = path.join(__dirname, '..')
 
-/**
- * Binario del servicio cuando la aplicación está empaquetada.
- *
- * El paquete de Electron lleva el backend congelado en `extraResources`
- * (`electron-builder.yml`), que en tiempo de ejecución vive bajo
- * `process.resourcesPath`. Si ese binario está, se usa **en lugar** del
- * intérprete de Python: es toda la diferencia entre una instalación que
- * funciona sola y una que exige tener Python con dependencias.
- *
- * @returns la ruta del binario, o `null` si no hay paquete (desarrollo).
- */
+/** Devuelve el binario empaquetado del servicio, si existe. */
 function binarioEmpaquetado() {
   const recursos = process.resourcesPath
   if (!recursos) return null
@@ -77,28 +46,12 @@ function binarioEmpaquetado() {
   return fs.existsSync(ruta) ? ruta : null
 }
 
-/**
- * Directorio de datos de la aplicación (base, `.env`, almacenes cifrados).
- *
- * La aplicación instalada escribe su estado aquí, nunca junto al programa:
- * el directorio de instalación puede ser de solo lectura y, sobre todo, el
- * instalador lleva **programa, no estado**. `interprete()` de abajo no lo
- * decide; lo decide este directorio, que `electron/main.js` fija con
- * `app.getPath('userData')`.
- */
+/** Ubicación del estado local de la aplicación. */
 function directorioDeDatos(raiz = RAIZ) {
   return process.env.DATENJAGER_DATOS || raiz
 }
 
-/**
- * Intérprete de Python a usar.
- *
- * Prioridad: variable de entorno, entorno virtual del proyecto, `python3` en el
- * PATH. No se pasa `/usr/bin/python3` como candidato fijo: en un runner de CI el
- * intérprete que dejó `setup-python` (con las dependencias) vive en el PATH como
- * `python3` y el del sistema no tiene Pillow ni PyInstaller; fiarse de la ruta
- * dura rompe el empaquetado en Linux. Solo aplica cuando no hay binario empaquetado.
- */
+/** Elige Python desde la variable de entorno, el entorno virtual o el PATH. */
 function interprete(raiz = RAIZ) {
   if (process.env.DATENJAGER_PYTHON) return process.env.DATENJAGER_PYTHON
 

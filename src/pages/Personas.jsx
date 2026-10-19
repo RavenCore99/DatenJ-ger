@@ -17,14 +17,7 @@ const RETARDO_BUSQUEDA_MS = 250
 
 const CAMPOS_VACIOS = { cedula: '', nombres: '', empresa: '' }
 
-/**
- * Panel de personas (SCRUM-30): titulares y empresas asociadas.
- *
- * Conserva la funcionalidad del panel anterior —alta, edición, baja y el
- * conteo de documentos vinculados por titular— y adopta la composición de los
- * mockups: cabecera de página, fila de tarjetas de métrica, formulario de alta
- * y tabla de titulares con la cédula y el conteo en monoespaciada.
- */
+/** Gestiona titulares y empresas asociados a los documentos. */
 export default function Personas() {
   const { conectado, autenticado } = useApp()
 

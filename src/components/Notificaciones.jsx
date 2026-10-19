@@ -3,19 +3,7 @@ import { useEffect } from 'react'
 import Icono from './Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 
-/**
- * Notificaciones del sistema (SCRUM-87).
- *
- * La aplicación anterior mostraba un `Notification` —un aviso que aparece y se
- * va solo— al guardar, al fallar y al terminar una operación. Aquí es una pieza
- * del sistema de diseño: la pila vive en el proveedor de la aplicación, así que
- * cualquier pantalla puede emitir un aviso con `notificar(texto, tipo)` sin
- * dibujar nada, y esta capa los pinta y los retira.
- *
- * Se colocan sobre la franja de telemetría, a la derecha, con `aria-live` para
- * que un lector de pantalla los anuncie. Con las notificaciones silenciadas en
- * Ajustes no se pinta ninguno.
- */
+/** Muestra y retira los avisos transitorios de la aplicación. */
 
 /** Lo que dura un aviso en pantalla antes de retirarse solo. */
 const DURACION_MS = 5200

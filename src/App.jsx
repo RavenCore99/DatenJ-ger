@@ -24,19 +24,7 @@ import Reportes from './pages/Reportes.jsx'
 import Estadisticas from './pages/Estadisticas.jsx'
 import siluetaAsistente from '../assets/chatbot/nousresearch_backcontrast.png'
 
-/**
- * Secciones del sistema. Cada una corresponde a un panel del CustomTkinter
- * actual (ver CLAUDE.md sección 3) y se reconstruye en la Fase 3.
- *
- * Las cinco primeras son los paneles migrados en el Sprint 2; de «Asistente» en
- * adelante son las pantallas que faltaban (Sprint 5, `SCRUM-57` a `SCRUM-64`).
- *
- * **Auditoría y Modelos no están aquí.** Son ajustes del sistema —historial de
- * acciones y conexión de las APIs— y viven **solo** dentro de «Ajustes»
- * (`src/pages/Cuenta.jsx`), que es donde Raven los pidió. Tenerlos además en la
- * barra de secciones los duplicaba: la misma pantalla en dos sitios, con el
- * usuario sin saber cuál es «el bueno».
- */
+/** Secciones de navegación; auditoría y modelos se abren desde Ajustes. */
 export const SECCIONES = [
   { clave: 'inicio', titulo: 'Inicio', descripcion: 'Resumen documental', icono: 'inicio', Componente: Inicio },
   { clave: 'documentos', titulo: 'Documentos', descripcion: 'PDFs cifrados', icono: 'documentos', Componente: Documentos },
@@ -52,28 +40,20 @@ export function App() {
     <ProveedorApp>
       <Entrada />
       <Marco />
-      {/* Notificaciones del sistema (SCRUM-87): viven fuera del marco para que
-          también se vean en el portal de acceso y en el registro. */}
+      {/* Avisos visibles también durante el acceso y el registro. */}
       <Notificaciones />
     </ProveedorApp>
   )
 }
 
-/**
- * Marco de la aplicación (SCRUM-28), con las densidades del sistema de diseño:
- * barra lateral de `240px` que se recoge a `64px`, sub-cabecera de `48px` con
- * migas de pan, área de contenido desplazable y franja de telemetría de `32px`
- * pegada al borde inferior.
- */
+/** Marco de navegación con barra lateral, contenido y telemetría. */
 function Marco() {
   const { tema, autenticado, recargarSalud, pedir } = useApp()
   const [seccion, setSeccion] = useSeccionInicial()
   const [plegada, setPlegada] = useBarraLateral()
-  // Búsqueda global (SCRUM-85), en `Ctrl / ⌘ + F`.
+  // Búsqueda global con Ctrl/⌘+F.
   const [buscando, setBuscando] = useState(false)
-  // Portal de entrada: bienvenida → acceso, o bienvenida → registro. No se
-  // recuerda entre arranques, porque la bienvenida es la presentación de la
-  // aplicación.
+  // La bienvenida precede al acceso o al registro en cada arranque.
   const [portal, setPortal] = useState('bienvenida')
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
 
@@ -123,8 +103,7 @@ function Marco() {
     </div>
   )
 
-  // Atajos globales (SCRUM-85). La tabla que se anuncia en Ajustes vive en
-  // `src/lib/atajos.js`; aquí está el manejador que los hace funcionar.
+  // Maneja los atajos globales anunciados en Ajustes.
   useEffect(() => {
     const alPulsar = (evento) => {
       const conModificador = evento.ctrlKey || evento.metaKey
@@ -182,9 +161,7 @@ function Marco() {
     return () => globalThis.removeEventListener('keydown', alPulsar)
   }, [setPlegada, pedir, setSeccion, seccion, autenticado, cerrarSesion])
 
-  // El portal manda mientras el alta no haya terminado: crear la cuenta abre
-  // sesión en el backend de inmediato, así que hay que seguir mostrando el paso
-  // del segundo factor aunque `autenticado` ya sea cierto (SCRUM-57/58).
+  // El registro mantiene el paso de 2FA aunque ya exista una sesión.
   if (portal === 'bienvenida') {
     return conBarra(
       <Bienvenida
@@ -206,7 +183,7 @@ function Marco() {
     )
   }
 
-  // Sin sesión verificada por el backend no se muestra el sistema (SCRUM-22).
+  // La aplicación requiere una sesión verificada.
   if (!autenticado) {
     return conBarra(<Acceso onVolver={() => setPortal('bienvenida')} />)
   }
@@ -227,9 +204,7 @@ function Marco() {
         <SubCabecera seccion={activa} />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-          {/* Transición de pantalla (SCRUM-32): al cambiar de sección, el
-              contenido entra con un fundido breve. La clave fuerza el remonte
-              para que la animación vuelva a dispararse. */}
+          {/* Remonta el contenido para animar cada cambio de sección. */}
           <div key={seccion} className="aparecer">
             <Componente onNavegar={setSeccion} />
           </div>
@@ -244,7 +219,7 @@ function Marco() {
         <BarraEstado />
       </div>
 
-      {/* Búsqueda global (SCRUM-85): capa sobre el shell, no una pantalla más. */}
+      {/* Búsqueda global superpuesta a la navegación. */}
       {buscando && (
         <BusquedaGlobal onNavegar={setSeccion} onCerrar={() => setBuscando(false)} />
       )}
@@ -253,15 +228,7 @@ function Marco() {
   )
 }
 
-/**
- * Sub-cabecera fija: migas de pan.
- *
- * El control de la barra lateral vive en el propio logo (ver `BarraLateral`),
- * así que aquí no se repite. La insignia de cifrado se retiró de este extremo
- * porque competía con el contenido de cada panel: el cifrado en uso ya se
- * informa donde importa —la franja de telemetría, el detalle de cada
- * expediente y la sección «Acerca de»—. Los accesos viven en la barra de ventana.
- */
+/** Indica la sección activa en la cabecera. */
 function SubCabecera({ seccion }) {
   return (
     <header className="flex h-cabecera shrink-0 items-center gap-4 border-b border-borde bg-superficie px-6">
@@ -277,18 +244,7 @@ function SubCabecera({ seccion }) {
   )
 }
 
-/**
- * Asistente flotante (calidad de vida): el chat queda a un clic desde cualquier
- * sección, sin depender de la barra lateral ni de tenerla desplegada.
- *
- * Se oculta en Ajustes, donde el botón flotaría sobre formularios de seguridad
- * y estorbaría. Dentro del propio asistente no navega —ya se está ahí—, sino
- * que lleva el foco al compositor, para que el botón nunca sea un no-op.
- *
- * **Lleva la imagen del asistente** (petición de Raven): el mismo archivo de
- * `assets/chatbot/` que el avatar del panel. Se usa la versión de trazo blanco
- * porque el fondo del botón es el azul primario, oscuro en los dos temas.
- */
+/** Abre el asistente o enfoca su campo de escritura. */
 function BotonAsistente({ onAbrir, enElAsistente }) {
   const boton = useRef(null)
 

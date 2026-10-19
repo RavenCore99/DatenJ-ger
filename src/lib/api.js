@@ -1,14 +1,4 @@
-/**
- * Cliente del backend local de DatenJäger.
- *
- * El backend Python expone `backend/commands.py` por HTTP (FastAPI + uvicorn,
- * SCRUM-21). Este módulo es el único punto del renderer que conoce la URL y el
- * formato de las respuestas: las pantallas nunca llaman a `fetch` directamente.
- *
- * Contrato de errores — el backend devuelve `{ "detail": { "tipo": "...",
- * "mensaje": "..." } }`. Aquí se traduce a `ErrorBackend` para que la UI
- * decida qué mostrar sin interpretar códigos HTTP.
- */
+/** Cliente HTTP del servicio local y traducción de sus errores. */
 
 export const PUERTO_BACKEND_POR_DEFECTO = 8756
 
@@ -16,13 +6,7 @@ export const PUERTO_BACKEND_POR_DEFECTO = 8756
 let configuracionCache = null
 let promesaConfiguracion = null
 
-/**
- * Configuración del servicio local: puerto y token.
- *
- * En Electron la entrega el proceso principal por IPC (el token se genera en
- * cada arranque); en el navegador de desarrollo se cae a las variables de Vite
- * y no hay token.
- */
+/** Obtiene el puerto y token del servicio local. */
 export function configuracion() {
   if (configuracionCache) return Promise.resolve(configuracionCache)
 

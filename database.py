@@ -12,8 +12,7 @@ import unicodedata
 from datetime import datetime
 
 
-#: Formas societarias que se unifican para comparar nombres de empresa. La
-#: clave es lo que la gente escribe; el valor, la forma canónica.
+#: Formas societarias usadas al comparar nombres de empresa.
 _SIGLAS_SOCIETARIAS = {
     "sas": "sas",
     "sa": "sa",
@@ -28,22 +27,7 @@ _SIGLAS_SOCIETARIAS = {
 
 
 def normalizar_empresa(nombre) -> str:
-    """Forma canónica de un nombre de empresa, para no duplicar variantes.
-
-    Se usa como **clave de comparación**, nunca como texto a mostrar: la
-    empresa conserva el nombre tal como lo escribió el usuario. Unifica lo que
-    de otro modo serían empresas distintas para la base:
-
-    * espacios sobrantes y saltos de línea (``"Minera  del\\nNorte"``);
-    * mayúsculas y minúsculas (``"MINERA DEL NORTE"``);
-    * acentos (``"Minería"`` / ``"Mineria"``);
-    * puntuación y siglas societarias (``"S.A.S."``, ``"SAS"``, ``"S.A.S"``);
-    * el sufijo de tipo de sociedad, para que ``"Minera del Norte S.A.S."`` y
-      ``"Minera del Norte"`` no se separen en dos fichas.
-
-    Returns:
-        La clave canónica, o cadena vacía si el nombre no aporta nada.
-    """
+    """Genera una clave de comparación para nombres de empresa equivalentes."""
     if nombre is None:
         return ""
 
@@ -56,11 +40,7 @@ def normalizar_empresa(nombre) -> str:
     texto = "".join(caracter for caracter in texto if not unicodedata.combining(caracter))
     texto = texto.casefold()
 
-    # La puntuación no distingue empresas: "s.a.s." y "sas" son la misma. Los
-    # puntos se quitan **sin dejar hueco** —son separadores de siglas—; el resto
-    # de signos pasan a espacio. Si los puntos se convirtieran en espacio, la
-    # sigla quedaría "s a s" y no coincidiría con "sas" al retirar la forma
-    # societaria.
+    # Quitar los puntos sin separarlos conserva siglas como "S.A.S.".
     limpio = texto.replace(".", "")
     limpio = "".join(caracter if caracter.isalnum() or caracter.isspace() else " "
                      for caracter in limpio)
@@ -127,9 +107,7 @@ def conectar_db(db_path=None):
     if 'trust_expires' not in columns:
         cursor.execute("ALTER TABLE Usuarios ADD COLUMN trust_expires TEXT")
 
-    # tabla empresas: catálogo propio para no guardar el nombre como texto
-    # libre. Dos personas de la misma empresa comparten ficha, y renombrarla se
-    # hace en un solo sitio.
+    # Catálogo compartido de empresas.
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS Empresas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,8 +132,7 @@ def conectar_db(db_path=None):
     if 'empresa' not in personas_columns:
         cursor.execute("ALTER TABLE Personas ADD COLUMN empresa TEXT")
     if 'empresa_id' not in personas_columns:
-        # La columna de texto se conserva: es lo que escribió el usuario y sirve
-        # de respaldo si algo saliera mal en la migración.
+        # Conservar el nombre original como respaldo de la migración.
         cursor.execute(
             "ALTER TABLE Personas ADD COLUMN empresa_id INTEGER "
             "REFERENCES Empresas(id) ON DELETE SET NULL")
@@ -221,8 +198,7 @@ def conectar_db(db_path=None):
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON Auditoria(fecha)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_personas_empresa ON Personas(empresa_id)")
 
-    # Migración del texto libre de empresa al catálogo. Idempotente: solo toca
-    # las personas que todavía no tienen `empresa_id`.
+    # Vincular al catálogo las personas aún sin empresa_id.
     _migrar_empresas(cursor)
 
     conn.commit()
@@ -230,14 +206,7 @@ def conectar_db(db_path=None):
 
 
 def _migrar_empresas(cursor) -> None:
-    """Pasa el texto libre de ``Personas.empresa`` al catálogo ``Empresas``.
-
-    Idempotente: solo mira las personas que aún no tienen ``empresa_id``, así
-    que puede correr en cada arranque sin duplicar nada. No borra la columna de
-    texto —queda como respaldo de lo que escribió el usuario— y agrupa por la
-    forma normalizada, de modo que «Minera del Norte S.A.S.» y «minera del
-    norte» acaban en la misma ficha en vez de crear dos.
-    """
+    """Vincula nombres libres al catálogo sin borrar el texto original."""
     cursor.execute(
         "SELECT id, empresa FROM Personas "
         "WHERE empresa_id IS NULL AND empresa IS NOT NULL AND TRIM(empresa) != ''"

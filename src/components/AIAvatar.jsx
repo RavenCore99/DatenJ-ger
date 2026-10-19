@@ -2,21 +2,7 @@ import { useApp } from '../estado/ProveedorApp.jsx'
 import siluetaClara from '../../assets/chatbot/nousresearch.png'
 import siluetaOscura from '../../assets/chatbot/nousresearch_backcontrast.png'
 
-/**
- * Avatar del asistente (hallazgo de Raven).
- *
- * El disco con la marca «IA» se sustituye por la **imagen del asistente**
- * (`assets/chatbot/`). Las dos versiones del archivo no son capricho: son la
- * misma silueta con el trazo en negro (`nousresearch.png`) y en blanco
- * (`nousresearch_backcontrast.png`), ambas con fondo **transparente**, pensadas
- * para contrastar sobre fondo claro y oscuro. Aquí se elige según el tema, así
- * que el avatar se lee bien en los dos modos.
- *
- * Mientras el modelo trabaja, el disco se rodea de un **aura difusa que late**
- * (`.asistente-aura`, en `estilos/complementos.css`), con el primario y el
- * acento del sistema. Es decorativo: con el movimiento desactivado no aparece y
- * queda el disco con su imagen, que es el estado final.
- */
+/** Muestra el avatar del asistente según el tema y su estado. */
 export default function AIAvatar({ pensando = false, tamano = 'md', className = '' }) {
   const { tema } = useApp()
   const caja = tamano === 'lg' ? 'h-11 w-11' : 'h-9 w-9'

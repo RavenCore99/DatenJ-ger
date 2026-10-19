@@ -2,11 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { backend, ErrorBackend, fijarConfiguracion } from '../lib/api.js'
 
-/**
- * Estado de aplicación del renderer: sesión, tema y disponibilidad del
- * backend local. Es el equivalente React de `backend/state.py` — la sesión
- * real vive en Python; aquí solo se refleja lo que el backend informa.
- */
+/** Comparte sesión, preferencias y estado del servicio local. */
 
 const INTERVALO_SALUD_MS = 5000
 
@@ -19,26 +15,15 @@ export function ProveedorApp({ children }) {
   const [tema, setTema] = useState(() => temaInicial())
   const [animaciones, setAnimaciones] = useState(() => animacionesIniciales())
   const [aviso, setAviso] = useState(null)
-  // Estado de las piezas del sistema (SCRUM-68): la base de datos se comprueba
-  // leyendo de verdad el archivo; las conexiones de modelos y el chatbot toman
-  // su estado de la **última prueba real** (SCRUM-62), no de que exista una
-  // credencial: verde sin prueba detrás sería una suposición.
+  // La salud de modelos y chatbot refleja la última prueba real.
   const [baseDatos, setBaseDatos] = useState('sin_verificar')
-  // Conexión de modelos (SCRUM-64): el panel la guarda y la franja de
-  // telemetría muestra su salud real (`salud`: sin_configurar / sin_verificar /
-  // ok / error). Sin sesión no se puede consultar, así que su estado honesto es
-  // «sin configurar».
+  // Estado de la conexión de modelos, consultable con sesión.
   const [modelos, setModelos] = useState(null)
-  // Notificaciones del sistema (SCRUM-87): los avisos transitorios y la
-  // preferencia de mostrarlos viven aquí para que cualquier pantalla —incluido
-  // el portal de acceso, que no está dentro del shell— pueda emitir uno.
+  // Avisos compartidos por todas las pantallas.
   const [notificaciones, setNotificaciones] = useState(() => notificacionesIniciales())
   const [avisos, setAvisos] = useState([])
   const contadorAvisos = useRef(0)
-  // Peticiones de los atajos globales a la pantalla activa (SCRUM-85): el
-  // manejador de teclado vive en el marco, pero «nuevo documento» o «eliminar
-  // el seleccionado» solo tienen sentido dentro de su pantalla. La marca
-  // distingue dos pulsaciones de la misma tecla.
+  // Peticiones de atajos a la pantalla activa, con marca por pulsación.
   const [peticion, setPeticion] = useState(null)
   const contadorPeticiones = useRef(0)
 

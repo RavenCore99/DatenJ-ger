@@ -1,11 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/errors.py - errores comunes de la capa backend
 
-"""Excepciones transversales de la capa backend.
-
-Los servicios levantan estos errores; la UI (o el servidor local) los
-captura y decide cómo mostrarlos. Los servicios nunca muestran mensajes.
-"""
+"""Errores tipados que el servicio traduce para el cliente."""
 
 
 class BackendError(Exception):

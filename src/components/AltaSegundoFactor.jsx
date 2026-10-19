@@ -4,21 +4,7 @@ import { Aviso } from './Panel.jsx'
 import Icono from './Icono.jsx'
 import { backend } from '../lib/api.js'
 
-/**
- * Alta del segundo factor (SCRUM-58): secreto, QR, confirmación y códigos de
- * respaldo.
- *
- * Es la pieza que faltaba para completar un alta de cuenta: el backend ya
- * exponía `preparar`, `activar` y la emisión de códigos, pero solo se podía
- * llegar a ellas desde la sección de cuenta de un usuario ya dentro del
- * sistema. Aquí se monta el paso a paso tal cual lo hacía `main.py`
- * (`mostrar_setup_2fa` + `_mostrar_codigos_respaldo`), con la misma regla: el
- * secreto no se activa hasta que el usuario demuestra que su autenticador lo
- * acepta.
- *
- * El secreto, el QR y los códigos los produce el backend; esta pantalla no
- * calcula nada criptográfico ni conserva material sensible.
- */
+/** Guía el alta de 2FA y presenta los códigos de respaldo. */
 export default function AltaSegundoFactor({ onTerminar, textoTerminar = 'Continuar' }) {
   const [paso, setPaso] = useState('inicio')
   const [preparacion, setPreparacion] = useState(null)

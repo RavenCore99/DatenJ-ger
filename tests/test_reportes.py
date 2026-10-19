@@ -101,12 +101,7 @@ class TestReportes(BaseBackendTest):
 
 
 class TestTendenciaYGraficos(BaseBackendTest):
-    """Regresión, predicción, R² y paleta extraídas al backend (SCRUM-81).
-
-    La clase no siembra documentos en ``setUp``: cada prueba arma su propia
-    serie temporal con fechas explícitas, que es lo único que hace
-    reproducible la recta por mínimos cuadrados.
-    """
+    """Prueba tendencias, predicciones y colores con series reproducibles."""
 
     def _sembrar_serie(self, por_dia):
         """Inserta ``cantidad`` documentos en cada día indicado."""

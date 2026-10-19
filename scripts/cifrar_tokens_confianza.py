@@ -1,22 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/cifrar_tokens_confianza.py - traslada los tokens en claro de config.json
 
-"""Migra los tokens de confianza de `config.json` al almacén cifrado.
-
-Uso:
-
-    ./venv/bin/python scripts/cifrar_tokens_confianza.py             # traslada y limpia
-    ./venv/bin/python scripts/cifrar_tokens_confianza.py --simular   # solo informa
-
-Los tokens quedan cifrados en `tokens_confianza/`. Los que se hayan movido se
-retiran de `config.json` (con copia previa `config.json.respaldo`), para que no
-sigan en claro en un archivo que se comparte con las preferencias.
-
-Si el almacén no tiene clave, se crea una con permisos 0600. Los tokens que se
-guarden con esa clave solo se pueden descifrar en este equipo: si se pierde
-`tokens_confianza/llave.bin`, los dispositivos de confianza dejan de serlo y el
-sistema vuelve a pedir el segundo factor (no se pierde ninguna cuenta).
-"""
+"""Migra tokens de confianza a un almacén cifrado con copia de respaldo."""
 
 from __future__ import annotations
 

@@ -1,16 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # backend/services/personas.py - CRUD de personas (titulares)
 
-"""Servicio de personas: CRUD de titulares de documentos.
-
-Extraído del cuerpo de ``personas.py`` (que conserva solo la interfaz).
-Todas las funciones son invocables sin Tkinter.
-
-Nota de alcance: el catálogo de personas es compartido entre usuarios del
-sistema (el panel original no filtraba por usuario), así que el servicio
-tampoco lo hace. ``usuario_id`` se recibe únicamente para registrar el
-evento de auditoría de las operaciones de escritura.
-"""
+"""Gestiona titulares compartidos y audita sus cambios por usuario."""
 
 from __future__ import annotations
 

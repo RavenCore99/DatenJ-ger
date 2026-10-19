@@ -1,12 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_servidor.py - el puente HTTP expone la capa de comandos
 
-"""Pruebas del servidor local (SCRUM-21).
-
-Levanta uvicorn sobre un puerto libre y consume la API con `urllib` de la
-biblioteca estándar: se prueba el camino HTTP real, no una llamada en
-proceso, y no hace falta ninguna dependencia de cliente.
-"""
+"""Prueba las rutas HTTP del servidor local con peticiones reales."""
 
 from __future__ import annotations
 
@@ -392,7 +387,7 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(por_dia[0]["total"], 1)
         self.assertTrue(por_dia[0]["dia"])
 
-        # La serie con regresión, predicción, R² y paleta (SCRUM-81).
+        # La serie incluye regresión, predicción, R² y paleta.
         estado, tendencia = self.pedir("GET", "/api/reportes/tendencia")
         self.assertEqual(estado, 200)
         self.assertEqual(tendencia["valores"], [1])
@@ -400,7 +395,7 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(tendencia["paleta"]["tendencia"], "alerta")
 
     # ------------------------------------------------------------------ #
-    # Alta de cuenta (SCRUM-57)
+    # Alta de cuenta.
     # ------------------------------------------------------------------ #
 
     def test_registro_por_http(self):
@@ -433,7 +428,7 @@ class TestServidor(BaseBackendTest):
         self.assertEqual(cuerpo["detail"]["tipo"], "DatosInvalidosError")
 
     # ------------------------------------------------------------------ #
-    # Conexión de modelos (SCRUM-64)
+    # Conexión de modelos.
     # ------------------------------------------------------------------ #
 
     def test_conexion_de_modelos_por_http(self):
@@ -458,7 +453,7 @@ class TestServidor(BaseBackendTest):
         self.assertFalse(self.pedir("GET", "/api/modelos")[1]["clave_configurada"])
 
     # ------------------------------------------------------------------ #
-    # Restablecimiento de contraseña (SCRUM-84)
+    # Restablecimiento de contraseña.
     # ------------------------------------------------------------------ #
 
     def test_restablecimiento_de_contrasena_por_http(self):
@@ -531,15 +526,7 @@ class TestServidor(BaseBackendTest):
 
 
     def test_una_prueba_larga_no_deja_al_servicio_sin_atender(self):
-        """Una prueba de conexión lenta no debe bloquear el sondeo de sesión.
-
-        El manejador hace una espera **bloqueante** contra el proveedor. Si
-        estuviera declarado `async`, esa espera ocuparía el bucle de eventos y el
-        frontend se quedaría sin respuesta al preguntar por la sesión: el renderer
-        lo interpreta como «no hay sesión» y devuelve al usuario a la pantalla de
-        acceso. Es el reinicio que se reportó al guardar y al probar la conexión
-        de modelos. FastAPI ejecuta los manejadores síncronos en un hilo aparte.
-        """
+        """La prueba de conexión lenta no bloquea el sondeo de sesión."""
         from backend.services import modelos
 
         # Sin sesión, «probar conexión» responde 401 al instante y la prueba no

@@ -1,11 +1,4 @@
-/**
- * Conmutador de notificaciones (SCRUM-71).
- *
- * Portado del complemento `assets/assets/Notifications_toggle`, pero como
- * control accesible del sistema (`role="switch"`) y con los colores de los
- * tokens en lugar del amarillo fijo del original. Sirve para cualquier opción
- * booleana de la aplicación —hoy, las animaciones de la sección de cuenta—.
- */
+/** Control accesible para alternar una preferencia booleana. */
 export default function ConmutadorNotificaciones({ activo, onCambiar, etiqueta, descripcion }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">

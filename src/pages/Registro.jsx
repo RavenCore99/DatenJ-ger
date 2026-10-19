@@ -9,22 +9,7 @@ import AltaSegundoFactor from '../components/AltaSegundoFactor.jsx'
 import Icono from '../components/Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
-/**
- * Registro de operadores (SCRUM-57) con el alta del segundo factor (SCRUM-58).
- *
- * Era la última pantalla que faltaba para poder usar el sistema desde cero: el
- * backend ya validaba credenciales y gestionaba el 2FA, pero dar de alta una
- * cuenta seguía siendo exclusivo de `main.py`, así que una instalación nueva no
- * tenía forma de entrar. Con esto, el recorrido completo —registro → segundo
- * factor → códigos de respaldo → sistema— se hace dentro del frontend.
- *
- * El alta la ejecuta el backend (`POST /api/registro`): valida las reglas,
- * guarda el hash PBKDF2 y abre la sesión del usuario nuevo. Esta pantalla solo
- * recoge los datos y encadena el paso siguiente; nunca maneja claves.
- *
- * Mientras la sesión del alta está abierta, el portal sigue mostrándose: el
- * segundo factor se configura antes de entrar al sistema, no después.
- */
+/** Registra un operador y encadena la configuración de 2FA. */
 export default function Registro({ onVolver, onTerminar }) {
   const { conectado } = useApp()
 

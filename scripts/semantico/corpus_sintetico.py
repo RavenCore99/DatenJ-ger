@@ -1,22 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # scripts/semantico/corpus_sintetico.py - corpus documental de prueba
 
-"""Genera un corpus sintético de PDFs para evaluar la búsqueda semántica.
-
-Crea una base SQLite temporal (o la indicada con ``--db``) con un usuario de
-prueba y varios documentos realistas en tres categorías (contrato laboral,
-afiliación y reporte de seguridad social), con texto real en español. Los PDFs
-se generan en memoria con PyMuPDF y se cargan cifrados con el flujo real del
-sistema (``crear_documento``).
-
-Al terminar escribe ``corpus_etiquetas.json`` con el mapeo ``documento_id ->
-categoria``, para medir la clasificación sin depender del nombre del archivo.
-
-Uso:
-
-    ./venv/bin/python scripts/semantico/corpus_sintetico.py
-    ./venv/bin/python scripts/semantico/corpus_sintetico.py --db /tmp/corpus.db
-"""
+"""Genera PDFs cifrados y etiquetas para evaluar la búsqueda semántica."""
 
 from __future__ import annotations
 
