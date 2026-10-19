@@ -182,12 +182,22 @@ jobs:
           echo "Adjuntos que se van a publicar:"
           find adjuntos -type f -printf '  %p (%s bytes)\n'
 
-          # Resumen breve del pulido; `--verify-tag` exige la etiqueta publicada.
+          # Rechazar duplicados o adjuntos inesperados antes de publicar.
+          shopt -s nullglob
+          instaladores=(adjuntos/*.exe adjuntos/*.AppImage)
+          archivos=(adjuntos/*)
+          if [ "${#instaladores[@]}" -ne 2 ] || [ "${#archivos[@]}" -ne 2 ] ||
+             [ "$(find adjuntos -maxdepth 1 -type f -name '*.exe' | wc -l)" -ne 1 ] ||
+             [ "$(find adjuntos -maxdepth 1 -type f -name '*.AppImage' | wc -l)" -ne 1 ]; then
+            echo '::error::Se requieren exactamente un .exe y un .AppImage, sin otros adjuntos.'
+            exit 1
+          fi
+
           gh release create "$TAG" \
             --title "DatenJäger $VERSION" \
-            --notes "Visor PDF a pantalla completa, ventana sin marco con accesos rápidos y confirmación de cierre de sesión adaptada a los temas claro y oscuro. Cabecera del portal simplificada. Instaladores Windows y Linux." \
+            --notes-file "docs/releases/$VERSION.md" \
             --verify-tag \
-            adjuntos/*
+            "${instaladores[@]}"
 
       - name: Comprobar el Release publicado
         env:
