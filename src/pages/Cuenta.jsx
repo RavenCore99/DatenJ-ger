@@ -10,33 +10,17 @@ import { useApp } from '../estado/ProveedorApp.jsx'
 import { ATAJOS } from '../lib/atajos.js'
 import { backend, urlBase } from '../lib/api.js'
 
-/**
- * Panel de cuenta y ajustes (SCRUM-31).
- *
- * Reúne las secciones que tienen lógica real en el sistema —apariencia, doble
- * factor, códigos de respaldo, contraseña y confianza del dispositivo— con la
- * composición del mockup de configuración: navegación de secciones a la
- * izquierda y contenido a la derecha. El resto de secciones del mockup son
- * referencia de estilo, no alcance (CLAUDE.md sección 6).
- *
- * La verificación y el cifrado ocurren siempre en el backend: esta pantalla no
- * calcula códigos ni maneja claves.
- */
+/** Secciones de cuenta, seguridad, apariencia y ajustes del sistema. */
 const SECCIONES = [
   { clave: 'apariencia', titulo: 'Apariencia', descripcion: 'Tema y movimiento' },
   { clave: 'doble_factor', titulo: 'Doble factor', descripcion: 'Segundo paso al entrar' },
   { clave: 'codigos', titulo: 'Códigos de respaldo', descripcion: 'Acceso de emergencia' },
   { clave: 'contrasena', titulo: 'Contraseña', descripcion: 'Cambio y re-cifrado' },
   { clave: 'confianza', titulo: 'Dispositivos', descripcion: 'Equipos de confianza' },
-  // Secciones añadidas en SCRUM-63: las que el sistema puede respaldar con
-  // datos reales (sesión, almacenamiento, atajos y «Acerca de»), no las ~18 del
-  // mockup de configuración, que son referencia de estilo (CLAUDE.md §6).
+  // Opciones de sesión y almacenamiento.
   { clave: 'sesion', titulo: 'Sesión', descripcion: 'Inactividad y cierre' },
   { clave: 'almacenamiento', titulo: 'Almacenamiento', descripcion: 'Bóveda y volumen' },
-  // Secciones que Raven pidió reunir aquí (calidad de vida): la auditoría y la
-  // conexión de modelos dejan de ser destinos aparte y pasan a ser dos
-  // secciones más de Ajustes. Se incrustan tal cual —con su propia cabecera y
-  // sus propios datos— para no duplicar su lógica ni su mantenimiento.
+  // Auditoría y modelos comparten la navegación de Ajustes.
   { clave: 'auditoria', titulo: 'Auditoría', descripcion: 'Trazabilidad de acciones' },
   { clave: 'modelos', titulo: 'Conexión de modelos', descripcion: 'Proveedor y credencial' },
   { clave: 'atajos', titulo: 'Atajos', descripcion: 'Teclado' },

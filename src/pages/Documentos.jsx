@@ -14,21 +14,7 @@ import { fechaCorta, tamanoLegible, titular } from '../lib/formato.js'
 /** Retardo de la búsqueda: evita una petición por pulsación. */
 const RETARDO_BUSQUEDA_MS = 250
 
-/**
- * Panel documental (SCRUM-29): inventario de PDFs cifrados con la identidad del
- * sistema de diseño.
- *
- * Conserva toda la funcionalidad del panel anterior —alta con cifrado en el
- * backend, edición del titular, descarga descifrada y baja— y adopta el
- * ordenamiento del mockup: título, barra de herramientas con búsqueda y
- * filtro por empresa, tabla de expedientes y panel de detalle al costado.
- *
- * Dos columnas del mockup no se construyen porque el sistema no las respalda:
- * **Tipo de documento** (la clasificación por tipo es la evaluación de la
- * Fase 6, todavía no existe) e **Integridad** como hash SHA-256 por fila (los
- * documentos se cifran con AES-256-GCM pero no se guarda un hash propio). En su
- * lugar, la columna de integridad muestra el cifrado real de cada expediente.
- */
+/** Gestiona el inventario de PDF cifrados y sus acciones. */
 export default function Documentos() {
   const { conectado, autenticado, notificar, peticion } = useApp()
 
@@ -39,18 +25,16 @@ export default function Documentos() {
   const [error, setError] = useState(null)
   const [ocupado, setOcupado] = useState(null)
   const [seleccion, setSeleccion] = useState(null)
-  // Documento abierto en el visor interno (SCRUM-60).
+  // Documento abierto en el visor interno.
   const [visor, setVisor] = useState(null)
-  // Formulario de alta (calidad de vida): los metadatos se piden antes de
-  // guardar, no después entrando al detalle del expediente.
+  // Formulario de alta con metadatos.
   const [alta, setAlta] = useState(false)
   const [errorAlta, setErrorAlta] = useState(null)
-  // Modales de documento (SCRUM-88): detalles y edición, como en la aplicación
-  // anterior, que los abría en su propia ventana.
+  // Modales de detalle y edición.
   const [detalle, setDetalle] = useState(null)
   const [editar, setEditar] = useState(null)
   const [errorEditar, setErrorEditar] = useState(null)
-  // Búsqueda semántica (Fase 6): panel de búsqueda por significado.
+  // Panel de búsqueda por significado.
   const [semantica, setSemantica] = useState(false)
 
   const cargar = useCallback(async (texto) => {

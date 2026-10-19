@@ -6,15 +6,7 @@ import { backend } from '../lib/api.js'
 /** Retardo antes de buscar mientras el usuario escribe la consulta semántica. */
 const RETARDO_CONSULTA_MS = 400
 
-/**
- * Búsqueda semántica (Fase 6): encuentra documentos por significado.
- *
- * El índice se construye bajo demanda sobre los documentos cifrados del
- * usuario y el modelo de embeddings corre local (CPU), así que la búsqueda no
- * depende de ninguna API externa ni se degrada si el proveedor del asistente
- * falla. El texto mostrado son fragmentos del documento, descifrados del índice
- * solo al responder la consulta.
- */
+/** Busca documentos por significado mediante un índice local. */
 export default function BusquedaSemantica({ onVerDocumento }) {
   const [indice, setIndice] = useState(null) // null = consultando el estado
   const [consulta, setConsulta] = useState('')

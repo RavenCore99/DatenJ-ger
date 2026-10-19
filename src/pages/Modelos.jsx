@@ -12,30 +12,7 @@ import Icono from '../components/Icono.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
-/**
- * Panel de conexión de APIs y modelos (SCRUM-64 / SCRUM-62).
- *
- * **El usuario solo pega su clave.** De su forma se deduce el proveedor —Gemini
- * empieza por `AIza` o `AQ`, NVIDIA lleva `nvapi-`— y del proveedor salen la URL
- * base y la variable de entorno. Nadie tiene que saber que NVIDIA vive en
- * `integrate.api.nvidia.com/v1`: el punto de conexión se muestra, no se pide.
- * Solo el proveedor «compatible con OpenAI» necesita una URL escrita, porque es,
- * por definición, el que no conocemos.
- *
- * **La clave no vuelve del backend al renderer.** Se envía al backend, que la cifra con
- * AES-256-GCM en su almacén local (`modelos/`, 0600/0700) y la deja además en el
- * `.env` del proyecto (0600), que es de donde la lee el asistente. Al volver a
- * entrar, el campo llega vacío: no hay forma de releerla desde aquí.
- *
- * **El estado no se supone.** Tener una credencial guardada no es tener una
- * conexión que funcione: la clave puede ser de otro proveedor y no servir para
- * nada. Por eso el panel distingue «sin credencial», «sin verificar» y el
- * resultado de la última prueba real —la de conexión y la de generación—, y ese
- * mismo estado es el que pinta la franja de telemetría.
- *
- * La adopción es **sin reiniciar**: cambiar el proveedor activo invalida el
- * servicio anterior y la siguiente conversación usa su propio modelo y API.
- */
+/** Configura el proveedor y verifica su conexión y generación. */
 export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const { conectado, autenticado, modelos, recargarModelos } = useApp()
 
@@ -46,8 +23,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   // Resultado de la prueba real contra el proveedor.
   const [prueba, setPrueba] = useState(null)
   const [probando, setProbando] = useState(false)
-  // Resultado de la prueba de **generación**: que el modelo responda, no solo
-  // que la credencial exista (SCRUM-62).
+  // La prueba de generación comprueba que el modelo responde.
   const [respuestaPrueba, setRespuestaPrueba] = useState(null)
   const [probandoRespuesta, setProbandoRespuesta] = useState(false)
 
