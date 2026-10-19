@@ -1,12 +1,7 @@
 // Copyright (c) 2024 DatenJäger. All rights reserved.
 // electron/archivos.js - lectura y escritura de archivos desde el renderer
 
-/**
- * El renderer no ve el sistema de archivos (`contextIsolation` activo y
- * `nodeIntegration` desactivado). Estas dos operaciones son las únicas que
- * necesitan tocar disco, y pasan por el diálogo nativo del sistema para que la
- * ruta la elija siempre la persona que usa la aplicación.
- */
+/** Abre diálogos nativos para leer o guardar archivos elegidos por el usuario. */
 
 const fs = require('node:fs/promises')
 const path = require('node:path')

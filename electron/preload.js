@@ -1,14 +1,7 @@
 // Copyright (c) 2024 DatenJäger. All rights reserved.
 // electron/preload.js - puente seguro entre el proceso principal y React
 
-/**
- * Preload del renderer.
- *
- * `contextIsolation` está activo y `nodeIntegration` desactivado: React no ve
- * Node. Lo único que cruza el puente es la configuración que el proceso
- * principal conoce y el renderer necesita (puerto del backend local, versión,
- * modo de ejecución).
- */
+/** Expone al renderer operaciones limitadas del proceso principal. */
 
 const { contextBridge, ipcRenderer } = require('electron')
 
