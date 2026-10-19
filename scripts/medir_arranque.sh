@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# scripts/medir_arranque.sh — arranque en frío del backend congelado (Fase 5).
-#
-# Mide lo que pide la prueba de viabilidad de `planning.md`: cuánto tarda el
-# servicio en anunciarse, comparado con lanzarlo con el intérprete normal.
+# Compara el tiempo de arranque del backend congelado y del intérprete.
 set -u
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
