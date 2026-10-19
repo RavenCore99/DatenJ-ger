@@ -22,7 +22,7 @@ import { backend } from '../lib/api.js'
  * Solo el proveedor «compatible con OpenAI» necesita una URL escrita, porque es,
  * por definición, el que no conocemos.
  *
- * **La clave no pasa por el renderer.** Se envía al backend, que la cifra con
+ * **La clave no vuelve del backend al renderer.** Se envía al backend, que la cifra con
  * AES-256-GCM en su almacén local (`modelos/`, 0600/0700) y la deja además en el
  * `.env` del proyecto (0600), que es de donde la lee el asistente. Al volver a
  * entrar, el campo llega vacío: no hay forma de releerla desde aquí.
@@ -33,9 +33,8 @@ import { backend } from '../lib/api.js'
  * resultado de la última prueba real —la de conexión y la de generación—, y ese
  * mismo estado es el que pinta la franja de telemetría.
  *
- * La adopción es **sin reiniciar**: el servicio resuelve la credencial cada vez
- * que se inicia una conversación, así que basta con abrir una nueva en el panel
- * del asistente.
+ * La adopción es **sin reiniciar**: cambiar el proveedor activo invalida el
+ * servicio anterior y la siguiente conversación usa su propio modelo y API.
  */
 export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const { conectado, autenticado, modelos, recargarModelos } = useApp()
@@ -64,10 +63,12 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   useEffect(() => {
     if (!modelos) return
     setEstado(modelos)
+    // El sondeo de salud refresca `modelos` periódicamente. No debe borrar la
+    // credencial que el usuario está escribiendo mientras llega otra respuesta.
+    if (clave) return
     setProveedor(modelos.proveedor ?? '')
     setModelo(modelos.modelo ?? '')
     setEndpoint(modelos.endpoint ?? '')
-    setClave('')
   }, [modelos])
 
   // Reconocimiento en vivo: en cuanto se pega una clave, se pregunta al backend
@@ -83,7 +84,17 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
     const temporizador = setTimeout(async () => {
       try {
         const reconocido = await backend.modelos.identificar(limpia)
-        if (vigente) setDetectado(reconocido)
+        if (vigente) {
+          setDetectado(reconocido)
+          if (reconocido.detectado && reconocido.proveedor !== proveedor) {
+            const ficha = modelos?.proveedores?.find(({ clave: id }) => id === reconocido.proveedor)
+            setProveedor(reconocido.proveedor)
+            setModelo(ficha?.modelos?.[0] ?? '')
+            setEndpoint(reconocido.endpoint)
+            setPrueba(null)
+            setRespuestaPrueba(null)
+          }
+        }
       } catch {
         // Un fallo al reconocer no debe interrumpir la escritura: siempre se
         // puede guardar igual y elegir el proveedor a mano.
@@ -94,7 +105,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       vigente = false
       clearTimeout(temporizador)
     }
-  }, [clave])
+  }, [clave, modelos?.proveedores])
 
   const cargar = async () => {
     setError(null)
@@ -130,6 +141,9 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
         api_key: clave || null,
       })
       setEstado(nuevo)
+      setProveedor(nuevo.proveedor)
+      setModelo(nuevo.modelo)
+      setEndpoint(nuevo.endpoint)
       setClave('')
       setDetectado(null)
       setAviso(
@@ -193,9 +207,12 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
     try {
       const nuevo = await backend.modelos.guardar({ quitar_clave: true })
       setEstado(nuevo)
+      setProveedor(nuevo.proveedor)
+      setModelo(nuevo.modelo)
+      setEndpoint(nuevo.endpoint)
       setClave('')
       setDetectado(null)
-      setAviso('Credencial eliminada del almacén local y del .env.')
+      setAviso('Credencial activa eliminada del almacén local y del .env; las demás se conservan.')
       recargarModelos()
     } catch (fallo) {
       setError(fallo.message)
@@ -234,9 +251,9 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const modelosOfrecidos = [
     ...new Set([
       ...(fichaVisible?.modelos ?? []),
-      ...(estado?.modelos_conocidos ?? []),
-      ...(prueba?.modelos_disponibles ?? []),
-      ...(modelo ? [modelo] : []),
+      ...(proveedorVisible === estado?.proveedor ? estado?.modelos_conocidos ?? [] : []),
+      ...(proveedorVisible === estado?.proveedor ? prueba?.modelos_disponibles ?? [] : []),
+      ...(modelo && proveedorVisible === proveedor ? [modelo] : []),
     ]),
   ]
 
@@ -289,6 +306,42 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
             titulo="Credencial de API"
             descripcion="Pega solo la clave: el proveedor y la URL base se deducen"
           >
+            {estado.conexiones_guardadas?.length > 0 && (
+              <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Conexiones guardadas">
+                <span className="text-cuerpo-sm text-tenue">Guardadas:</span>
+                {estado.conexiones_guardadas.map(({ proveedor: id, nombre }) => (
+                  <button
+                    type="button"
+                    key={id}
+                    disabled={ocupado || id === estado.proveedor}
+                    onClick={async () => {
+                      setOcupado(true)
+                      setError(null)
+                      try {
+                        const nueva = await backend.modelos.guardar({ proveedor: id })
+                        setEstado(nueva)
+                        setProveedor(nueva.proveedor)
+                        setModelo(nueva.modelo)
+                        setEndpoint(nueva.endpoint)
+                        setClave('')
+                        setDetectado(null)
+                        setPrueba(null)
+                        setRespuestaPrueba(null)
+                        recargarModelos()
+                      } catch (fallo) {
+                        setError(fallo.message)
+                      } finally {
+                        setOcupado(false)
+                      }
+                    }}
+                    aria-pressed={id === estado.proveedor}
+                    className="rounded-md border border-borde px-3 py-1.5 text-etiqueta-sm text-texto transition-colors hover:border-primario disabled:border-primario disabled:text-primario"
+                  >
+                    {nombre}{id === estado.proveedor ? ' · activa' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
             <form className="flex flex-col gap-4" onSubmit={guardar}>
               <label className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-etiqueta-sm text-texto">
@@ -355,9 +408,11 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                     onChange={(evento) => {
                       const elegido = evento.target.value
                       setProveedor(elegido)
+                      setPrueba(null)
+                      setRespuestaPrueba(null)
                       const descripcion = proveedores.find(({ clave: valor }) => valor === elegido)
                       setEndpoint(descripcion?.endpoint ?? '')
-                      if (!modelo) setModelo(descripcion?.modelos?.[0] ?? '')
+                      setModelo(descripcion?.modelos?.[0] ?? '')
                     }}
                     className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none focus:border-primario"
                   >
@@ -585,7 +640,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
               </li>
               <li className="flex items-start gap-2">
                 <Icono nombre="basura" tamano={14} />
-                «Quitar la credencial» la retira de los dos sitios. Si solo se quitara del almacén,
+                «Quitar la credencial» retira solo la activa de los dos sitios. Si solo se quitara del almacén,
                 el <span className="font-mono">.env</span> seguiría sirviendo la clave anterior y el
                 panel diría que hay credencial.
               </li>

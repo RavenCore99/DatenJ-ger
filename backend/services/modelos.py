@@ -20,10 +20,9 @@ frente a quien pueda leer todo el directorio personal del usuario: si puede
 leer `llave.bin`, puede descifrar la clave. Para eso haría falta el llavero
 del sistema operativo.
 
-**Alcance funcional.** Esta pieza es la pantalla y su almacén; el proveedor
-efectivo sigue siendo el que ya usaba el chatbot (Gemini por API), y el
-modelo elegido se antepone a su lista de candidatos. Añadir proveedores
-locales es la evaluación `SCRUM-37` a `SCRUM-39`, aparcada a propósito.
+**Alcance funcional.** Cada proveedor conserva su propia credencial, modelo y
+prueba; el perfil activo determina qué dialecto consume el chatbot. Los modelos
+locales siguen aparcados (`SCRUM-37` a `SCRUM-39`).
 """
 
 from __future__ import annotations
@@ -158,20 +157,15 @@ def _clave_del_entorno(raiz: str | os.PathLike, variable: str) -> str:
 
 
 def _actualizar_env(raiz: str | os.PathLike, proveedor: str, valor: Optional[str]) -> None:
-    """Deja en el `.env` **solo** la credencial del proveedor indicado.
+    """Actualiza solo la credencial de este proveedor, conservando las demás.
 
     El asistente resuelve la credencial desde el entorno, así que guardarla solo
     en el almacén cifrado no bastaría: hay que dejarla también aquí, que es de
     donde la lee. Se conserva el resto del archivo (comentarios y otras
     variables) y se escribe con permisos `0600`, porque es un secreto en claro.
 
-    Se retiran las credenciales de los **demás** proveedores a propósito: al
-    cambiar de proveedor, dejar la clave anterior en el entorno haría que el
-    panel dijera que hay credencial cuando la activa ya es otra.
-
-    `valor=None` deja el `.env` sin ninguna credencial: es lo que hace «Quitar
-    la credencial». Si no se retirara, el entorno seguiría teniendo la clave
-    anterior y el panel diría que hay credencial después de haberla quitado.
+    `valor=None` retira únicamente la clave indicada. La selección activa vive
+    en el almacén; las otras credenciales permanecen disponibles en el `.env`.
     """
     ruta = _ruta_env(raiz)
     try:
@@ -182,7 +176,6 @@ def _actualizar_env(raiz: str | os.PathLike, proveedor: str, valor: Optional[str
     if not lineas:
         lineas = CABECERA_ENV.rstrip("\n").splitlines()
 
-    variables = proveedores.variables_de_credenciales()
     variable = proveedores.variable_de(proveedor) or proveedores.variable_de(PROVEEDOR_POR_DEFECTO)
     nueva = f"{variable}={valor}" if valor else None
 
@@ -191,12 +184,11 @@ def _actualizar_env(raiz: str | os.PathLike, proveedor: str, valor: Optional[str
 
     for linea in lineas:
         desnuda = linea.strip()
-        if any(desnuda.startswith(f"{candidata}=") for candidata in variables):
+        if desnuda.startswith(f"{variable}="):
             if nueva and desnuda.startswith(f"{variable}=") and not puesto:
                 salida.append(nueva)
                 puesto = True
-            # Con `nueva=None`, o si es la credencial de otro proveedor, la
-            # línea simplemente se descarta.
+            # Con `nueva=None` solo se descarta esta variable.
             continue
         salida.append(linea)
 
@@ -265,6 +257,28 @@ def _escribir(raiz: str | os.PathLike, datos: dict[str, Any]) -> None:
     os.fchmod(descriptor, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as archivo:
         json.dump(datos, archivo, indent=2, ensure_ascii=False)
+
+
+_CAMPOS_PERFIL = (*CAMPOS_PUBLICOS, "api_key", "ultima_prueba", "modelos_conocidos")
+
+
+def _guardar_perfil(datos: dict[str, Any]) -> None:
+    """Copia el perfil activo, incluidos los datos heredados de primer nivel."""
+    proveedor = datos.get("proveedor")
+    if proveedor and proveedores.descrito(proveedor):
+        datos.setdefault("conexiones", {})[proveedor] = {
+            campo: datos[campo] for campo in _CAMPOS_PERFIL if campo in datos
+        }
+
+
+def _activar_perfil(datos: dict[str, Any], proveedor: str) -> None:
+    """Selecciona un perfil sin arrastrar clave, modelo ni prueba del anterior."""
+    for campo in _CAMPOS_PERFIL:
+        datos.pop(campo, None)
+    datos.update(datos.get("conexiones", {}).get(proveedor, {}))
+    datos["proveedor"] = proveedor
+    datos.setdefault("endpoint", proveedores.endpoint_de(proveedor))
+    datos.setdefault("modelo", modelo_por_defecto(proveedor))
 
 
 # --------------------------------------------------------------------------- #
@@ -427,6 +441,7 @@ def registrar_prueba(raiz: str | os.PathLike, resultado: dict[str, Any],
             # `gemini-2.0-flash` retirado devolviendo 503 en cada respuesta.
             if datos.get("modelo") not in disponibles:
                 datos["modelo"] = _mejor_modelo(disponibles)
+    _guardar_perfil(datos)
     _escribir(raiz, datos)
     return resultado
 
@@ -512,6 +527,13 @@ def estado(raiz: str | os.PathLike) -> dict[str, Any]:
         "clave_configurada": bool(origen),
         "origen_clave": origen,
         "proveedores": proveedores.catalogo(),
+        "conexiones_guardadas": [
+            {"proveedor": ficha["clave"], "nombre": ficha["nombre"]}
+            for ficha in proveedores.catalogo()
+            if _clave_del_entorno(raiz, ficha["variable_entorno"])
+            or bool(datos.get("conexiones", {}).get(ficha["clave"], {}).get("api_key"))
+            or (proveedor == ficha["clave"] and bool(datos.get("api_key")))
+        ],
         # Salud real y su evidencia, para que la franja no suponga nada.
         "salud": salud_actual,
         "ultima_prueba": ultima_prueba(raiz),
@@ -550,10 +572,8 @@ def guardar(
 
     Args:
         api_key: si llega con valor, se escribe en el `.env` del proveedor
-            detectado, se cifra en el almacén y **se retiran** las credenciales
-            de los demás proveedores.
-        quitar_clave: deja el `.env` sin ninguna credencial y descarta la del
-            almacén.
+            detectado y se cifra en su perfil, sin borrar las otras claves.
+        quitar_clave: retira solo la credencial del perfil activo.
 
     Raises:
         DatosInvalidosError: el proveedor no está en el catálogo.
@@ -561,17 +581,28 @@ def guardar(
     antes = _leer(raiz)
     datos = _leer(raiz)
     clave_pegada = (api_key or "").strip()
+    if "\n" in clave_pegada or "\r" in clave_pegada:
+        raise DatosInvalidosError("La credencial debe ocupar una sola línea.")
+    elegido = proveedores.detectar(clave_pegada) or proveedor or _proveedor_guardado(raiz)
+    if not proveedores.descrito(elegido):
+        raise DatosInvalidosError(f"Proveedor desconocido: {elegido}")
+    cambio_proveedor = elegido != _proveedor_guardado(raiz)
+    if cambio_proveedor:
+        _guardar_perfil(datos)
+        _activar_perfil(datos, elegido)
+    elif not datos.get("proveedor"):
+        datos["proveedor"] = elegido
 
     if clave_pegada:
-        resuelto = proveedores.resolver(clave_pegada, proveedor)
-        elegido = resuelto["proveedor"]
         datos["proveedor"] = elegido
-        if resuelto["detectado"] and resuelto["endpoint"]:
+        if proveedores.endpoint_de(elegido):
             # La clave se reconoció: su proveedor manda y la URL base la fija el
             # catálogo. Es lo que evita que el usuario tenga que saber dónde vive
             # NVIDIA. Si la clave no se reconoce —o es un endpoint propio, que por
             # definición no tiene URL conocida— la decide el llamante.
-            datos["endpoint"] = resuelto["endpoint"]
+            datos["endpoint"] = proveedores.endpoint_de(elegido)
+        if cambio_proveedor and modelo == antes.get("modelo"):
+            modelo = None  # el formulario aún contenía el modelo del proveedor anterior
         if not datos.get("modelo") or modelo:
             datos["modelo"] = (modelo or "").strip() or modelo_por_defecto(elegido)
         datos["api_key"] = EncryptionManager.encrypt_str_with_key(
@@ -582,19 +613,18 @@ def guardar(
 
     else:
         if proveedor:
-            proveedor = proveedor.strip()
-            if not proveedores.descrito(proveedor):
-                raise DatosInvalidosError(f"Proveedor desconocido: {proveedor}")
-            datos["proveedor"] = proveedor
-            datos["endpoint"] = proveedores.endpoint_de(proveedor)
+            datos["proveedor"] = elegido
+            if proveedores.endpoint_de(elegido):
+                datos["endpoint"] = proveedores.endpoint_de(elegido)
 
+        if cambio_proveedor and modelo == antes.get("modelo"):
+            modelo = None
         if modelo is not None:
             datos["modelo"] = modelo.strip()
 
         if quitar_clave:
             datos.pop("api_key", None)
-            # Se retira del `.env` también; si no, el entorno seguiría sirviendo
-            # la clave anterior y «quitar» no quitaría nada.
+            # Se retira del `.env` la clave activa; las demás permanecen.
             _actualizar_env(
                 raiz, datos.get("proveedor") or PROVEEDOR_POR_DEFECTO, None)
 
@@ -607,12 +637,15 @@ def guardar(
     # clave, se cambia de modelo o de endpoint, el «verde» de ayer ya no
     # describe lo de hoy: la franja debe volver a «sin verificar» hasta que se
     # pruebe de nuevo, en vez de quedarse en verde por inercia.
-    if _cambio_la_conexion(antes, datos):
+    if _cambio_la_conexion(antes, datos) and not cambio_proveedor:
         datos.pop("ultima_prueba", None)
-        if antes.get("proveedor") != datos.get("proveedor"):
-            # Los modelos de la cuenta anterior no dicen nada de la nueva.
+        if antes.get("api_key") != datos.get("api_key"):
             datos.pop("modelos_conocidos", None)
 
+    if cambio_proveedor and clave_pegada:
+        datos.pop("ultima_prueba", None)
+        datos.pop("modelos_conocidos", None)
+    _guardar_perfil(datos)
     _escribir(raiz, datos)
     return estado(raiz)
 
@@ -653,7 +686,9 @@ def _listar_modelos(proveedor: str, endpoint: str, clave_actual: str,
     crudos = cuerpo.get("models") or cuerpo.get("data") or []
     return {
         "modelos": [
-            str(modelo.get("name") or modelo.get("id") or "").split("/")[-1]
+            (str(modelo.get("name") or modelo.get("id") or "").split("/")[-1]
+             if proveedores.estilo_de(proveedor) == proveedores.ESTILO_GEMINI
+             else str(modelo.get("id") or modelo.get("name") or ""))
             for modelo in crudos
             if modelo.get("name") or modelo.get("id")
         ]
@@ -807,7 +842,10 @@ def _comprobar_turno_minimo(proveedor: str, endpoint: str, clave: str,
     ficha = proveedores.descrito(proveedor) or {}
     nombre = ficha.get("nombre", proveedor)
     base = (endpoint or proveedores.endpoint_de(proveedor)).rstrip("/")
-    modelo = next((candidato for candidato in disponibles if _conversa(candidato)), "")
+    modelo = next(
+        (candidato for candidato in proveedores.modelos_de(proveedor) if candidato in disponibles),
+        next((candidato for candidato in disponibles if _conversa(candidato)), ""),
+    )
     if not modelo:
         # Sin un modelo de conversación no se puede comprobar: se dice, en vez de
         # dar por buena la credencial con el listado.

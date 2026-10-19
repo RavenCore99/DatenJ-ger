@@ -44,6 +44,7 @@ from transhumano import (
     obtener_frase_aleatoria
 )
 from backend.errors import BackendError
+from backend.services import proveedores
 
 
 #: Segundos que se espera a que el modelo empiece (o siga) respondiendo.
@@ -205,21 +206,30 @@ class ChatbotService:
         reintentos: int = REINTENTOS_POR_DEFECTO,
         contexto: str = "",
         modelos: list[str] | None = None,
+        proveedor: str = "gemini",
+        endpoint: str | None = None,
     ):
-        api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
+        if not proveedores.descrito(proveedor):
+            raise ConfiguracionChatbotError("Proveedor de modelos desconocido.")
+        api_key = (api_key or os.getenv(proveedores.variable_de(proveedor), "")).strip()
         if not api_key:
             raise ConfiguracionChatbotError(
-                "GEMINI_API_KEY no encontrada. Carga la credencial en el panel de conexión de modelos"
+                "No hay credencial para el proveedor activo. Cárgala en Conexión de modelos."
             )
 
         self.api_key = api_key
+        self.proveedor = proveedor
+        self.estilo = proveedores.estilo_de(proveedor)
+        self.endpoint = (endpoint or proveedores.endpoint_de(proveedor)).rstrip("/")
+        if not self.endpoint:
+            raise ConfiguracionChatbotError("Configura el punto de conexión del proveedor.")
         #: Candidatos, en orden: el modelo elegido, los que la cuenta tiene
         #: comprobados —los aporta el panel tras una prueba de conexión— y, al
         #: final, los alias del catálogo. El orden es la diferencia entre
         #: responder y devolver un 503: si el elegido se retiró, el asistente cae
         #: en uno que existe.
         self.model_candidates: list[str] = []
-        for nombre in [modelo, *(modelos or []), *MODELOS_POR_DEFECTO]:
+        for nombre in [modelo, *(modelos or []), *proveedores.modelos_de(proveedor)]:
             limpio = (nombre or "").strip()
             if limpio and limpio not in self.model_candidates:
                 self.model_candidates.append(limpio)
@@ -257,8 +267,22 @@ class ChatbotService:
         ).encode("utf-8")
 
     def _peticion(self, model_name: str, contents: list[dict], *, flujo: bool) -> request.Request:
+        if self.estilo == proveedores.ESTILO_COMPATIBLE:
+            mensajes = [{"role": "system", "content": self._system_prompt()}]
+            mensajes.extend({
+                "role": "assistant" if turno["role"] == "model" else "user",
+                "content": "".join(parte.get("text", "") for parte in turno.get("parts", [])),
+            } for turno in contents)
+            return request.Request(
+                f"{self.endpoint}/chat/completions",
+                data=json.dumps({
+                    "model": model_name, "messages": mensajes, "stream": flujo,
+                }, ensure_ascii=False).encode("utf-8"),
+                method="POST",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"},
+            )
         sufijo = ":streamGenerateContent?alt=sse" if flujo else ":generateContent"
-        url = f"{ENDPOINT_GEMINI}/models/{model_name}{sufijo}"
+        url = f"{self.endpoint}/models/{model_name}{sufijo}"
         return request.Request(
             url,
             data=self._payload(contents),
@@ -368,6 +392,14 @@ class ChatbotService:
                 except ValueError:
                     continue
 
+                if self.estilo == proveedores.ESTILO_COMPATIBLE:
+                    for opcion in trozo.get("choices") or []:
+                        delta = opcion.get("delta") or {}
+                        texto = delta.get("content")
+                        if isinstance(texto, str) and texto:
+                            yield texto
+                    continue
+
                 candidatos = trozo.get("candidates") or []
                 if not candidatos:
                     continue
@@ -389,6 +421,13 @@ class ChatbotService:
             self._peticion(model_name, contents, flujo=False), timeout=self.tiempo_limite
         ) as respuesta:
             cuerpo = json.loads(respuesta.read() or b"{}")
+
+        if self.estilo == proveedores.ESTILO_COMPATIBLE:
+            opciones = cuerpo.get("choices") or []
+            texto = (opciones[0].get("message") or {}).get("content") if opciones else None
+            if not isinstance(texto, str) or not texto.strip():
+                raise ErrorRedChatbot("El proveedor no devolvió texto utilizable.")
+            return texto.strip()
 
         candidatos = cuerpo.get("candidates") or []
         if not candidatos:
@@ -581,6 +620,8 @@ def crear_servicio(
     tiempo_limite: float = TIEMPO_LIMITE_POR_DEFECTO,
     reintentos: int = REINTENTOS_POR_DEFECTO,
     modelos: list[str] | None = None,
+    proveedor: str = "gemini",
+    endpoint: str | None = None,
 ) -> ChatbotService:
     """Punto de entrada único para iniciar la conversación de un usuario.
 
@@ -610,4 +651,6 @@ def crear_servicio(
         reintentos=reintentos,
         contexto=contexto,
         modelos=modelos,
+        proveedor=proveedor,
+        endpoint=endpoint,
     )

@@ -45,7 +45,7 @@ from backend.services import empresas as _empresas
 from backend.services import personas as _personas
 from backend.services import reportes as _reportes
 from backend.services import semantica as _semantica
-from chatbot import ChatbotService, crear_servicio
+from chatbot import ChatbotService, ConfiguracionChatbotError, crear_servicio
 
 #: Operaciones que todavía viven en la interfaz y su motivo.
 #:
@@ -495,10 +495,18 @@ class ComandosDatenJager:
         las de este momento.
         """
         self._exigir_sesion()
+        conexion = _modelos.estado(self._raiz)
+        credencial = _modelos.clave(self._raiz)
+        if not credencial:
+            raise ConfiguracionChatbotError(
+                "No hay credencial para el proveedor activo. Cárgala en Conexión de modelos."
+            )
         self._chat = crear_servicio(
             self._usuario_nombre,
             contexto,
-            api_key=_modelos.clave(self._raiz),
+            api_key=credencial,
+            proveedor=conexion["proveedor"],
+            endpoint=conexion["endpoint"],
             # Los modelos que la cuenta tiene comprobados respaldan al elegido:
             # si el elegido se retiró, el asistente cae en uno que existe.
             modelos=_modelos.modelos_candidatos(self._raiz))
@@ -563,6 +571,8 @@ class ComandosDatenJager:
         servicio = crear_servicio(
             self._usuario_nombre,
             api_key=clave,
+            proveedor=estado["proveedor"],
+            endpoint=estado["endpoint"],
             modelo=estado.get("modelo"),
             modelos=_modelos.modelos_candidatos(self._raiz))
         # El resultado se anota: es lo que permite que la franja de telemetría
@@ -852,7 +862,11 @@ class ComandosDatenJager:
     def guardar_conexion_de_modelos(self, **campos) -> dict:
         """Guarda la conexión de modelos elegida y devuelve el estado nuevo."""
         self._exigir_sesion()
-        return _modelos.guardar(self._raiz, **campos)
+        resultado = _modelos.guardar(self._raiz, **campos)
+        # Una conversación nueva debe tomar de inmediato la selección actual,
+        # no reutilizar la instancia que conserva clave/endpoint anteriores.
+        self._chat = None
+        return resultado
 
     def probar_conexion_de_modelos(self) -> dict:
         """Comprueba la credencial guardada contra el proveedor, de verdad."""
