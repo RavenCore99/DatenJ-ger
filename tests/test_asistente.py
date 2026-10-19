@@ -337,5 +337,82 @@ class RazonamientoNoSeMuestraTest(unittest.TestCase):
         self.assertIn("directamente", SYSTEM_PROMPT)
 
 
+class ProveedorCompatibleTest(unittest.TestCase):
+    """NVIDIA y otras APIs compatibles no deben enviarse al dialecto Gemini."""
+
+    @staticmethod
+    def respuesta(cuerpo=b"", lineas=()):
+        class Respuesta:
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def read(self): return cuerpo
+            def __iter__(self): return iter(lineas)
+        return Respuesta()
+
+    def servicio(self):
+        return chatbot.ChatbotService(
+            "raven", api_key="nvapi-sintetica", proveedor="nvidia",
+            modelo="meta/llama-3.3-70b-instruct", reintentos=1,
+        )
+
+    def test_peticion_lleva_bearer_y_mensajes_con_contexto(self):
+        asistente = self.servicio()
+        asistente.set_context("CONTEXTO SINTETICO")
+        solicitud = asistente._peticion("meta/llama-3.3-70b-instruct", [
+            {"role": "user", "parts": [{"text": "hola"}]},
+            {"role": "model", "parts": [{"text": "bien"}]},
+        ], flujo=True)
+        self.assertEqual(solicitud.full_url, "https://integrate.api.nvidia.com/v1/chat/completions")
+        self.assertEqual(solicitud.get_header("Authorization"), "Bearer nvapi-sintetica")
+        datos = solicitud.data
+        self.assertIsInstance(datos, bytes)
+        assert isinstance(datos, bytes)
+        cuerpo = json.loads(datos)
+        self.assertTrue(cuerpo["stream"])
+        self.assertEqual([m["role"] for m in cuerpo["messages"]], ["system", "user", "assistant"])
+        self.assertIn("CONTEXTO SINTETICO", cuerpo["messages"][0]["content"])
+        self.assertNotIn("nvapi-sintetica", datos.decode())
+
+    def test_streaming_y_generacion_real_usan_choices(self):
+        asistente = self.servicio()
+        linea = lambda texto: ("data: " + json.dumps({"choices": [{"delta": {"content": texto}}]}) + "\n").encode()
+        completo = json.dumps({"choices": [{"message": {"content": "respuesta final"}}]}).encode()
+        with mock.patch("urllib.request.urlopen", return_value=self.respuesta(lineas=[linea("Ho"), linea("la"), b"data: [DONE]\n"])):
+            self.assertEqual(list(asistente.enviar_mensaje_stream("hola")), ["Ho", "la"])
+        with mock.patch("urllib.request.urlopen", return_value=self.respuesta(cuerpo=completo)):
+            self.assertEqual(asistente.probar_respuesta()["respuesta"], "respuesta final")
+
+    def test_no_cae_en_alias_de_gemini_si_falla_nvidia(self):
+        asistente = self.servicio()
+        self.assertNotIn("gemini-flash-latest", asistente.model_candidates)
+        self.assertIn("meta/llama-3.3-70b-instruct", asistente.model_candidates)
+
+
+class IntegracionProveedorChatTest(BaseBackendTest):
+    def test_el_chat_del_backend_adopta_la_conexion_nvidia_sin_reiniciar(self):
+        from backend.services import modelos
+
+        modelos.guardar(self.tmpdir, api_key="AIza-sintetica")
+        modelos.guardar(self.tmpdir, api_key="nvapi-sintetica")
+        nvidia = self.comandos.iniciar_chat()
+        self.assertEqual(nvidia.proveedor, "nvidia")
+        self.assertEqual(nvidia.api_key, "nvapi-sintetica")
+        self.assertEqual(nvidia.endpoint, "https://integrate.api.nvidia.com/v1")
+        self.comandos.guardar_conexion_de_modelos(proveedor="gemini")
+        gemini = self.comandos.iniciar_chat()
+        self.assertEqual(gemini.proveedor, "gemini")
+        self.assertEqual(gemini.api_key, "AIza-sintetica")
+
+    def test_quitar_la_activa_no_reutiliza_el_chat_anterior(self):
+        from backend.services import modelos
+
+        modelos.guardar(self.tmpdir, api_key="nvapi-sintetica")
+        self.comandos.iniciar_chat()
+        self.comandos.guardar_conexion_de_modelos(quitar_clave=True)
+        with mock.patch.dict(os.environ, {"NVIDIA_API_KEY": "nvapi-vieja"}):
+            with self.assertRaises(chatbot.ConfiguracionChatbotError):
+                self.comandos.iniciar_chat()
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,7 +14,7 @@ import os
 import tempfile
 import unittest
 
-from tests.soporte import BaseBackendTest
+from tests.soporte import BaseBackendTest, aislar_credenciales_modelos
 from backend.errors import ConflictoError, DatosInvalidosError
 from backend.services import autenticacion, modelos
 from database import conectar_db, verify_contrasena
@@ -116,6 +116,9 @@ class TestConexionDeModelos(unittest.TestCase):
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp(prefix="datenjager_modelos_")
+        aislamiento = aislar_credenciales_modelos()
+        aislamiento.start()
+        self.addCleanup(aislamiento.stop)
 
     def tearDown(self):
         import shutil

@@ -9,12 +9,12 @@ import Icono from './Icono.jsx'
  * en lugar de reimplementar cada una.
  */
 
-/** Contenedor de contenido: título, descripción, acciones y cuerpo. */
-export default function Panel({ titulo, descripcion, acciones, children, className = '' }) {
+/** Contenedor de contenido; plano agrupa con aire y un único filete. */
+export default function Panel({ titulo, descripcion, acciones, children, className = '', plano = false }) {
   return (
-    <section className={`rounded-panel border border-borde bg-superficie ${className}`}>
+    <section className={`${plano ? 'border-t border-borde pt-5' : 'rounded-panel border border-borde bg-superficie'} ${className}`}>
       {(titulo || acciones) && (
-        <header className="flex items-center justify-between gap-4 border-b border-borde px-5 py-4">
+        <header className={`flex items-center justify-between gap-4 ${plano ? '' : 'border-b border-borde px-5 py-4'}`}>
           <div className="min-w-0">
             {titulo && <h2 className="text-titulo-sm">{titulo}</h2>}
             {descripcion && <p className="text-cuerpo-sm text-tenue">{descripcion}</p>}
@@ -22,7 +22,7 @@ export default function Panel({ titulo, descripcion, acciones, children, classNa
           {acciones && <div className="flex shrink-0 items-center gap-2">{acciones}</div>}
         </header>
       )}
-      <div className="px-5 py-4">{children}</div>
+      <div className={plano ? 'pt-4' : 'px-5 py-4'}>{children}</div>
     </section>
   )
 }

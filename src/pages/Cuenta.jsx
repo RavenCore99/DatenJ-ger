@@ -85,7 +85,7 @@ export default function Cuenta({ onNavegar }) {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <nav
           aria-label="Secciones de la cuenta"
-          className="flex shrink-0 flex-row gap-1 overflow-x-auto rounded-panel border border-borde bg-superficie p-2 lg:w-60 lg:flex-col"
+          className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-borde pb-3 lg:w-60 lg:flex-col lg:border-b-0 lg:border-r lg:pb-0 lg:pr-3"
         >
           {SECCIONES.map(({ clave, titulo, descripcion }) => {
             const activaEsta = clave === seccion
@@ -111,7 +111,7 @@ export default function Cuenta({ onNavegar }) {
 
         <div className="min-w-0 flex-1">
           {!estado && !error && (
-            <Panel titulo={activa.titulo} descripcion={activa.descripcion}>
+            <Panel plano titulo={activa.titulo} descripcion={activa.descripcion}>
               <Esqueleto variante="texto" filas={4} />
             </Panel>
           )}
@@ -123,7 +123,7 @@ export default function Cuenta({ onNavegar }) {
           {estado && seccion === 'modelos' && <Modelos onNavegar={onNavegar} nivelTitulo={2} />}
 
           {estado && !INCRUSTADAS.has(seccion) && (
-            <Panel titulo={activa.titulo} descripcion={activa.descripcion}>
+            <Panel plano titulo={activa.titulo} descripcion={activa.descripcion}>
               {seccion === 'apariencia' && <Apariencia />}
               {seccion === 'doble_factor' && <SegundoFactor estado={estado} onCambio={recargar} />}
               {seccion === 'codigos' && <CodigosRespaldo estado={estado} onCambio={recargar} />}

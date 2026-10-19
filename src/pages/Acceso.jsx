@@ -140,13 +140,7 @@ export default function Acceso({ onVolver }) {
     >
       <main className="aparecer relative flex min-h-0 flex-1">
         <section className="flex flex-1 items-center justify-center overflow-y-auto p-8">
-          <div className="w-full max-w-[30rem] overflow-hidden rounded-panel border border-borde bg-superficie shadow-flotante">
-            {/* Filete de acento superior, como en el mockup. */}
-            <div
-              aria-hidden="true"
-              className="h-1 bg-gradient-to-r from-primario-enfasis via-primario to-acento"
-            />
-
+          <div className="w-full max-w-[30rem] overflow-hidden rounded-panel bg-superficie shadow-flotante ring-1 ring-borde/50">
             <div className="flex flex-col gap-5 p-7">
               <Cabecera paso={paso} />
 
@@ -218,7 +212,7 @@ export default function Acceso({ onVolver }) {
                     textoOcupado="Verificando credenciales…"
                   />
 
-                  <div className="flex items-center justify-between gap-3 border-t border-borde pt-3 text-etiqueta-sm">
+                  <div className="flex items-center justify-between gap-3 pt-3 text-etiqueta-sm">
                     <button
                       type="button"
                       onClick={() => {
@@ -265,7 +259,7 @@ export default function Acceso({ onVolver }) {
                     textoOcupado="Comprobando…"
                   />
 
-                  <div className="flex items-center justify-between border-t border-borde pt-3 text-etiqueta-sm">
+                  <div className="flex items-center justify-between pt-3 text-etiqueta-sm">
                     <button
                       type="button"
                       onClick={() => {
@@ -327,7 +321,7 @@ export default function Acceso({ onVolver }) {
                     textoOcupado="Comprobando…"
                   />
 
-                  <div className="flex items-center justify-end border-t border-borde pt-3 text-etiqueta-sm">
+                  <div className="flex items-center justify-end pt-3 text-etiqueta-sm">
                     <button
                       type="button"
                       onClick={() => {
@@ -380,7 +374,7 @@ export default function Acceso({ onVolver }) {
                 </form>
               )}
 
-              <div className="flex items-center justify-center border-t border-borde pt-3">
+              <div className="flex items-center justify-center pt-3">
                 <TerminosUso />
               </div>
             </div>

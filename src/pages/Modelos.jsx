@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import Panel, {
   Aviso,
@@ -22,7 +22,7 @@ import { backend } from '../lib/api.js'
  * Solo el proveedor «compatible con OpenAI» necesita una URL escrita, porque es,
  * por definición, el que no conocemos.
  *
- * **La clave no pasa por el renderer.** Se envía al backend, que la cifra con
+ * **La clave no vuelve del backend al renderer.** Se envía al backend, que la cifra con
  * AES-256-GCM en su almacén local (`modelos/`, 0600/0700) y la deja además en el
  * `.env` del proyecto (0600), que es de donde la lee el asistente. Al volver a
  * entrar, el campo llega vacío: no hay forma de releerla desde aquí.
@@ -33,9 +33,8 @@ import { backend } from '../lib/api.js'
  * resultado de la última prueba real —la de conexión y la de generación—, y ese
  * mismo estado es el que pinta la franja de telemetría.
  *
- * La adopción es **sin reiniciar**: el servicio resuelve la credencial cada vez
- * que se inicia una conversación, así que basta con abrir una nueva en el panel
- * del asistente.
+ * La adopción es **sin reiniciar**: cambiar el proveedor activo invalida el
+ * servicio anterior y la siguiente conversación usa su propio modelo y API.
  */
 export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const { conectado, autenticado, modelos, recargarModelos } = useApp()
@@ -56,6 +55,18 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const [modelo, setModelo] = useState('')
   const [endpoint, setEndpoint] = useState('')
   const [clave, setClave] = useState('')
+  // Mantiene el formulario independiente del sondeo global; el ref se marca
+  // sin esperar al siguiente render, incluso si una respuesta llega en medio.
+  const borradorRef = useRef(false)
+  const [borradorPendiente, setBorradorPendiente] = useState(false)
+  const marcarBorrador = () => {
+    borradorRef.current = true
+    setBorradorPendiente(true)
+  }
+  const confirmarBorrador = () => {
+    borradorRef.current = false
+    setBorradorPendiente(false)
+  }
   // Lo que el backend reconoce en la clave que se está escribiendo, antes de
   // guardarla. `null` mientras no se ha reconocido nada.
   const [detectado, setDetectado] = useState(null)
@@ -64,10 +75,11 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   useEffect(() => {
     if (!modelos) return
     setEstado(modelos)
+    // El sondeo no debe borrar proveedor, modelo, endpoint ni clave pendientes.
+    if (borradorRef.current) return
     setProveedor(modelos.proveedor ?? '')
     setModelo(modelos.modelo ?? '')
     setEndpoint(modelos.endpoint ?? '')
-    setClave('')
   }, [modelos])
 
   // Reconocimiento en vivo: en cuanto se pega una clave, se pregunta al backend
@@ -83,7 +95,18 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
     const temporizador = setTimeout(async () => {
       try {
         const reconocido = await backend.modelos.identificar(limpia)
-        if (vigente) setDetectado(reconocido)
+        if (vigente) {
+          setDetectado(reconocido)
+          if (reconocido.detectado && reconocido.proveedor !== proveedor) {
+            const ficha = modelos?.proveedores?.find(({ clave: id }) => id === reconocido.proveedor)
+            const guardada = estado?.conexiones_guardadas?.find(({ proveedor: id }) => id === reconocido.proveedor)
+            setProveedor(reconocido.proveedor)
+            setModelo(guardada?.modelo ?? ficha?.modelos?.[0] ?? '')
+            setEndpoint(guardada?.endpoint ?? reconocido.endpoint)
+            setPrueba(null)
+            setRespuestaPrueba(null)
+          }
+        }
       } catch {
         // Un fallo al reconocer no debe interrumpir la escritura: siempre se
         // puede guardar igual y elegir el proveedor a mano.
@@ -94,7 +117,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       vigente = false
       clearTimeout(temporizador)
     }
-  }, [clave])
+  }, [clave, modelos?.proveedores])
 
   const cargar = async () => {
     setError(null)
@@ -105,6 +128,8 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       setModelo(actual.modelo ?? '')
       setEndpoint(actual.endpoint ?? '')
       setClave('')
+      setDetectado(null)
+      confirmarBorrador()
       recargarModelos()
     } catch (fallo) {
       setError(fallo.message)
@@ -130,6 +155,9 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
         api_key: clave || null,
       })
       setEstado(nuevo)
+      setProveedor(nuevo.proveedor)
+      setModelo(nuevo.modelo)
+      setEndpoint(nuevo.endpoint)
       setClave('')
       setDetectado(null)
       setAviso(
@@ -137,6 +165,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
           ? 'Credencial guardada y cifrada, y dejada en el .env del proyecto. Pulsa «Probar conexión» para saber si sirve.'
           : 'Conexión guardada.',
       )
+      confirmarBorrador()
       recargarModelos()
     } catch (fallo) {
       setError(fallo.message)
@@ -193,9 +222,13 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
     try {
       const nuevo = await backend.modelos.guardar({ quitar_clave: true })
       setEstado(nuevo)
+      setProveedor(nuevo.proveedor)
+      setModelo(nuevo.modelo)
+      setEndpoint(nuevo.endpoint)
       setClave('')
       setDetectado(null)
-      setAviso('Credencial eliminada del almacén local y del .env.')
+      setAviso('Credencial activa eliminada del almacén local y del .env; las demás se conservan.')
+      confirmarBorrador()
       recargarModelos()
     } catch (fallo) {
       setError(fallo.message)
@@ -228,15 +261,18 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
   const endpointVisible = detectado?.detectado ? detectado.endpoint : endpoint
   const fichaVisible = proveedores.find(({ clave: valor }) => valor === proveedorVisible)
   const endpointEditable = Boolean(fichaVisible?.endpoint_editable)
+  const tieneClaveVisible = proveedorVisible === estado?.proveedor
+    ? tieneClave
+    : estado?.conexiones_guardadas?.some(({ proveedor: id }) => id === proveedorVisible)
 
   // Modelos que se ofrecen: los del catálogo del proveedor, los que la cuenta
   // tiene de verdad —de la última prueba de conexión— y lo que ya esté elegido.
   const modelosOfrecidos = [
     ...new Set([
       ...(fichaVisible?.modelos ?? []),
-      ...(estado?.modelos_conocidos ?? []),
-      ...(prueba?.modelos_disponibles ?? []),
-      ...(modelo ? [modelo] : []),
+      ...(proveedorVisible === estado?.proveedor ? estado?.modelos_conocidos ?? [] : []),
+      ...(proveedorVisible === estado?.proveedor ? prueba?.modelos_disponibles ?? [] : []),
+      ...(modelo && proveedorVisible === proveedor ? [modelo] : []),
     ]),
   ]
 
@@ -278,7 +314,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       )}
 
       {!estado && !error && (
-        <Panel titulo="Conexión">
+        <Panel plano titulo="Conexión">
           <Esqueleto variante="texto" filas={5} />
         </Panel>
       )}
@@ -286,22 +322,69 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
       {estado && (
         <>
           <Panel
+            plano
             titulo="Credencial de API"
             descripcion="Pega solo la clave: el proveedor y la URL base se deducen"
           >
+            {borradorPendiente && (
+              <p role="status" className="mb-4 text-cuerpo-sm text-alerta">
+                Hay cambios sin guardar. Guárdalos para activar y probar esta conexión.
+              </p>
+            )}
+            {estado.conexiones_guardadas?.length > 0 && (
+              <div className="mb-5 flex flex-wrap items-center gap-2" aria-label="Conexiones guardadas">
+                <span className="text-cuerpo-sm text-tenue">Guardadas:</span>
+                {estado.conexiones_guardadas.map(({ proveedor: id, nombre }) => (
+                  <button
+                    type="button"
+                    key={id}
+                    disabled={ocupado || id === estado.proveedor}
+                    onClick={async () => {
+                      setOcupado(true)
+                      setError(null)
+                      try {
+                        const nueva = await backend.modelos.guardar({ proveedor: id })
+                        setEstado(nueva)
+                        setProveedor(nueva.proveedor)
+                        setModelo(nueva.modelo)
+                        setEndpoint(nueva.endpoint)
+                        setClave('')
+                        setDetectado(null)
+                        setPrueba(null)
+                        setRespuestaPrueba(null)
+                        confirmarBorrador()
+                        recargarModelos()
+                      } catch (fallo) {
+                        setError(fallo.message)
+                      } finally {
+                        setOcupado(false)
+                      }
+                    }}
+                    aria-pressed={id === estado.proveedor}
+                    className="rounded-md px-3 py-1.5 text-etiqueta-sm text-texto transition-colors hover:bg-fondo-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario disabled:bg-primario/10 disabled:text-primario"
+                  >
+                    {nombre}{id === estado.proveedor ? ' · activa' : ''}
+                  </button>
+                ))}
+              </div>
+            )}
             <form className="flex flex-col gap-4" onSubmit={guardar}>
               <label className="flex flex-col gap-1">
                 <span className="flex items-center gap-2 text-etiqueta-sm text-texto">
                   Credencial de API
-                  {tieneClave && <Pill tipo="exito">Ya configurada</Pill>}
+                  {tieneClaveVisible && <Pill tipo="exito">Ya configurada</Pill>}
                 </span>
                 <input
                   type="password"
                   value={clave}
                   autoComplete="off"
-                  onChange={(evento) => setClave(evento.target.value)}
+                  onChange={(evento) => {
+                    marcarBorrador()
+                    setDetectado(null)
+                    setClave(evento.target.value)
+                  }}
                   placeholder={
-                    tieneClave ? 'Escribe una nueva para reemplazarla' : 'Pega aquí tu clave de API'
+                    tieneClaveVisible ? 'Escribe una nueva para reemplazarla' : 'Pega aquí tu clave de API'
                   }
                   className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 font-mono text-cuerpo-md outline-none transition-colors focus:border-primario"
                 />
@@ -353,11 +436,15 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                   <select
                     value={proveedor}
                     onChange={(evento) => {
+                      marcarBorrador()
                       const elegido = evento.target.value
                       setProveedor(elegido)
+                      setPrueba(null)
+                      setRespuestaPrueba(null)
                       const descripcion = proveedores.find(({ clave: valor }) => valor === elegido)
-                      setEndpoint(descripcion?.endpoint ?? '')
-                      if (!modelo) setModelo(descripcion?.modelos?.[0] ?? '')
+                      const guardada = estado.conexiones_guardadas?.find(({ proveedor: id }) => id === elegido)
+                      setEndpoint(guardada?.endpoint ?? descripcion?.endpoint ?? '')
+                      setModelo(guardada?.modelo ?? descripcion?.modelos?.[0] ?? '')
                     }}
                     className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 text-cuerpo-md outline-none focus:border-primario"
                   >
@@ -381,7 +468,10 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                   type="url"
                   value={endpointVisible}
                   readOnly={!endpointEditable}
-                  onChange={(evento) => setEndpoint(evento.target.value)}
+                  onChange={(evento) => {
+                    marcarBorrador()
+                    setEndpoint(evento.target.value)
+                  }}
                   placeholder="https://…"
                   className={[
                     'max-w-md rounded-lg border px-3 py-2 font-mono text-cuerpo-md outline-none',
@@ -402,7 +492,10 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                 {modelosOfrecidos.length ? (
                   <select
                     value={modelo}
-                    onChange={(evento) => setModelo(evento.target.value)}
+                    onChange={(evento) => {
+                      marcarBorrador()
+                      setModelo(evento.target.value)
+                    }}
                     className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 font-mono text-cuerpo-md outline-none focus:border-primario"
                   >
                     {modelosOfrecidos.map((nombre) => (
@@ -415,7 +508,10 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                   <input
                     type="text"
                     value={modelo}
-                    onChange={(evento) => setModelo(evento.target.value)}
+                    onChange={(evento) => {
+                      marcarBorrador()
+                      setModelo(evento.target.value)
+                    }}
                     placeholder="nombre del modelo"
                     className="max-w-md rounded-lg border border-borde bg-fondo px-3 py-2 font-mono text-cuerpo-md outline-none focus:border-primario"
                   />
@@ -441,7 +537,8 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                   <button
                     type="button"
                     onClick={quitarClave}
-                    disabled={ocupado}
+                    disabled={ocupado || borradorPendiente}
+                    title={borradorPendiente ? 'Guarda o descarta los cambios antes de quitar la credencial activa' : 'Quita la credencial del proveedor activo'}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-peligro/40 px-3.5 py-2 text-etiqueta-md font-medium text-peligro transition-colors hover:bg-peligro/5 disabled:opacity-50"
                   >
                     <Icono nombre="basura" tamano={13} />
@@ -452,9 +549,11 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                 <button
                   type="button"
                   onClick={probarConexion}
-                  disabled={probando || !tieneClave}
+                  disabled={probando || !tieneClave || borradorPendiente}
                   title={
-                    tieneClave
+                    borradorPendiente
+                      ? 'Guarda los cambios para activar esta conexión antes de probarla'
+                      : tieneClave
                       ? 'Hace una petición real al proveedor con la credencial guardada'
                       : 'Guarda una credencial antes de probarla'
                   }
@@ -471,9 +570,11 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
                 <button
                   type="button"
                   onClick={probarRespuesta}
-                  disabled={probandoRespuesta || !tieneClave}
+                  disabled={probandoRespuesta || !tieneClave || borradorPendiente}
                   title={
-                    tieneClave
+                    borradorPendiente
+                      ? 'Guarda los cambios para activar esta conexión antes de probarla'
+                      : tieneClave
                       ? 'Pide al modelo una respuesta de verdad: es lo que prueba que el asistente funciona'
                       : 'Guarda una credencial antes de probarla'
                   }
@@ -543,7 +644,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
             </form>
           </Panel>
 
-          <Panel titulo="Estado de la conexión" descripcion="Lo que muestra la franja de telemetría">
+          <Panel plano titulo="Estado de la conexión" descripcion="Lo que muestra la franja de telemetría">
             <div className="flex flex-col gap-3 text-cuerpo-sm">
               <p className="flex items-start gap-2 text-texto-2">
                 <span
@@ -574,7 +675,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
             </div>
           </Panel>
 
-          <Panel titulo="Cómo se aplica" descripcion="Activación sin reiniciar">
+          <Panel plano titulo="Cómo se aplica" descripcion="Activación sin reiniciar">
             <ul className="flex flex-col gap-2 text-cuerpo-sm text-texto-2">
               <li className="flex items-start gap-2">
                 <Icono nombre="guardar" tamano={14} />
@@ -585,7 +686,7 @@ export default function Modelos({ onNavegar, nivelTitulo = 1 }) {
               </li>
               <li className="flex items-start gap-2">
                 <Icono nombre="basura" tamano={14} />
-                «Quitar la credencial» la retira de los dos sitios. Si solo se quitara del almacén,
+                «Quitar la credencial» retira solo la activa de los dos sitios. Si solo se quitara del almacén,
                 el <span className="font-mono">.env</span> seguiría sirviendo la clave anterior y el
                 panel diría que hay credencial.
               </li>

@@ -3,9 +3,7 @@ import Particulas from './Particulas.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 
 /**
- * Marco de las pantallas de acceso (SCRUM-29): cabecera de navegación
- * y franja de telemetría al pie, con las mismas densidades que el marco del
- * sistema (48px y 32px).
+ * Marco del portal con navegación sin barra superior y telemetría al pie.
  *
  * El marco de Electron ya tiene su propia barra. Bienvenida no necesita una
  * segunda cabecera; acceso y registro conservan el título y la vuelta, sin logo.
@@ -25,29 +23,20 @@ export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
   return (
     <div className="flex h-full w-full flex-col bg-fondo text-texto">
       {(titulo || onVolver) && (
-        <header className="flex h-cabecera shrink-0 items-center justify-between gap-4 border-b border-borde bg-superficie px-4">
+        <header className="pointer-events-none absolute inset-x-0 top-11 z-20 flex items-center justify-end px-5 py-2">
           {titulo && (
-            <div className="flex min-w-0 items-baseline gap-2">
-              <span className="truncate font-marca text-etiqueta-md font-semibold tracking-tight">
-                DatenJäger
-              </span>
-              <span aria-hidden="true" className="text-borde-fuerte">
-                ·
-              </span>
-              <span className="truncate text-etiqueta-sm text-tenue">{titulo}</span>
-            </div>
+            <span className="sr-only">{titulo}</span>
           )}
-
-        {onVolver && (
-          <button
-            type="button"
-            onClick={onVolver}
-            className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2"
-          >
-            <Icono nombre="flecha-izquierda" tamano={14} />
-            {subtitulo ?? 'Volver'}
-          </button>
-        )}
+          {onVolver && (
+            <button
+              type="button"
+              onClick={onVolver}
+              className="pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-etiqueta-sm text-primario transition-colors hover:bg-fondo-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primario"
+            >
+              <Icono nombre="flecha-izquierda" tamano={14} />
+              {subtitulo ?? 'Volver'}
+            </button>
+          )}
         </header>
       )}
 

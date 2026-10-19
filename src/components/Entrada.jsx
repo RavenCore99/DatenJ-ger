@@ -43,7 +43,7 @@ export default function Entrada() {
     <div
       aria-hidden="true"
       className={[
-        'pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-fondo',
+        'pointer-events-none fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-fondo',
         saliendo ? 'entrada-salida' : '',
       ].join(' ')}
     >

@@ -14,8 +14,10 @@ import stat
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from backend.services import modelos, proveedores
+from tests.soporte import aislar_credenciales_modelos
 
 
 class BaseModelosTest(unittest.TestCase):
@@ -25,8 +27,11 @@ class BaseModelosTest(unittest.TestCase):
         self._carpeta = tempfile.TemporaryDirectory()
         self.raiz = Path(self._carpeta.name)
 
-        # El `.env` del proyecto no debe influir: se aísla el entorno.
-        self._entorno_previo = os.environ.pop(modelos.VARIABLE_ENTORNO, None)
+        # Aísla todas las credenciales; la inferencia de proveedor consulta
+        # también las otras variables, no solo la de Gemini.
+        aislamiento = aislar_credenciales_modelos()
+        aislamiento.start()
+        self.addCleanup(aislamiento.stop)
 
         (self.raiz / modelos.NOMBRE_ENV).write_text(
             "# DatenJäger — Variables de entorno\n"
@@ -37,8 +42,6 @@ class BaseModelosTest(unittest.TestCase):
         )
 
     def tearDown(self):
-        if self._entorno_previo is not None:
-            os.environ[modelos.VARIABLE_ENTORNO] = self._entorno_previo
         self._carpeta.cleanup()
 
     def leer_env(self) -> str:
@@ -435,6 +438,94 @@ class DeteccionDeProveedorTest(unittest.TestCase):
         # Una versión fija se retira y deja de responder: fue el 503 real.
         for nombre in proveedores.modelos_de("gemini"):
             self.assertTrue(nombre.endswith("-latest"), nombre)
+
+
+class VariasConexionesTest(BaseModelosTest):
+    def test_todos_los_proveedores_conservan_credenciales_y_perfil_independientes(self):
+        perfiles = (
+            ("gemini", "AIza-ejemplo-local", "gemini-flash-latest", None),
+            ("nvidia", "nvapi-ejemplo-local", "meta/llama-3.3-70b-instruct", None),
+            ("openrouter", "sk-or-ejemplo-local", "openai/gpt-4o-mini", None),
+            ("openai", "sk-ejemplo-local", "gpt-4o-mini", None),
+            ("compatible", "formato-no-reconocido-local", "modelo-local", "https://example.invalid/v1"),
+        )
+        for proveedor, clave, modelo, endpoint in perfiles:
+            actual = modelos.guardar(
+                self.raiz, proveedor=proveedor, api_key=clave,
+                modelo=modelo, endpoint=endpoint,
+            )
+            self.assertEqual(actual["proveedor"], proveedor)
+            self.assertEqual(modelos.clave(self.raiz), clave)
+            self.assertNotIn(clave, repr(actual))
+
+        env = self.leer_env()
+        self.assertEqual(stat.S_IMODE((self.raiz / modelos.NOMBRE_ENV).stat().st_mode), 0o600)
+        self.assertIn("OTRA_VARIABLE=se-conserva", env)
+        for proveedor, clave, modelo, endpoint in perfiles:
+            variable = proveedores.variable_de(proveedor)
+            self.assertEqual(env.count(f"{variable}="), 1)
+            self.assertIn(f"{variable}={clave}", env)
+            actual = modelos.guardar(self.raiz, proveedor=proveedor)
+            self.assertEqual(actual["modelo"], modelo)
+            self.assertEqual(actual["endpoint"], endpoint or proveedores.endpoint_de(proveedor))
+            self.assertEqual(modelos.clave(self.raiz), clave)
+            self.assertEqual(len(actual["conexiones_guardadas"]), len(perfiles))
+
+    def test_no_admite_inyectar_otra_variable_en_el_env(self):
+        from backend.errors import DatosInvalidosError
+
+        with self.assertRaises(DatosInvalidosError):
+            modelos.guardar(self.raiz, api_key="nvapi-ejemplo\nOTRA_VARIABLE=alterada")
+        self.assertIn("OTRA_VARIABLE=se-conserva", self.leer_env())
+
+    def test_guardar_nvidia_conserva_gemini_y_su_modelo(self):
+        modelos.guardar(self.raiz, api_key="AIza-sintetica", modelo="gemini-flash-latest")
+        modelos.registrar_prueba(self.raiz, {"ok": True, "mensaje": "ok"}, modelos.PRUEBA_CONEXION)
+        nvidia = modelos.guardar(self.raiz, api_key="nvapi-sintetica", modelo="meta/llama-3.3-70b-instruct")
+
+        self.assertEqual(nvidia["proveedor"], "nvidia")
+        self.assertEqual(nvidia["modelo"], "meta/llama-3.3-70b-instruct")
+        self.assertEqual(nvidia["salud"], modelos.SALUD_SIN_VERIFICAR)
+        self.assertEqual(modelos.clave(self.raiz), "nvapi-sintetica")
+        self.assertEqual({c["proveedor"] for c in nvidia["conexiones_guardadas"]}, {"gemini", "nvidia"})
+        self.assertEqual(
+            {c["proveedor"]: c["modelo"] for c in nvidia["conexiones_guardadas"]},
+            {"gemini": "gemini-flash-latest", "nvidia": "meta/llama-3.3-70b-instruct"},
+        )
+        self.assertEqual(self.leer_env().count("GEMINI_API_KEY="), 1)
+        self.assertEqual(self.leer_env().count("NVIDIA_API_KEY="), 1)
+        self.assertNotIn("sintetica", repr(nvidia))
+
+        gemini = modelos.guardar(self.raiz, proveedor="gemini")
+        self.assertEqual(gemini["modelo"], "gemini-flash-latest")
+        self.assertEqual(gemini["salud"], modelos.SALUD_OK)
+        self.assertEqual(modelos.clave(self.raiz), "AIza-sintetica")
+        self.assertEqual(modelos.guardar(self.raiz, proveedor="nvidia")["modelo"],
+                         "meta/llama-3.3-70b-instruct")
+
+    def test_quitar_solo_la_activa_y_no_resucitar_clave_del_proceso(self):
+        modelos.guardar(self.raiz, api_key="AIza-sintetica")
+        modelos.guardar(self.raiz, api_key="nvapi-sintetica")
+        with mock.patch.dict(os.environ, {"NVIDIA_API_KEY": "nvapi-obsoleta"}):
+            nvidia = modelos.guardar(self.raiz, quitar_clave=True)
+            self.assertIsNone(modelos.clave(self.raiz))
+            self.assertFalse(nvidia["clave_configurada"])
+            self.assertNotIn("NVIDIA_API_KEY=", self.leer_env())
+            self.assertIn("GEMINI_API_KEY=AIza-sintetica", self.leer_env())
+        self.assertEqual(modelos.guardar(self.raiz, proveedor="gemini")["salud"],
+                         modelos.SALUD_SIN_VERIFICAR)
+
+    def test_modelos_nvidia_conservan_id_con_namespace(self):
+        from unittest import mock
+
+        class Respuesta:
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def read(self): return b'{"data":[{"id":"meta/llama-3.3-70b-instruct"}]}'
+
+        with mock.patch("urllib.request.urlopen", return_value=Respuesta()):
+            listado = modelos._listar_modelos("nvidia", proveedores.ENDPOINT_NVIDIA, "ficticia", 1)
+        self.assertEqual(listado["modelos"], ["meta/llama-3.3-70b-instruct"])
 
 
 if __name__ == "__main__":

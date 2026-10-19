@@ -145,7 +145,9 @@ class ServicioPython {
   /** Programa y argumentos del servicio, según esté congelado o no. */
   ordenDeArranque(puerto) {
     // Congelado, el binario **es** `backend.server`: no admite `-m`.
-    const comunes = ['--host', '127.0.0.1', '--puerto', String(puerto), '--token', this.token]
+    // `base64url` puede empezar por `-`: como valor separado, argparse lo
+    // interpreta como una opción; con `--token=valor` acepta cualquier token.
+    const comunes = ['--host', '127.0.0.1', '--puerto', String(puerto), `--token=${this.token}`]
     const orden = this.binario
       ? [this.binario, ...comunes]
       : [interprete(this.raiz), '-m', 'backend.server', ...comunes]

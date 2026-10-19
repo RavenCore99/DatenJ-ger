@@ -106,8 +106,9 @@ function Marco() {
 
   // Los accesos se montan únicamente junto al contenido autenticado.
   const conBarra = (contenido, mostrarAccesos = false) => (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       <BarraVentana
+        portal={!mostrarAccesos}
         onAbrirAjustes={mostrarAccesos ? () => setSeccion('cuenta') : undefined}
         onAbrirAsistente={mostrarAccesos ? abrirAsistente : undefined}
         onCerrarSesion={mostrarAccesos ? cerrarSesion : undefined}
