@@ -17,6 +17,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest import mock
 
 RAIZ = Path(__file__).resolve().parent.parent
 if str(RAIZ) not in sys.path:
@@ -25,6 +26,7 @@ if str(RAIZ) not in sys.path:
 from database import conectar_db            # noqa: E402
 from backend.state import AppState          # noqa: E402
 from backend.commands import ComandosDatenJager  # noqa: E402
+from backend.services import proveedores    # noqa: E402
 
 #: Datos del usuario de pruebas.
 USUARIO_ID = 1
@@ -36,6 +38,14 @@ PDF_MINIMO = b"%PDF-1.4\ncontenido de prueba\n%%EOF\n"
 
 #: Prefijos de los módulos de interfaz que la capa backend no debe cargar.
 MODULOS_UI = ("tkinter", "customtkinter")
+
+
+def aislar_credenciales_modelos():
+    """No heredar claves reales del proceso al probar perfiles temporales."""
+    return mock.patch.dict(
+        os.environ,
+        {variable: "" for variable in proveedores.variables_de_credenciales()},
+    )
 
 
 def assert_sin_tkinter(caso: unittest.TestCase) -> None:
@@ -53,6 +63,10 @@ class BaseBackendTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmpdir = tempfile.mkdtemp(prefix="datenjager_test_")
         self.db_path = os.path.join(self.tmpdir, "pruebas.db")
+
+        aislamiento = aislar_credenciales_modelos()
+        aislamiento.start()
+        self.addCleanup(aislamiento.stop)
 
         # El almacén de tokens de confianza y el de la conexión de modelos se
         # apuntan al directorio temporal: ninguna prueba debe escribir en el

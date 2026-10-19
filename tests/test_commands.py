@@ -153,6 +153,10 @@ class TestFlujoCompleto(BaseBackendTest):
 
 
     def test_chat_inicia_con_el_usuario_autenticado(self):
+        # Se configura una clave ficticia en el almacén temporal: iniciar una
+        # conversación requiere credencial desde el soporte multiproveedor.
+        self.comandos.guardar_conexion_de_modelos(
+            proveedor="gemini", api_key="AIza-clave-sintetica")
         chat = self.comandos.iniciar_chat("contexto de prueba")
         self.assertEqual(chat.usuario_nombre, self.usuario_nombre)
         self.comandos.limpiar_chat()

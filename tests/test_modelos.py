@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest import mock
 
 from backend.services import modelos, proveedores
+from tests.soporte import aislar_credenciales_modelos
 
 
 class BaseModelosTest(unittest.TestCase):
@@ -26,8 +27,11 @@ class BaseModelosTest(unittest.TestCase):
         self._carpeta = tempfile.TemporaryDirectory()
         self.raiz = Path(self._carpeta.name)
 
-        # El `.env` del proyecto no debe influir: se aísla el entorno.
-        self._entorno_previo = os.environ.pop(modelos.VARIABLE_ENTORNO, None)
+        # Aísla todas las credenciales; la inferencia de proveedor consulta
+        # también las otras variables, no solo la de Gemini.
+        aislamiento = aislar_credenciales_modelos()
+        aislamiento.start()
+        self.addCleanup(aislamiento.stop)
 
         (self.raiz / modelos.NOMBRE_ENV).write_text(
             "# DatenJäger — Variables de entorno\n"
@@ -38,8 +42,6 @@ class BaseModelosTest(unittest.TestCase):
         )
 
     def tearDown(self):
-        if self._entorno_previo is not None:
-            os.environ[modelos.VARIABLE_ENTORNO] = self._entorno_previo
         self._carpeta.cleanup()
 
     def leer_env(self) -> str:
