@@ -10,18 +10,7 @@ import { Donut, LineaTendencia, Medidor } from '../components/Graficos.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 
-/**
- * Dashboard de datos y estadísticas (SCRUM-82).
- *
- * La **lógica** vive en Python (`backend/services/reportes.py`): métricas,
- * distribución por empresa y la serie temporal con regresión, predicción y R²
- * (`GET /api/reportes/tendencia`). Aquí solo se dibuja, con la paleta del
- * sistema y sin librería de charts: medidores, anillo y línea de tendencia son
- * SVG propio (`src/components/Graficos.jsx`).
- *
- * Todo lo que se muestra sale de una consulta real. Si el archivo está vacío se
- * dice que está vacío, en vez de dibujar ejes sin datos.
- */
+/** Visualiza métricas, distribución y tendencias del archivo documental. */
 export default function Estadisticas({ onNavegar }) {
   const { conectado, autenticado } = useApp()
 

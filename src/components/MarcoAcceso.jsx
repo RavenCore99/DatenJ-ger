@@ -2,23 +2,7 @@ import Icono from './Icono.jsx'
 import Particulas from './Particulas.jsx'
 import { useApp } from '../estado/ProveedorApp.jsx'
 
-/**
- * Marco del portal con navegación sin barra superior y telemetría al pie.
- *
- * El marco de Electron ya tiene su propia barra. Bienvenida no necesita una
- * segunda cabecera; acceso y registro conservan el título y la vuelta, sin logo.
- *
- * **El fondo de marca es del marco, no de una pantalla** (calidad de vida): la
- * marca de agua con el nombre y el campo de partículas vivían dentro de la
- * bienvenida, así que desaparecían al pasar al acceso o al registro. Al subirlos
- * aquí, las tres pantallas del portal comparten el mismo fondo y el cambio entre
- * ellas se siente continuo en vez de un salto a una página distinta.
- *
- * **El pie dice la verdad del servicio** (hallazgo de Raven): el cifrado en uso
- * y el estado real de la conexión con el servicio local viven abajo, no en la
- * cabecera, y sustituyen al pie estático «Los documentos no salen de este
- * equipo» —que era una afirmación de marketing, no un dato—.
- */
+/** Marco compartido por bienvenida, acceso y registro. */
 export default function MarcoAcceso({ titulo, subtitulo, onVolver, children }) {
   return (
     <div className="flex h-full w-full flex-col bg-fondo text-texto">

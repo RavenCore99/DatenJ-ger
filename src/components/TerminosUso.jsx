@@ -4,21 +4,7 @@ import Icono from './Icono.jsx'
 import { animar } from '../lib/movimiento.js'
 import { useCerrarConEscape } from '../lib/modal.js'
 
-/**
- * Términos y uso (calidad de vida).
- *
- * Sustituye a la nota legal que vivía incrustada en la pantalla de acceso: un
- * párrafo suelto sobre «Ley 1581 de 2012 / Hábeas Data» que no decía nada
- * completo y ocupaba sitio permanente. Ahora hay un enlace accesible que abre
- * un subpanel con lo legal del proyecto entero, y la pantalla de acceso queda
- * limpia.
- *
- * Todo lo que dice el subpanel es verificable en el repositorio: el cifrado, las
- * rondas de PBKDF2 y el destino de cada dato salen del código real
- * (`encryption.py`, `backend/services/autenticacion.py`, `database.py`), no de
- * una plantilla genérica. Lo único que sale del equipo es el texto de la
- * conversación del asistente, y se dice explícitamente.
- */
+/** Presenta las condiciones de uso y privacidad del sistema. */
 export default function TerminosUso({ className = '' }) {
   const [abierto, setAbierto] = useState(false)
 

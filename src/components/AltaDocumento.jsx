@@ -6,19 +6,7 @@ import { elegirArchivo } from '../lib/escritorio.js'
 import { tamanoLegible } from '../lib/formato.js'
 import { useCerrarConEscape } from '../lib/modal.js'
 
-/**
- * Formulario de alta de documento (calidad de vida).
- *
- * Antes, «Agregar documento» abría directamente el selector de archivos y
- * guardaba el PDF con su nombre y nada más: los metadatos —descripción,
- * titular, empresa— solo se podían rellenar después, entrando al detalle del
- * expediente. Ahora el botón abre este formulario, se elige el PDF aquí mismo y
- * **todo se guarda en el mismo acto**: el backend recibe los metadatos junto con
- * el archivo y crea o asocia la persona en la misma transacción.
- *
- * La empresa se ofrece como lista de las ya conocidas, para no sembrar
- * duplicados con variantes de escritura; aun así se puede escribir una nueva.
- */
+/** Registra el PDF y sus metadatos en una sola operación. */
 export default function AltaDocumento({ empresas = [], ocupado, error, onGuardar, onCerrar }) {
   const panel = useRef(null)
   // Cerrar con Escape y llevar el foco al botón de cierre, sin robar el foco en

@@ -1,17 +1,4 @@
-/**
- * Gráficos del dashboard (SCRUM-82).
- *
- * La **lógica** de los datos vive en Python (`backend/services/reportes.py`):
- * métricas, distribución, serie temporal y la regresión con predicción y R².
- * Aquí solo se dibuja, con la paleta del sistema, y sin traer una librería de
- * charts: son formas SVG y utilidades de Tailwind, así que no hay dependencias
- * nuevas.
- *
- * Los roles de color los decide el backend (`PALETA_GRAFICOS` viaja como rol
- * semántico: `primario`, `acento`, `exito`, `alerta`, `peligro`) y este módulo
- * los resuelve contra los tokens `--dj-*`. Las clases se escriben literales
- * —Tailwind no ve las que se construyen con plantillas—, por eso hay mapas.
- */
+/** Dibuja métricas y tendencias en SVG con la paleta del sistema. */
 
 /** Orden de los roles de serie, el mismo que declara el backend. */
 export const ROLES_SERIE = ['primario', 'acento', 'exito', 'alerta', 'peligro']

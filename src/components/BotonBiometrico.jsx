@@ -3,17 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../estado/ProveedorApp.jsx'
 import Icono from './Icono.jsx'
 
-/**
- * Botón de desbloqueo con lectura biométrica (SCRUM-71).
- *
- * Portado del complemento `assets/assets/boton biometrico`: al pulsarlo se
- * reproduce una lectura del sensor —barrido y trazado de la huella— y, al
- * terminar, dispara `onCompletar`. Es un adorno de transición, no una
- * autenticación biométrica real: el sistema verifica con contraseña y TOTP, y
- * eso no cambia aquí.
- *
- * Con el movimiento desactivado, el botón actúa de inmediato, sin animación.
- */
+/** Anima una lectura de huella decorativa; no autentica al usuario. */
 export default function BotonBiometrico({
   children,
   onCompletar,

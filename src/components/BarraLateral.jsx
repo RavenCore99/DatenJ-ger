@@ -3,25 +3,7 @@ import { SECCIONES } from '../App.jsx'
 import Icono from './Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
-/**
- * Barra lateral de navegación (SCRUM-28, iconos en SCRUM-65).
- *
- * Ancho del sistema de diseño: `240px`, que se recoge a `64px` cuando el
- * usuario la pliega. Cada sección ocupa `36px` de alto, como pide el spec, y
- * lleva el icono del set del sistema; plegada, el icono es el único distintivo
- * y el título viaja en el atributo accesible.
- *
- * **El logo es el control de plegado** (calidad de vida): había dos botones
- * para lo mismo —uno aquí y otro en la sub-cabecera—, así que se retiraron
- * ambos y el gesto quedó donde el usuario lo busca: sobre la marca. El atajo
- * `Ctrl/⌘+B` sigue funcionando y se anuncia en el `title` y en
- * `aria-keyshortcuts`.
- *
- * **Ajustes vive al pie, junto al tema**: no es una sección de trabajo como las
- * demás —no se entra a ella para operar sobre documentos—, sino el lugar donde
- * se configura la aplicación. Bajarla al pie, pegada al conmutador de tema, la
- * separa del flujo y la deja donde se espera.
- */
+/** Navegación lateral plegable con accesos a secciones y ajustes. */
 export default function BarraLateral({ seccion, onSeleccionar, plegada, onPlegar }) {
   const ajustes = SECCIONES.find(({ clave }) => clave === 'cuenta')
   const principales = SECCIONES.filter(({ clave }) => clave !== 'cuenta')

@@ -5,19 +5,7 @@ import { useApp } from '../estado/ProveedorApp.jsx'
 import { backend } from '../lib/api.js'
 import { animar } from '../lib/movimiento.js'
 
-/**
- * Búsqueda global (SCRUM-85), en `Ctrl / ⌘ + F`.
- *
- * Consulta de una vez los tres corpus que el sistema tiene indexados
- * —documentos, titulares y empresas— con los mismos filtros que usan sus
- * pantallas, y lleva a la sección correspondiente al elegir un resultado. No
- * hay índice propio: se apoya en las consultas que ya existen, así que lo que
- * encuentra es exactamente lo que el backend sabe buscar.
- *
- * La auditoría queda fuera a propósito: su visor filtra por acción exacta y por
- * fechas, no por texto libre, y anunciar aquí una búsqueda que no puede hacer
- * sería mentir sobre lo que el sistema sabe.
- */
+/** Busca documentos, titulares y empresas desde un único panel. */
 
 const RETARDO_MS = 250
 const MINIMO_CARACTERES = 2

@@ -10,16 +10,7 @@ import { enEscritorio, guardarArchivo } from '../lib/escritorio.js'
 
 const LectorPdf = lazy(() => import('./LectorPdf.jsx'))
 
-/**
- * Visor de PDF dentro de la aplicación (SCRUM-59).
- *
- * Hasta ahora los documentos se descifraban en el backend y se abrían por
- * fuera, con el programa de PDF del sistema. Aquí se descifran igual —el
- * servicio entrega los bytes— y se pintan dentro de la ventana.
- *
- * Los bytes descifrados se entregan a PDF.js, porque el visor PDF nativo de
- * Electron puede abrir el iframe sin llegar a pintar ninguna página.
- */
+/** Muestra documentos PDF descifrados dentro de la aplicación. */
 export default function VisorPdf({ documento, onCerrar }) {
   const [estado, setEstado] = useState('cargando')
   const [error, setError] = useState(null)

@@ -19,15 +19,7 @@ const POR_PAGINA = 200
 
 const FILTROS_VACIOS = { desde: '', hasta: '', accion: '' }
 
-/**
- * Panel de auditoría (SCRUM-30): trazabilidad de las acciones sobre el archivo.
- *
- * Conserva la funcionalidad del visor anterior —consulta filtrada por fecha y
- * tipo de acción, conteo, limpieza del historial y consulta del log— y adopta
- * la composición de los mockups: fila de métricas, filtros en una tarjeta,
- * tabla con la acción en pill coloreada y visor de log tipo terminal en
- * monoespaciada.
- */
+/** Consulta y filtra las acciones registradas en la auditoría. */
 export default function Auditoria({ nivelTitulo = 1 }) {
   const { conectado, autenticado } = useApp()
 

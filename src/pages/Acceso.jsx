@@ -7,21 +7,7 @@ import TerminosUso from '../components/TerminosUso.jsx'
 import Icono from '../components/Icono.jsx'
 import logo from '../../assets/logo/logo.png'
 
-/**
- * Pantalla de acceso (SCRUM-29): credenciales y segundo factor, con la
- * identidad visual del sistema de diseño.
- *
- * Todo lo que se muestra es dato real del sistema: la dirección del servicio y
- * el cifrado en uso salen de la propia aplicación. Los mockups pedían un
- * semáforo de ventana, un token de hardware, un contador de operadores en turno
- * y unas cifras de iteraciones que no corresponden con este sistema
- * (dicen 600.000 rondas PBKDF2-HMAC-SHA512; aquí son 260.000 con SHA-256): no se
- * inventan, se muestran las reales o se omiten.
- *
- * La verificación ocurre en el backend de Python; esta pantalla solo envía las
- * credenciales y reacciona al estado que devuelve el servicio. La clave de
- * sesión no llega nunca al renderer.
- */
+/** Solicita credenciales y el segundo factor al servicio de autenticación. */
 export default function Acceso({ onVolver }) {
   const { conectado, recargarSalud, aviso, limpiarAviso } = useApp()
 

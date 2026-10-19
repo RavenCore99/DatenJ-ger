@@ -1,11 +1,4 @@
-/**
- * Formulario suave (SCRUM-71).
- *
- * Portado del complemento `assets/assets/smooth_formulario`: un formulario que
- * entra con un fundido corto y campos con el subrayado que se dibuja al
- * enfocar. No impone pasos ni validación —eso es del flujo que lo use—; solo
- * aporta la transición y el tratamiento del campo.
- */
+/** Formulario con transición de entrada y campos animados. */
 
 /** Envoltorio del formulario: fundido de entrada, sin bloquear la interacción. */
 export function FormularioSuave({ children, className = '', ...resto }) {

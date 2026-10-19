@@ -630,13 +630,7 @@ function Almacenamiento() {
   )
 }
 
-/**
- * Atajos de teclado (SCRUM-85).
- *
- * La lista se lee de `src/lib/atajos.js`, que es la misma tabla que usa el
- * manejador global de `App.jsx`: lo que se anuncia aquí es exactamente lo que
- * el teclado hace, sin una segunda lista que se quede atrás.
- */
+/** Muestra los atajos disponibles en la aplicación. */
 function Atajos() {
   return (
     <div className="flex flex-col gap-3">

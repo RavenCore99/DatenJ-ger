@@ -2,19 +2,7 @@ import { useEffect, useRef } from 'react'
 
 import { useApp } from '../estado/ProveedorApp.jsx'
 
-/**
- * Sistema de partículas (SCRUM-71).
- *
- * Portado del complemento `assets/assets/dynamic_t_particle system`, pero con
- * la estética del proyecto: sin el arcoíris ni el degradado del original —usa
- * el azul primario y el acento del sistema—, densidad contenida y sin
- * interacción de clic. Es un fondo decorativo para las pantallas de entrada.
- *
- * La paleta se relee cuando cambia el tema, porque el lienzo no entiende las
- * variables CSS y hay que resolver los valores a RGB.
- *
- * Con el movimiento desactivado pinta un campo estático y no entra en bucle.
- */
+/** Fondo de partículas que adopta la paleta y preferencia de movimiento. */
 export default function Particulas({ className = '', densidad = 1 }) {
   const { animaciones } = useApp()
   const lienzo = useRef(null)

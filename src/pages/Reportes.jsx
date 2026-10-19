@@ -14,19 +14,7 @@ import { backend } from '../lib/api.js'
 import { elegirDestino } from '../lib/escritorio.js'
 import { fechaCorta, tamanoLegible } from '../lib/formato.js'
 
-/**
- * Panel de reportes (SCRUM-61).
- *
- * Recoge lo que ya hacía `reporter.py` —inventario de documentos con su titular
- * y el resumen de cifras— y lo viste con la paleta del sistema. El reparto de
- * responsabilidades es el acordado para esta fase: **el PDF y el CSV los genera
- * Python** (`ReporteInventario`), y aquí solo se elige el destino y se muestra
- * el resultado; la estructura del documento —portada, inventario y gráfico por
- * empresa— se conserva tal cual.
- *
- * La ruta de destino la resuelve el diálogo nativo de Electron (`elegirDestino`):
- * el archivo lo escribe el servicio, no el renderer.
- */
+/** Permite consultar y exportar el inventario documental. */
 export default function Reportes({ onNavegar }) {
   const { conectado, autenticado } = useApp()
 
