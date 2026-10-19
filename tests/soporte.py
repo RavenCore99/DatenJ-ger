@@ -1,12 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/soporte.py - utilidades compartidas por las pruebas
 
-"""Soporte común de las pruebas: base temporal real y entorno aislado.
-
-Cada prueba trabaja sobre una base SQLite temporal creada con el esquema
-real (``database.conectar_db`` acepta una ruta alternativa), de modo que
-las pruebas nunca tocan ``base_datos_pdfs.db``.
-"""
+"""Prepara bases SQLite temporales y credenciales aisladas para las pruebas."""
 
 from __future__ import annotations
 
@@ -68,9 +63,7 @@ class BaseBackendTest(unittest.TestCase):
         aislamiento.start()
         self.addCleanup(aislamiento.stop)
 
-        # El almacén de tokens de confianza y el de la conexión de modelos se
-        # apuntan al directorio temporal: ninguna prueba debe escribir en el
-        # directorio real del proyecto (CLAUDE.md §3).
+        # Aislar los almacenes de tokens y modelos en el directorio temporal.
         self._tokens_previos = os.environ.get("DATENJAGER_TOKENS")
         os.environ["DATENJAGER_TOKENS"] = self.tmpdir
 

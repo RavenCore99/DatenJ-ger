@@ -1,12 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_empresas.py - catálogo de empresas y normalización de nombres
 
-"""Pruebas del catálogo de empresas.
-
-Lo que se comprueba aquí es la razón de ser de la tabla: que dos grafías de la
-misma empresa **no** creen dos fichas, que el personal quede asociado a la suya,
-y que la migración del texto libre antiguo deje los datos vinculados.
-"""
+"""Prueba la normalización y vinculación del catálogo de empresas."""
 
 from __future__ import annotations
 

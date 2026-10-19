@@ -1,12 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_autenticacion.py - autenticación sin Tkinter
 
-"""Pruebas del servicio de autenticación (SCRUM-22).
-
-Incluye la prueba que más importa al mover este código: que un documento
-cifrado antes del cambio se siga descifrando con la misma contraseña y la
-misma clave de sesión.
-"""
+"""Prueba autenticación y compatibilidad de documentos cifrados."""
 
 from __future__ import annotations
 
@@ -298,13 +293,7 @@ class TestEstadoDeCuenta(BaseAuthTest):
 
 
 class TestRestablecimientoDeContrasena(BaseAuthTest):
-    """Restablecer la contraseña sin conocerla, con un código de respaldo (SCRUM-84).
-
-    El caso que motivó el cambio: el secreto TOTP y los códigos de respaldo
-    estaban cifrados con la clave derivada de la contraseña, así que el flujo
-    antiguo no podía verificarlos y el restablecimiento era imposible para quien
-    la había olvidado.
-    """
+    """Prueba el restablecimiento con un código de respaldo."""
 
     def _activar_con_codigos_hash(self, codigos=("111111", "222222")):
         """Deja la cuenta con 2FA activo y los códigos en el formato de hash."""

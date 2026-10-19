@@ -1,13 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_modelos.py - conexión de modelos: almacén, .env y prueba real
 
-"""Pruebas del servicio de conexión de modelos.
-
-Cubren lo que se añadió para que el panel deje la credencial donde el asistente
-la lee (el `.env`) y para que «Probar conexión» sea una prueba de verdad y no un
-adorno: sin credencial no hay nada que probar, y con un endpoint inalcanzable el
-resultado es un fallo explicado, no una excepción.
-"""
+"""Prueba almacenamiento y conectividad de proveedores de modelos."""
 
 import os
 import stat
@@ -139,12 +133,7 @@ class ProbarConexionTest(BaseModelosTest):
         self.assertTrue(resultado["detalle"])
 
     def test_un_proveedor_sin_endpoint_lo_dice(self):
-        """Un endpoint propio sin URL base no se puede probar: se dice, no se finge.
-
-        Antes esta prueba afirmaba «solo Google Gemini tiene prueba
-        implementada». Eso era una limitación del servicio y ya no existe: ahora
-        se prueba cualquier proveedor del catálogo, y lo que falta es la URL.
-        """
+        """Informa cuando falta la URL de un proveedor compatible."""
         modelos.guardar(self.raiz, api_key="clave-de-prueba", proveedor="compatible")
 
         resultado = modelos.probar(self.raiz)
@@ -275,11 +264,7 @@ class CandidatosYEndpointTest(BaseModelosTest):
         self.assertNotIn("imagen-4", candidatos)
 
     def test_una_url_escrita_manda_sobre_lo_deducido(self):
-        """El panel no la manda cuando el proveedor la tiene fijada; si llega, manda.
-
-        Es la única vía para un endpoint propio, que por definición no está en el
-        catálogo. El proveedor, en cambio, sí se deduce de la clave.
-        """
+        """Prioriza la URL indicada sobre la deducida del proveedor."""
         modelos.guardar(
             self.raiz, api_key="nvapi-abcdef123456", endpoint="https://mio.invalido/v1")
 

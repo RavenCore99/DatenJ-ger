@@ -1,17 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_asistente.py - streaming, errores de red y anclaje al proyecto
 
-"""Pruebas del asistente de la Fase 4.
-
-Cubren las tres cosas que no se ven en una prueba de humo: que la respuesta
-llegue **por fragmentos** (RF-16), que los fallos de red se manejen sin
-duplicar ni perder la conversación (`SCRUM-35`/`SCRUM-36`), y que el asistente
-solo reciba **agregados** del proyecto, nunca datos personales ni secretos
-(`SCRUM-61`).
-
-No se toca la red: el servicio se prueba con sus métodos de proveedor
-sustituidos, que es justo la frontera donde vive la lógica propia.
-"""
+"""Prueba streaming, errores de red y contexto agregado del asistente."""
 
 from __future__ import annotations
 
@@ -37,7 +27,7 @@ def servicio(**kwargs) -> chatbot.ChatbotService:
 
 
 class TestStreamingDelAsistente(unittest.TestCase):
-    """Entrega progresiva y continuidad de la conversación (RF-16, SCRUM-36)."""
+    """Comprueba la entrega progresiva y la continuidad de la conversación."""
 
     def test_entrega_los_fragmentos_en_orden(self):
         asistente = servicio()
@@ -121,7 +111,7 @@ class TestStreamingDelAsistente(unittest.TestCase):
 
 
 class TestErroresDeRed(unittest.TestCase):
-    """Traducción de los fallos del proveedor (SCRUM-35)."""
+    """Comprueba los mensajes ante fallos del proveedor."""
 
     def test_un_tiempo_agotado_es_reintentable_y_se_explica(self):
         asistente = servicio(tiempo_limite=7.0)
@@ -190,7 +180,7 @@ class TestErroresDeRed(unittest.TestCase):
 
 
 class TestContextoDelProyecto(BaseBackendTest):
-    """El asistente recibe agregados reales y nada sensible (SCRUM-61)."""
+    """Comprueba que el contexto contiene agregados, no datos sensibles."""
 
     def setUp(self):
         super().setUp()
@@ -250,13 +240,7 @@ class TestContextoDelProyecto(BaseBackendTest):
 
 
 class RazonamientoNoSeMuestraTest(unittest.TestCase):
-    """El pensamiento del modelo no es la respuesta que ve el usuario.
-
-    Lo reportó Raven al probar la conexión: el asistente devolvía su
-    planificación —«el usuario pregunta si funciono, debo responder que sí»—
-    mezclada con la respuesta. Los modelos con razonamiento la devuelven como
-    partes marcadas, y hay que descartarlas.
-    """
+    """Comprueba que el razonamiento del modelo no aparece en la respuesta."""
 
     @staticmethod
     def _respuesta(cuerpo: bytes = b"", lineas=None):

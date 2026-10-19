@@ -1,13 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
 # tests/test_backend_sin_tkinter.py - la capa backend corre sin interfaz
 
-"""Pruebas de aislamiento: el backend funciona sin Tkinter ni pantalla.
-
-Se ejecutan en un procesos hijo con ``DISPLAY`` y ``WAYLAND_DISPLAY``
-eliminados del entorno, de modo que un import accidental de
-``customtkinter`` (o cualquier intento de abrir una ventana) falla de
-forma visible en lugar de pasar desapercibido.
-"""
+"""Prueba que el backend funciona sin Tkinter ni pantalla."""
 
 from __future__ import annotations
 

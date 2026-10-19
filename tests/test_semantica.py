@@ -1,13 +1,7 @@
 # Copyright (c) 2024 DatenJäger. All rights reserved.
-# tests/test_semantica.py - servicio de búsqueda semántica (Fase 6)
+# tests/test_semantica.py - servicio de búsqueda semántica
 
-"""Pruebas de las piezas deterministas del servicio semántico.
-
-Se prueban aquí solo las funciones que **no** cargan el modelo de embeddings
-(troceado, clasificación por reglas, derivación de rutas y el cifrado de
-fragmentos): son deterministas y corren sin red ni `fastembed`. El modelo en
-sí se valida con los guiones de `scripts/semantico/`, no en la suite rápida.
-"""
+"""Prueba funciones semánticas deterministas sin cargar embeddings."""
 
 from __future__ import annotations
 

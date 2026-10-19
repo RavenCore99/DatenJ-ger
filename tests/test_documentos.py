@@ -82,13 +82,7 @@ class TestDocumentos(BaseBackendTest):
         self.assertIn(documentos.ACCION_EDITAR, self.eventos())
 
     def test_actualizar_un_documento_sin_titular_crea_la_persona(self):
-        """Rellenar la persona al editar un documento sin titular debe crearla.
-
-        Antes, el `UPDATE` de la persona apuntaba por subconsulta al
-        `persona_id` del documento: si no tenía ninguna, no afectaba a ninguna
-        fila y el dato se perdía en silencio mientras la interfaz decía
-        «Documento actualizado».
-        """
+        """Crea y vincula una persona al editar un documento sin titular."""
         creado = self.crear_documento()
         self.assertIsNone(creado["persona_id"])
 
@@ -110,12 +104,7 @@ class TestDocumentos(BaseBackendTest):
         self.assertEqual(creadas[0]["documentos"], 1)
 
     def test_actualizar_con_otra_cedula_vincula_al_titular_correcto(self):
-        """Corregir la cédula debe llevar el documento al titular correcto.
-
-        Antes solo se propagaban nombres y empresa a la persona ya vinculada; la
-        cédula nueva se ignoraba, así que el documento seguía apuntando a otra
-        persona y el inventario mostraba una cédula que ya no era la suya.
-        """
+        """Vincula el documento al titular de la cédula corregida."""
         creado = self.crear_documento(cedula="333", nombres="Ana Diaz", empresa="Minera A")
 
         actualizado = documentos.actualizar_documento(
