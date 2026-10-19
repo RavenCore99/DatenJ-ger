@@ -1,19 +1,4 @@
-/*
- * Tokens de DatenJäger — generados desde los DESIGN.md del sistema de diseño
- * ("DatenJäger Precision Desktop") con `@google/design.md export --format json-tailwind`.
- * No editar a mano los valores: vienen del spec (SCRUM-27).
- *
- * El spec trae DOS sistemas, no un modo claro y otro oscuro del mismo:
- * el claro usa Inter, escalas más densas y margen de 1rem; el oscuro usa
- * Manrope, escalas mayores y margen de 1.25rem. La reconciliación adoptada
- * (documentada en planning.md) es: tipografía y escalas del claro —Manrope no
- * aparece en ningún mockup y una fuente que cambia con el tema es inviable—,
- * colores de cada modo, y los roles que el oscuro añade (cristal, lienzo,
- * semáforo) disponibles en ambos.
- *
- * Los valores se guardan como tripletes RGB para que Tailwind pueda aplicar
- * opacidad (`bg-superficie/50`).
- */
+/* Tokens de color por tema, expresados en RGB para admitir opacidad. */
 :root {
   /* claro */
   --dj-fondo: 248 249 255;  /* #f8f9ff */

@@ -1,20 +1,4 @@
-/**
- * Set de iconos del frontend (SCRUM-65 / SCRUM-80).
- *
- * Decisión (criterio de Raven: lo que mejor rinda y mejor se vea):
- * los iconos se dibujan como **SVG en línea**, trazo de 24×24 con geometría
- * del set *lucide* (licencia MIT), en lugar de cargar una fuente de iconos o
- * los 44 PNG de `assets/icons/`.
- *
- * Motivos:
- * - **Rendimiento**: no añade dependencias, ni peticiones, ni un archivo de
- *   fuente de cientos de KB; solo pesa lo que cada pantalla usa.
- * - **Estética**: heredan el color con `currentColor`, escalan sin pixelarse y
- *   se alinean con el trazo del sistema de diseño.
- *
- * El set cubre los nombres que el sistema pide, incluidos `arrow-right` y
- * `trash`, que faltaban entre los PNG.
- */
+/** Iconos SVG en línea que heredan el color de la interfaz. */
 
 const GLIFOS = {
   inicio: (
